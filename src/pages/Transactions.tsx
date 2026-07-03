@@ -12,6 +12,7 @@ export const TAXONOMY: Record<string, Record<string, string[]>> = {
     'Cuentas Básicas': ['Luz', 'Agua', 'Gas', 'GGCC', 'Internet Hogar', 'Internet Móvil'],
     'Hogar/Materiales': ['Bazar-Chinos', 'Ferretería', 'Mantenimiento/Mejoras'],
     'Salud': ['Salud'],
+    'Personal': ['Cuidado Personal', 'Ropa', 'Otros'],
     'Educación': ['Educación'],
     'Benja': ['Benja'],
     'Suscripciones': ['HBO MAX', 'Claude', 'Chat GPT', 'Google', 'Netflix', 'Spotify', 'Amazon Prime', 'Otras'],
@@ -407,8 +408,8 @@ export default function Transactions() {
               </tr>
             </thead>
             <tbody>
-              {bulkGroups.map((group, i) => (
-                <tr key={i} style={{ borderBottom: '2px solid black' }}>
+              {bulkGroups.map((group) => (
+                <tr key={group.name} style={{ borderBottom: '2px solid black' }}>
                   <td style={{ padding: '1rem', fontWeight: 700 }}>{group.name}</td>
                   <td style={{ padding: '1rem', fontWeight: 800, fontSize: '1.25rem' }}>{group.count}</td>
                   <td style={{ padding: '1rem', fontWeight: 800, color: 'var(--danger)' }}>
