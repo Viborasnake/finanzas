@@ -22,7 +22,8 @@ export const TAXONOMY: Record<string, Record<string, string[]>> = {
     'Pago a Familiar': ['Pago a Familiar'],
     'Impuestos': ['Impuestos'],
     'Intereses y Comisiones': ['Intereses'],
-    'Pago Tarjeta Crédito': ['Tarjeta Credito']
+    'Pago Tarjeta Crédito': ['Tarjeta Credito'],
+    'Sin Especificar': ['Sin Especificar']
   },
   'Movimiento Interno': {
     'Transferencia personal': ['Transferencia personal'],
