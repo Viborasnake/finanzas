@@ -217,8 +217,8 @@ export default function CSVImport() {
             const contact = knownContacts.find(c => c.rut && extractAndNormalizeRUT(c.rut) === rutExtracted);
             if (contact) {
               tipo_movimiento = 'Gasto Real';
-              categoria_principal = 'Apoyo Familiar/Amigos';
-              categoria_secundaria = 'Apoyo Familiar/Amigos';
+              categoria_principal = 'Pago a Familiar';
+              categoria_secundaria = 'Pago a Familiar';
             }
           }
 

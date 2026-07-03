@@ -200,7 +200,7 @@ export default function Settings() {
         <div className="card">
           <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Contactos Conocidos</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
-            Agrega RUTs de amigos o familiares. Cuando importes, el sistema clasificará automáticamente los traspasos a ellos como "Apoyo Familiar/Amigos".
+            Agrega RUTs de amigos o familiares. Cuando importes, el sistema clasificará automáticamente los traspasos a ellos como "Pago a Familiar".
           </p>
           
           <form onSubmit={handleAddContact} style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
