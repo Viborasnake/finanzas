@@ -64,14 +64,16 @@ export default function CSVImport() {
             return;
           }
 
-          const headers = rows[headerIndex].map(h => h.trim().toLowerCase());
-          const dateIdx = headers.indexOf('fecha');
+          const headers = rows[headerIndex].map(h => typeof h === 'string' ? h.trim().toLowerCase() : '');
+          
+          // Usamos findIndex con includes para que sea mucho más tolerante a espacios o caracteres extra invisibles
+          const dateIdx = headers.findIndex(h => h.includes('fecha'));
           const descIdx = headers.findIndex(h => h.includes('descripc'));
-          const cargosIdx = headers.indexOf('cargos');
-          const abonosIdx = headers.indexOf('abonos');
+          const cargosIdx = headers.findIndex(h => h.includes('cargo'));
+          const abonosIdx = headers.findIndex(h => h.includes('abono'));
 
           if (dateIdx === -1 || descIdx === -1 || (cargosIdx === -1 && abonosIdx === -1)) {
-            setError("Faltan columnas requeridas en el archivo (Fecha, Descripcion, Cargos/Abonos).");
+            setError(`Faltan columnas. Encontradas: ${headers.join(', ')}`);
             return;
           }
 
