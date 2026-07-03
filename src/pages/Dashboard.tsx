@@ -12,6 +12,7 @@ export default function Dashboard() {
   const [filterYear, setFilterYear] = useState('all');
   const [filterMonth, setFilterMonth] = useState('all');
   const [groupByCategory, setGroupByCategory] = useState(false);
+  const [hiddenCategories, setHiddenCategories] = useState<string[]>([]);
 
   const { user } = useAuth();
 
@@ -42,18 +43,34 @@ export default function Dashboard() {
     return Array.from(years).sort((a, b) => b - a);
   }, [transactions]);
 
+  const availableCategories = useMemo(() => {
+    const cats = new Map();
+    transactions.forEach(t => {
+      if (t.category) {
+        cats.set(t.category.id, t.category);
+      }
+    });
+    return Array.from(cats.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [transactions]);
+
+  const toggleCategory = (id: string) => {
+    setHiddenCategories(prev => 
+      prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
+    );
+  };
+
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
       const date = new Date(t.date);
       const matchesYear = filterYear === 'all' || date.getFullYear().toString() === filterYear;
       const matchesMonth = filterMonth === 'all' || (date.getMonth() + 1).toString() === filterMonth;
       
-      const catName = t.category?.name?.toLowerCase() || '';
-      const isIgnored = catName.includes('ignorar') || catName.includes('traspaso') || catName.includes('transferencia');
+      const categoryId = t.category?.id || 'uncategorized';
+      const isHidden = hiddenCategories.includes(categoryId);
 
-      return matchesYear && matchesMonth && !isIgnored;
+      return matchesYear && matchesMonth && !isHidden;
     });
-  }, [transactions, filterYear, filterMonth]);
+  }, [transactions, filterYear, filterMonth, hiddenCategories]);
 
   const calculateSummary = () => {
     let ingresos = 0;
@@ -216,7 +233,7 @@ export default function Dashboard() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <h1 style={{ margin: 0, fontSize: '2.5rem' }}>Resumen Financiero</h1>
         
         {transactions.length > 0 && (
@@ -232,29 +249,52 @@ export default function Dashboard() {
                 <option key={year} value={year.toString()}>{year}</option>
               ))}
             </select>
-            <div style={{ width: '2px', height: '20px', backgroundColor: 'black', margin: '0 0.5rem' }}></div>
+            <span style={{ fontWeight: 800 }}>/</span>
             <select 
               style={{ padding: '0.25rem', border: 'none', backgroundColor: 'transparent', outline: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '1rem' }}
               value={filterMonth}
               onChange={(e) => setFilterMonth(e.target.value)}
             >
               <option value="all">Todos los meses</option>
-              <option value="1">Enero</option>
-              <option value="2">Febrero</option>
-              <option value="3">Marzo</option>
-              <option value="4">Abril</option>
-              <option value="5">Mayo</option>
-              <option value="6">Junio</option>
-              <option value="7">Julio</option>
-              <option value="8">Agosto</option>
-              <option value="9">Septiembre</option>
-              <option value="10">Octubre</option>
-              <option value="11">Noviembre</option>
-              <option value="12">Diciembre</option>
+              {Array.from({length: 12}, (_, i) => (
+                <option key={i+1} value={(i+1).toString()}>{new Date(2000, i, 1).toLocaleString('es-CL', { month: 'long' })}</option>
+              ))}
             </select>
           </div>
         )}
       </div>
+
+      {transactions.length > 0 && availableCategories.length > 0 && (
+        <div style={{ marginBottom: '2.5rem', backgroundColor: 'white', padding: '1rem', border: '2px solid black', borderRadius: 'var(--radius-sm)', boxShadow: '4px 4px 0px black' }}>
+          <p style={{ margin: '0 0 0.75rem 0', fontWeight: 700, fontSize: '0.875rem', textTransform: 'uppercase' }}>Analizar estas categorías:</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            {availableCategories.map(cat => {
+              const isHidden = hiddenCategories.includes(cat.id);
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => toggleCategory(cat.id)}
+                  style={{
+                    padding: '0.25rem 0.75rem',
+                    borderRadius: '2rem',
+                    border: '2px solid black',
+                    backgroundColor: isHidden ? '#f1f5f9' : (cat.color || '#bfdbfe'),
+                    color: isHidden ? '#94a3b8' : 'black',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    boxShadow: isHidden ? 'none' : '2px 2px 0px black',
+                    textDecoration: isHidden ? 'line-through' : 'none',
+                    transition: 'all 0.1s'
+                  }}
+                  title={isHidden ? 'Click para incluir en el reporte' : 'Click para ignorar en el reporte'}
+                >
+                  {cat.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Verbalización Inteligente */}
       {generateInsightReport()}
