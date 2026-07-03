@@ -116,12 +116,11 @@ export default function Dashboard() {
 
   const specificItemTrendData = selectedRecurringItem ? getSpecificItemTrend(selectedRecurringItem) : [];
 
-  const generateInsightCards = () => {
+  const generateInsightReport = () => {
     if (transactions.length === 0) return <p>Importa tus datos para ver un análisis inteligente de tu situación financiera.</p>;
 
     const isDeficit = balance < 0;
     
-    // Encontrar mayor ingreso
     const ingresosTx = transactions.filter(t => t.type === 'ingreso');
     const groupedIngresos: {[key:string]: number} = {};
     ingresosTx.forEach(t => {
@@ -129,56 +128,61 @@ export default function Dashboard() {
     });
     const mainIngreso = Object.entries(groupedIngresos).sort((a,b) => b[1] - a[1])[0];
 
-    // Mayor gasto recurrente
     const topRecurrente = recurringExpenses.length > 0 ? recurringExpenses[0] : null;
 
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
+      <div className="card" style={{ marginBottom: '3rem', backgroundColor: 'white', position: 'relative', overflow: 'hidden', padding: '2rem' }}>
+        {/* Barra de colores mágica superior */}
+        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '8px', background: 'linear-gradient(90deg, #c084fc, #38bdf8, #facc15)' }}></div>
         
-        {/* Insight: Estado General */}
-        <div style={{ backgroundColor: isDeficit ? '#fecaca' : '#bbf7d0', border: '2px solid black', boxShadow: '4px 4px 0px black', borderRadius: 'var(--radius-sm)', padding: '1.5rem', transition: 'transform 0.2s', cursor: 'default' }} onMouseOver={(e) => e.currentTarget.style.transform = 'translate(-2px, -2px)'} onMouseOut={(e) => e.currentTarget.style.transform = 'translate(0, 0)'}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-            <div style={{ backgroundColor: 'black', color: 'white', padding: '0.5rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {isDeficit ? <TrendingDown size={20} /> : <TrendingUp size={20} />}
+        <h2 style={{ fontSize: '1.75rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: 0 }}>
+          <span style={{ fontSize: '2rem' }}>✨</span> Reporte de Inteligencia
+        </h2>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+          
+          {/* Fila 1 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+            <div style={{ backgroundColor: isDeficit ? '#fecaca' : '#bbf7d0', padding: '1rem', border: '2px solid black', borderRadius: '50%', boxShadow: '3px 3px 0px black' }}>
+              {isDeficit ? <TrendingDown size={28} /> : <TrendingUp size={28} />}
             </div>
-            <h4 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Estado General</h4>
+            <div>
+              <p style={{ margin: 0, fontSize: '1.15rem', lineHeight: '1.6', fontWeight: 500, color: 'var(--text-primary)' }}>
+                Tu balance actual indica un <span style={{ fontWeight: 800, backgroundColor: isDeficit ? '#fecaca' : '#bbf7d0', padding: '0.2rem 0.6rem', border: '2px solid black', borderRadius: 'var(--radius-sm)', textTransform: 'uppercase' }}>{isDeficit ? 'Déficit' : 'Superávit'}</span> de <strong>${Math.abs(balance).toLocaleString('es-CL')}</strong>. 
+                {isDeficit ? ' Presta atención, tus gastos están superando a tus ingresos en este periodo.' : ' ¡Vas por excelente camino manteniendo tus finanzas en verde!'}
+              </p>
+            </div>
           </div>
-          <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.6', fontWeight: 600 }}>
-            Te encuentras en <strong>{isDeficit ? 'déficit' : 'superávit'}</strong> por <strong style={{ fontSize: '1.1rem' }}>${Math.abs(balance).toLocaleString('es-CL')}</strong>. 
-            {isDeficit ? ' Estás gastando más de lo que ganas.' : ' ¡Excelente control de tus finanzas!'}
-          </p>
+
+          {/* Fila 2 */}
+          {mainIngreso && ingresos > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+              <div style={{ backgroundColor: '#bfdbfe', padding: '1rem', border: '2px solid black', borderRadius: '50%', boxShadow: '3px 3px 0px black' }}>
+                <DollarSign size={28} />
+              </div>
+              <div>
+                <p style={{ margin: 0, fontSize: '1.15rem', lineHeight: '1.6', fontWeight: 500, color: 'var(--text-primary)' }}>
+                  Tu motor principal de ingresos es <strong>"{mainIngreso[0]}"</strong>, el cual representa el <span style={{ fontWeight: 800, backgroundColor: '#bfdbfe', padding: '0.2rem 0.6rem', border: '2px solid black', borderRadius: 'var(--radius-sm)' }}>{Math.round((mainIngreso[1] / ingresos) * 100)}%</span> de todas tus entradas de dinero.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Fila 3 */}
+          {topRecurrente && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+              <div style={{ backgroundColor: '#fef08a', padding: '1rem', border: '2px solid black', borderRadius: '50%', boxShadow: '3px 3px 0px black' }}>
+                <Search size={28} />
+              </div>
+              <div>
+                <p style={{ margin: 0, fontSize: '1.15rem', lineHeight: '1.6', fontWeight: 500, color: 'var(--text-primary)' }}>
+                  Hemos detectado una fuga recurrente de capital en <strong>"{topRecurrente.name}"</strong>, con un acumulado de <span style={{ fontWeight: 800, backgroundColor: '#fef08a', padding: '0.2rem 0.6rem', border: '2px solid black', borderRadius: 'var(--radius-sm)' }}>${topRecurrente.total.toLocaleString('es-CL')}</span> repartido en {topRecurrente.count} pagos.
+                </p>
+              </div>
+            </div>
+          )}
+          
         </div>
-
-        {/* Insight: Motor de Ingresos */}
-        {mainIngreso && ingresos > 0 && (
-          <div style={{ backgroundColor: '#bfdbfe', border: '2px solid black', boxShadow: '4px 4px 0px black', borderRadius: 'var(--radius-sm)', padding: '1.5rem', transition: 'transform 0.2s', cursor: 'default' }} onMouseOver={(e) => e.currentTarget.style.transform = 'translate(-2px, -2px)'} onMouseOut={(e) => e.currentTarget.style.transform = 'translate(0, 0)'}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-              <div style={{ backgroundColor: 'black', color: 'white', padding: '0.5rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <DollarSign size={20} />
-              </div>
-              <h4 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Motor de Ingresos</h4>
-            </div>
-            <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.6', fontWeight: 600 }}>
-              Tu principal ingreso es <strong>"{mainIngreso[0]}"</strong>, representando el <strong>{Math.round((mainIngreso[1] / ingresos) * 100)}%</strong> de tus entradas de dinero.
-            </p>
-          </div>
-        )}
-
-        {/* Insight: Fuga Recurrente */}
-        {topRecurrente && (
-          <div style={{ backgroundColor: '#fef08a', border: '2px solid black', boxShadow: '4px 4px 0px black', borderRadius: 'var(--radius-sm)', padding: '1.5rem', transition: 'transform 0.2s', cursor: 'default' }} onMouseOver={(e) => e.currentTarget.style.transform = 'translate(-2px, -2px)'} onMouseOut={(e) => e.currentTarget.style.transform = 'translate(0, 0)'}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-              <div style={{ backgroundColor: 'black', color: 'white', padding: '0.5rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Search size={20} />
-              </div>
-              <h4 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Fuga Recurrente</h4>
-            </div>
-            <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.6', fontWeight: 600 }}>
-              Tu mayor gasto repetitivo es <strong>"{topRecurrente.name}"</strong>, sumando un total acumulado de <strong>${topRecurrente.total.toLocaleString('es-CL')}</strong> en {topRecurrente.count} pagos.
-            </p>
-          </div>
-        )}
-
       </div>
     );
   };
@@ -192,15 +196,7 @@ export default function Dashboard() {
       <h1 style={{ marginBottom: '2rem', fontSize: '2.5rem' }}>Resumen Financiero</h1>
 
       {/* Verbalización Inteligente */}
-      <div style={{ marginBottom: '3rem' }}>
-        <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          ✨ Análisis Inteligente
-        </h2>
-        <p style={{ color: 'var(--text-secondary)', fontWeight: 500, margin: 0 }}>
-          Descubrimientos clave basados en tus movimientos financieros.
-        </p>
-        {generateInsightCards()}
-      </div>
+      {generateInsightReport()}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
         
