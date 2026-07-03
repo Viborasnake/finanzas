@@ -116,7 +116,7 @@ export default function Dashboard() {
 
   const specificItemTrendData = selectedRecurringItem ? getSpecificItemTrend(selectedRecurringItem) : [];
 
-  const generateInsightText = () => {
+  const generateInsightCards = () => {
     if (transactions.length === 0) return <p>Importa tus datos para ver un análisis inteligente de tu situación financiera.</p>;
 
     const isDeficit = balance < 0;
@@ -133,23 +133,52 @@ export default function Dashboard() {
     const topRecurrente = recurringExpenses.length > 0 ? recurringExpenses[0] : null;
 
     return (
-      <div style={{ fontSize: '1.125rem', lineHeight: '1.6' }}>
-        <p style={{ marginBottom: '0.75rem' }}>
-          Actualmente te encuentras en <strong>{isDeficit ? 'déficit' : 'superávit'}</strong> por un total de <strong style={{ color: isDeficit ? 'var(--danger)' : 'var(--success)' }}>${Math.abs(balance).toLocaleString('es-CL')}</strong>. 
-          {isDeficit ? ' Estás gastando más de lo que ganas en este periodo.' : ' ¡Excelente trabajo manteniendo tus gastos bajo control!'}
-        </p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
         
-        {mainIngreso && ingresos > 0 && (
-          <p style={{ marginBottom: '0.75rem' }}>
-            Tus ingresos provienen principalmente de <strong>"{mainIngreso[0]}"</strong>, representando el {Math.round((mainIngreso[1] / ingresos) * 100)}% de todas tus entradas de dinero.
+        {/* Insight: Estado General */}
+        <div style={{ backgroundColor: isDeficit ? '#fecaca' : '#bbf7d0', border: '2px solid black', boxShadow: '4px 4px 0px black', borderRadius: 'var(--radius-sm)', padding: '1.5rem', transition: 'transform 0.2s', cursor: 'default' }} onMouseOver={(e) => e.currentTarget.style.transform = 'translate(-2px, -2px)'} onMouseOut={(e) => e.currentTarget.style.transform = 'translate(0, 0)'}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+            <div style={{ backgroundColor: 'black', color: 'white', padding: '0.5rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {isDeficit ? <TrendingDown size={20} /> : <TrendingUp size={20} />}
+            </div>
+            <h4 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Estado General</h4>
+          </div>
+          <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.6', fontWeight: 600 }}>
+            Te encuentras en <strong>{isDeficit ? 'déficit' : 'superávit'}</strong> por <strong style={{ fontSize: '1.1rem' }}>${Math.abs(balance).toLocaleString('es-CL')}</strong>. 
+            {isDeficit ? ' Estás gastando más de lo que ganas.' : ' ¡Excelente control de tus finanzas!'}
           </p>
+        </div>
+
+        {/* Insight: Motor de Ingresos */}
+        {mainIngreso && ingresos > 0 && (
+          <div style={{ backgroundColor: '#bfdbfe', border: '2px solid black', boxShadow: '4px 4px 0px black', borderRadius: 'var(--radius-sm)', padding: '1.5rem', transition: 'transform 0.2s', cursor: 'default' }} onMouseOver={(e) => e.currentTarget.style.transform = 'translate(-2px, -2px)'} onMouseOut={(e) => e.currentTarget.style.transform = 'translate(0, 0)'}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{ backgroundColor: 'black', color: 'white', padding: '0.5rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <DollarSign size={20} />
+              </div>
+              <h4 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Motor de Ingresos</h4>
+            </div>
+            <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.6', fontWeight: 600 }}>
+              Tu principal ingreso es <strong>"{mainIngreso[0]}"</strong>, representando el <strong>{Math.round((mainIngreso[1] / ingresos) * 100)}%</strong> de tus entradas de dinero.
+            </p>
+          </div>
         )}
 
+        {/* Insight: Fuga Recurrente */}
         {topRecurrente && (
-          <p style={{ margin: 0 }}>
-            Tu mayor fuga de capital repetitiva es <strong>"{topRecurrente.name}"</strong>, donde has gastado un acumulado de <strong>${topRecurrente.total.toLocaleString('es-CL')}</strong> en {topRecurrente.count} pagos. Revisa la sección de tendencias abajo para ver si este gasto va en aumento.
-          </p>
+          <div style={{ backgroundColor: '#fef08a', border: '2px solid black', boxShadow: '4px 4px 0px black', borderRadius: 'var(--radius-sm)', padding: '1.5rem', transition: 'transform 0.2s', cursor: 'default' }} onMouseOver={(e) => e.currentTarget.style.transform = 'translate(-2px, -2px)'} onMouseOut={(e) => e.currentTarget.style.transform = 'translate(0, 0)'}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{ backgroundColor: 'black', color: 'white', padding: '0.5rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Search size={20} />
+              </div>
+              <h4 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Fuga Recurrente</h4>
+            </div>
+            <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.6', fontWeight: 600 }}>
+              Tu mayor gasto repetitivo es <strong>"{topRecurrente.name}"</strong>, sumando un total acumulado de <strong>${topRecurrente.total.toLocaleString('es-CL')}</strong> en {topRecurrente.count} pagos.
+            </p>
+          </div>
         )}
+
       </div>
     );
   };
@@ -163,11 +192,14 @@ export default function Dashboard() {
       <h1 style={{ marginBottom: '2rem', fontSize: '2.5rem' }}>Resumen Financiero</h1>
 
       {/* Verbalización Inteligente */}
-      <div className="card" style={{ marginBottom: '2rem', backgroundColor: 'var(--primary)', color: 'white' }}>
-        <h3 style={{ fontSize: '1.25rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          ✨ Análisis de Inteligencia Artificial
-        </h3>
-        {generateInsightText()}
+      <div style={{ marginBottom: '3rem' }}>
+        <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          ✨ Análisis Inteligente
+        </h2>
+        <p style={{ color: 'var(--text-secondary)', fontWeight: 500, margin: 0 }}>
+          Descubrimientos clave basados en tus movimientos financieros.
+        </p>
+        {generateInsightCards()}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
