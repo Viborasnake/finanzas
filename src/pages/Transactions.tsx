@@ -37,110 +37,70 @@ export const TAXONOMY: Record<string, Record<string, string[]>> = {
   }
 };
 
-const getTipoForPrincipal = (principal: string) => {
-  for (const [tipo, categories] of Object.entries(TAXONOMY)) {
-    if (categories[principal]) return tipo;
-  }
-  return null;
-}
 
-const CascadingCategorySelector = ({ 
-  initialTipo, 
-  initialPrincipal, 
-  initialSecundaria, 
-  onSave 
-}: { 
-  initialTipo: string | null, 
-  initialPrincipal: string | null, 
-  initialSecundaria: string | null,
-  onSave: (t: string|null, p: string|null, s: string|null) => void 
-}) => {
-  const [principal, setPrincipal] = useState(initialPrincipal || '');
-  const [secundaria, setSecundaria] = useState(initialSecundaria || '');
 
-  const tipo = principal ? getTipoForPrincipal(principal) : '';
+const ALL_OPTIONS = Object.entries(TAXONOMY).flatMap(([tipo, principals]) => 
+  Object.entries(principals).flatMap(([principal, secundarias]) => 
+    secundarias.map(secundaria => ({
+      label: secundaria === principal ? principal : `${secundaria} (${principal})`,
+      tipo,
+      principal,
+      secundaria
+    }))
+  )
+);
 
-  const handlePrincipalChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newPrincipal = e.target.value;
-    setPrincipal(newPrincipal);
+export function CascadingCategorySelector({ initialPrincipal, initialSecundaria, onSave }: any) {
+  const [inputValue, setInputValue] = useState(() => {
+    if (initialSecundaria && initialPrincipal) {
+      return initialSecundaria === initialPrincipal ? initialPrincipal : `${initialSecundaria} (${initialPrincipal})`;
+    }
+    return '';
+  });
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setInputValue(val);
     
-    if (!newPrincipal) {
-      setSecundaria('');
+    if (val === '') {
       onSave(null, null, null);
       return;
     }
 
-    const newTipo = getTipoForPrincipal(newPrincipal);
-    if (!newTipo) return;
-
-    const options = TAXONOMY[newTipo][newPrincipal];
-    if (options.length === 1) {
-      setSecundaria(options[0]);
-      onSave(newTipo, newPrincipal, options[0]);
-    } else {
-      setSecundaria('');
+    const match = ALL_OPTIONS.find(o => o.label === val);
+    if (match) {
+      onSave(match.tipo, match.principal, match.secundaria);
     }
   };
 
-  const handleSecundariaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newSecundaria = e.target.value;
-    setSecundaria(newSecundaria);
-    if (newSecundaria && tipo && principal) {
-      onSave(tipo, principal, newSecundaria);
-    }
-  };
-
-  const hasChanged = (tipo !== initialTipo || principal !== initialPrincipal || secundaria !== initialSecundaria);
+  const isComplete = ALL_OPTIONS.some(o => o.label === inputValue);
 
   return (
-    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-      <select 
-        value={principal} 
-        onChange={handlePrincipalChange}
+    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+      <input 
+        list="taxonomy-options"
+        value={inputValue}
+        onChange={handleInputChange}
         className="input"
+        placeholder="Clasificar..."
         style={{ 
           padding: '0.25rem 0.5rem', 
           fontSize: '0.875rem', 
-          width: 'auto',
+          width: '200px',
           fontWeight: 600,
-          backgroundColor: principal ? '#bfdbfe' : 'white',
+          backgroundColor: isComplete ? '#bbf7d0' : 'white',
           borderColor: 'black'
         }}
-      >
-        <option value="">Clasificar...</option>
-        {Object.entries(TAXONOMY).map(([tKey, categories]) => (
-          <optgroup key={tKey} label={tKey}>
-            {Object.keys(categories).map(p => (
-              <option key={p} value={p}>{p}</option>
-            ))}
-          </optgroup>
-        ))}
-      </select>
-      
-      {tipo && principal && TAXONOMY[tipo] && TAXONOMY[tipo][principal]?.length > 1 && (
-        <select 
-          value={secundaria} 
-          onChange={handleSecundariaChange}
-          className="input"
-          style={{ 
-            padding: '0.25rem 0.5rem', 
-            fontSize: '0.875rem', 
-            width: 'auto',
-            backgroundColor: secundaria ? '#bbf7d0' : 'white',
-            borderColor: 'black'
-          }}
-        >
-          <option value="">Detalle...</option>
-          {TAXONOMY[tipo][principal].map(k => <option key={k} value={k}>{k}</option>)}
-        </select>
-      )}
-
-      {hasChanged && (!tipo || !principal || !secundaria) && (
+      />
+      <datalist id="taxonomy-options">
+        {ALL_OPTIONS.map((o, i) => <option key={i} value={o.label} />)}
+      </datalist>
+      {!isComplete && inputValue !== '' && (
         <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Pendiente...</span>
       )}
     </div>
   );
-};
+}
 
 export default function Transactions() {
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -426,7 +386,7 @@ export default function Transactions() {
                   <td style={{ padding: '1rem' }}>
                     <CascadingCategorySelector 
                       initialTipo={null} initialPrincipal={null} initialSecundaria={null}
-                      onSave={(t, p, s) => handleBulkCategorize(group.ids, t, p, s)}
+                      onSave={(t: any, p: any, s: any) => handleBulkCategorize(group.ids, t, p, s)}
                     />
                   </td>
                 </tr>
@@ -525,7 +485,7 @@ export default function Transactions() {
                           initialTipo={tx.tipo_movimiento}
                           initialPrincipal={tx.categoria_principal}
                           initialSecundaria={tx.categoria_secundaria}
-                          onSave={(t, p, s) => handleCategorize(tx.id, tx.description, t, p, s)}
+                          onSave={(t: any, p: any, s: any) => handleCategorize(tx.id, tx.description, t, p, s)}
                         />
                       </td>
                     </tr>
