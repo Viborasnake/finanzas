@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Filter, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 
 export default function Transactions() {
   const [transactions, setTransactions] = useState<any[]>([]);
