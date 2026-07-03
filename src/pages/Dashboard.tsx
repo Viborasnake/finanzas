@@ -1,13 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Search } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Search, Filter } from 'lucide-react';
 
 export default function Dashboard() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRecurringItem, setSelectedRecurringItem] = useState<string | null>(null);
+  
+  const [filterYear, setFilterYear] = useState('all');
+  const [filterMonth, setFilterMonth] = useState('all');
+
   const { user } = useAuth();
 
   useEffect(() => {
@@ -32,11 +36,25 @@ export default function Dashboard() {
     }
   };
 
+  const availableYears = useMemo(() => {
+    const years = new Set(transactions.map(t => new Date(t.date).getFullYear()));
+    return Array.from(years).sort((a, b) => b - a);
+  }, [transactions]);
+
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter(t => {
+      const date = new Date(t.date);
+      const matchesYear = filterYear === 'all' || date.getFullYear().toString() === filterYear;
+      const matchesMonth = filterMonth === 'all' || (date.getMonth() + 1).toString() === filterMonth;
+      return matchesYear && matchesMonth;
+    });
+  }, [transactions, filterYear, filterMonth]);
+
   const calculateSummary = () => {
     let ingresos = 0;
     let egresos = 0;
     
-    transactions.forEach(t => {
+    filteredTransactions.forEach(t => {
       if (t.type === 'ingreso') ingresos += t.amount;
       if (t.type === 'egreso') egresos += t.amount;
     });
@@ -47,7 +65,7 @@ export default function Dashboard() {
   const getChartData = () => {
     const monthlyData: { [key: string]: { name: string, Ingresos: number, Egresos: number, dateObj: Date } } = {};
 
-    transactions.forEach(t => {
+    filteredTransactions.forEach(t => {
       const date = new Date(t.date);
       const monthYear = `${date.getMonth() + 1}/${date.getFullYear()}`;
       
@@ -68,7 +86,7 @@ export default function Dashboard() {
   const getRecurringExpenses = () => {
     const expenses: { [desc: string]: { count: number, total: number, data: any[] } } = {};
     
-    transactions.forEach(t => {
+    filteredTransactions.forEach(t => {
       if (t.type === 'egreso') {
         const desc = t.description;
         if (!expenses[desc]) {
@@ -117,11 +135,11 @@ export default function Dashboard() {
   const specificItemTrendData = selectedRecurringItem ? getSpecificItemTrend(selectedRecurringItem) : [];
 
   const generateInsightReport = () => {
-    if (transactions.length === 0) return <p>Importa tus datos para ver un análisis inteligente de tu situación financiera.</p>;
+    if (filteredTransactions.length === 0) return <p>Importa tus datos o cambia los filtros para ver un análisis inteligente de tu situación financiera.</p>;
 
     const isDeficit = balance < 0;
     
-    const ingresosTx = transactions.filter(t => t.type === 'ingreso');
+    const ingresosTx = filteredTransactions.filter(t => t.type === 'ingreso');
     const groupedIngresos: {[key:string]: number} = {};
     ingresosTx.forEach(t => {
       groupedIngresos[t.description] = (groupedIngresos[t.description] || 0) + t.amount;
@@ -193,7 +211,45 @@ export default function Dashboard() {
 
   return (
     <div>
-      <h1 style={{ marginBottom: '2rem', fontSize: '2.5rem' }}>Resumen Financiero</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <h1 style={{ margin: 0, fontSize: '2.5rem' }}>Resumen Financiero</h1>
+        
+        {transactions.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'white', padding: '0.5rem 1rem', border: '2px solid black', borderRadius: 'var(--radius-sm)', boxShadow: '2px 2px 0px black' }}>
+            <Filter size={20} />
+            <select 
+              style={{ padding: '0.25rem', border: 'none', backgroundColor: 'transparent', outline: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '1rem' }}
+              value={filterYear}
+              onChange={(e) => setFilterYear(e.target.value)}
+            >
+              <option value="all">Todos los años</option>
+              {availableYears.map(year => (
+                <option key={year} value={year.toString()}>{year}</option>
+              ))}
+            </select>
+            <div style={{ width: '2px', height: '20px', backgroundColor: 'black', margin: '0 0.5rem' }}></div>
+            <select 
+              style={{ padding: '0.25rem', border: 'none', backgroundColor: 'transparent', outline: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '1rem' }}
+              value={filterMonth}
+              onChange={(e) => setFilterMonth(e.target.value)}
+            >
+              <option value="all">Todos los meses</option>
+              <option value="1">Enero</option>
+              <option value="2">Febrero</option>
+              <option value="3">Marzo</option>
+              <option value="4">Abril</option>
+              <option value="5">Mayo</option>
+              <option value="6">Junio</option>
+              <option value="7">Julio</option>
+              <option value="8">Agosto</option>
+              <option value="9">Septiembre</option>
+              <option value="10">Octubre</option>
+              <option value="11">Noviembre</option>
+              <option value="12">Diciembre</option>
+            </select>
+          </div>
+        )}
+      </div>
 
       {/* Verbalización Inteligente */}
       {generateInsightReport()}
