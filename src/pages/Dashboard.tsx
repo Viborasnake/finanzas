@@ -78,34 +78,40 @@ export default function Dashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
         
         {/* Card Balance */}
-        <div className="card" style={{ backgroundColor: 'var(--primary)', color: 'white' }}>
+        <div className="card" style={{ backgroundColor: 'var(--pastel-purple)', color: 'black' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ fontSize: '1.25rem', margin: 0, opacity: 0.9 }}>Balance Total</h3>
-            <DollarSign size={24} />
+            <h3 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700 }}>Balance Total</h3>
+            <div style={{ backgroundColor: 'black', color: 'white', padding: '0.25rem', borderRadius: '50%' }}>
+              <DollarSign size={24} />
+            </div>
           </div>
-          <p style={{ fontSize: '3rem', fontWeight: 700, margin: 0 }}>
+          <p style={{ fontSize: '3rem', fontWeight: 800, margin: 0 }}>
             ${balance.toLocaleString('es-CL')}
           </p>
         </div>
 
         {/* Card Ingresos */}
-        <div className="card">
+        <div className="card" style={{ backgroundColor: 'var(--pastel-green)', color: 'black' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ fontSize: '1.25rem', margin: 0, color: 'var(--text-secondary)' }}>Ingresos</h3>
-            <TrendingUp size={24} color="var(--success)" />
+            <h3 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700 }}>Ingresos</h3>
+            <div style={{ backgroundColor: 'black', color: 'var(--success)', padding: '0.25rem', borderRadius: '50%' }}>
+              <TrendingUp size={24} />
+            </div>
           </div>
-          <p style={{ fontSize: '2.5rem', fontWeight: 700, margin: 0, color: 'var(--success)' }}>
+          <p style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0 }}>
             ${ingresos.toLocaleString('es-CL')}
           </p>
         </div>
 
         {/* Card Egresos */}
-        <div className="card">
+        <div className="card" style={{ backgroundColor: 'var(--pastel-yellow)', color: 'black' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ fontSize: '1.25rem', margin: 0, color: 'var(--text-secondary)' }}>Egresos</h3>
-            <TrendingDown size={24} color="var(--danger)" />
+            <h3 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700 }}>Egresos</h3>
+            <div style={{ backgroundColor: 'black', color: 'var(--danger)', padding: '0.25rem', borderRadius: '50%' }}>
+              <TrendingDown size={24} />
+            </div>
           </div>
-          <p style={{ fontSize: '2.5rem', fontWeight: 700, margin: 0, color: 'var(--danger)' }}>
+          <p style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0 }}>
             ${egresos.toLocaleString('es-CL')}
           </p>
         </div>

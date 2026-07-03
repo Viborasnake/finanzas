@@ -50,10 +50,11 @@ export default function CSVImport() {
         complete: function (results) {
           const rows = results.data as string[][];
           
-          // Encontrar la fila de cabeceras (la que contiene "Fecha", "Descripcion")
+          // Encontrar la fila de cabeceras (la que contiene "Fecha" Y "Descripcion")
           let headerIndex = -1;
           for (let i = 0; i < Math.min(20, rows.length); i++) {
-            if (rows[i].some(cell => typeof cell === 'string' && cell.toLowerCase().includes('fecha'))) {
+            const rowStr = rows[i].join(' ').toLowerCase();
+            if (rowStr.includes('fecha') && rowStr.includes('descripc')) {
               headerIndex = i;
               break;
             }

@@ -26,8 +26,12 @@ export default function Layout() {
     <div className="layout">
       {/* Sidebar Desktop */}
       <aside className="sidebar">
-        <div className="sidebar-header">
-          <h2>MisFinanzas</h2>
+        <div style={{ 
+          padding: '2rem 1.5rem', 
+          borderBottom: '2px solid black',
+          background: 'var(--gradient-rainbow)' 
+        }}>
+          <h2 style={{ fontSize: '1.5rem', margin: 0 }}>MisFinanzas</h2>
         </div>
         
         <nav className="sidebar-nav">

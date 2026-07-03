@@ -13,7 +13,16 @@
   --primary-light: #f0f0f0;
   
   --success: #10b981;
+  /* Colors from new reference */
+  --pastel-green: #dcfce7;
+  --pastel-yellow: #fef08a;
+  --pastel-purple: #f3e8ff;
+  --pastel-blue: #dbeafe;
+  --pastel-pink: #fce7f3;
+  --gradient-rainbow: linear-gradient(120deg, rgba(255,200,200,1) 0%, rgba(255,240,200,1) 25%, rgba(200,255,200,1) 50%, rgba(200,240,255,1) 75%, rgba(230,200,255,1) 100%);
+
   --danger: #ef4444;
+  --success: #22c55e;
   --warning: #f59e0b;
   
   --radius-sm: 4px;
