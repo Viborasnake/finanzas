@@ -183,12 +183,13 @@ export default function Transactions() {
         groups[desc] = { count: 0, total: 0, ids: [] };
       }
       groups[desc].count += 1;
-      groups[desc].total += t.type === 'egreso' ? t.amount : 0; 
+      groups[desc].total += Math.abs(t.amount); 
       groups[desc].ids.push(t.id);
     });
 
     return Object.entries(groups)
       .map(([name, info]) => ({ name, ...info }))
+      .filter(g => g.total > 0)
       .sort((a, b) => b.total - a.total);
   }, [transactions, viewMode]);
 
@@ -372,7 +373,7 @@ export default function Transactions() {
               <tr>
                 <th style={{ padding: '1rem', fontWeight: 800 }}>Descripción Base</th>
                 <th style={{ padding: '1rem', fontWeight: 800 }}>Cant.</th>
-                <th style={{ padding: '1rem', fontWeight: 800 }}>Monto Acumulado (Egresos)</th>
+                <th style={{ padding: '1rem', fontWeight: 800 }}>Monto Acumulado</th>
                 <th style={{ padding: '1rem', fontWeight: 800 }}>Clasificar como...</th>
               </tr>
             </thead>
@@ -381,7 +382,7 @@ export default function Transactions() {
                 <tr key={group.name} style={{ borderBottom: '2px solid black' }}>
                   <td style={{ padding: '1rem', fontWeight: 700 }}>{group.name}</td>
                   <td style={{ padding: '1rem', fontWeight: 800, fontSize: '1.25rem' }}>{group.count}</td>
-                  <td style={{ padding: '1rem', fontWeight: 800, color: 'var(--danger)' }}>
+                  <td style={{ padding: '1rem', fontWeight: 800, color: 'black' }}>
                     ${group.total.toLocaleString('es-CL')}
                   </td>
                   <td style={{ padding: '1rem' }}>
