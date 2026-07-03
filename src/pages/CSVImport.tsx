@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import Papa from 'papaparse';
-import { UploadCloud, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { UploadCloud, CheckCircle2, AlertTriangle, Edit2 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 interface Transaction {
   date: string;
   description: string;
+  original_description: string;
   amount: number;
   type: 'ingreso' | 'egreso';
   raw_data: any;
@@ -22,7 +23,6 @@ export default function CSVImport() {
   const navigate = useNavigate();
 
   const parseScotiabankDate = (dateStr: string) => {
-    // Ejemplo: "1072026" (1/07/2026) o "30072026" (30/07/2026)
     if (!dateStr) return null;
     const str = dateStr.trim();
     if (str.length < 7 || str.length > 8) return null;
@@ -31,13 +31,11 @@ export default function CSVImport() {
     const month = str.slice(-6, -4);
     const day = str.slice(0, -6);
     
-    // Formato YYYY-MM-DD para la base de datos
     return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
   };
 
   const parseAmount = (val: string) => {
     if (!val) return 0;
-    // Elimina puntos de miles y cambia coma por punto decimal
     return parseFloat(val.replace(/\./g, '').replace(',', '.'));
   };
 
@@ -45,12 +43,11 @@ export default function CSVImport() {
     setError(null);
     acceptedFiles.forEach((file) => {
       Papa.parse(file, {
-        header: false, // Leemos como arrays porque hay metadata arriba
+        header: false,
         skipEmptyLines: true,
         complete: function (results) {
           const rows = results.data as string[][];
           
-          // Encontrar la fila de cabeceras (la que contiene "Fecha" Y "Descripcion")
           let headerIndex = -1;
           for (let i = 0; i < Math.min(20, rows.length); i++) {
             const rowStr = rows[i].join(' ').toLowerCase();
@@ -67,7 +64,6 @@ export default function CSVImport() {
 
           const headers = rows[headerIndex].map(h => typeof h === 'string' ? h.trim().toLowerCase() : '');
           
-          // Usamos findIndex con includes para que sea mucho más tolerante a espacios o caracteres extra invisibles
           const dateIdx = headers.findIndex(h => h.includes('fecha'));
           const descIdx = headers.findIndex(h => h.includes('descripc'));
           const cargosIdx = headers.findIndex(h => h.includes('cargo'));
@@ -80,16 +76,15 @@ export default function CSVImport() {
 
           const parsedTransactions: Transaction[] = [];
 
-          // Procesar las filas de datos (debajo de las cabeceras)
           for (let i = headerIndex + 1; i < rows.length; i++) {
             const row = rows[i];
             const dateRaw = row[dateIdx];
             const descRaw = row[descIdx];
             
-            if (!dateRaw || !descRaw) continue; // Saltar filas inválidas o totales
+            if (!dateRaw || !descRaw) continue;
 
             const date = parseScotiabankDate(dateRaw);
-            if (!date) continue; // Si la fecha es inválida, probablemente no es una transacción
+            if (!date) continue;
 
             const cargos = parseAmount(cargosIdx !== -1 ? row[cargosIdx] : '');
             const abonos = parseAmount(abonosIdx !== -1 ? row[abonosIdx] : '');
@@ -104,10 +99,9 @@ export default function CSVImport() {
               amount = abonos;
               type = 'ingreso';
             } else {
-              continue; // Transacción en 0, ignorar
+              continue;
             }
 
-            // Guardar fila original
             const raw_data: any = {};
             headers.forEach((h, idx) => {
               raw_data[h] = row[idx];
@@ -116,6 +110,7 @@ export default function CSVImport() {
             parsedTransactions.push({
               date,
               description: descRaw.trim(),
+              original_description: descRaw.trim(),
               amount,
               type,
               raw_data
@@ -161,6 +156,32 @@ export default function CSVImport() {
       setError(err.message || "Error al guardar en la base de datos.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDescriptionChange = (index: number, newDesc: string) => {
+    const newData = [...data];
+    newData[index].description = newDesc;
+    setData(newData);
+  };
+
+  const handleDescriptionBlur = (index: number) => {
+    const row = data[index];
+    if (row.description !== row.original_description && row.description.trim() !== '') {
+      // Buscar si hay otras transacciones con la misma descripción original
+      const othersCount = data.filter((t, i) => i !== index && t.original_description === row.original_description && t.description === row.original_description).length;
+      
+      if (othersCount > 0) {
+        if (window.confirm(`Hay otras ${othersCount} transacciones idénticas. ¿Quieres aplicar el nombre "${row.description}" a todas ellas también?`)) {
+          const newData = data.map(t => {
+            if (t.original_description === row.original_description) {
+              return { ...t, description: row.description };
+            }
+            return t;
+          });
+          setData(newData);
+        }
+      }
     }
   };
 
@@ -218,24 +239,42 @@ export default function CSVImport() {
           </div>
           
           <p style={{ marginBottom: '1.5rem', fontWeight: 600 }}>
-            Se detectaron {data.length} transacciones.
+            Se detectaron {data.length} transacciones. Puedes editar los nombres haciendo clic en ellos antes de guardar.
           </p>
 
-          <div style={{ overflowX: 'auto', border: '2px solid black', borderRadius: 'var(--radius-sm)' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead style={{ backgroundColor: 'var(--primary-light)', borderBottom: '2px solid black' }}>
+          <div style={{ maxHeight: '400px', overflowY: 'auto', border: '2px solid black', borderRadius: 'var(--radius-sm)' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', position: 'relative' }}>
+              <thead style={{ backgroundColor: 'var(--primary-light)', borderBottom: '2px solid black', position: 'sticky', top: 0, zIndex: 10 }}>
                 <tr>
                   <th style={{ padding: '0.75rem 1rem', borderRight: '2px solid black', fontWeight: 700 }}>Fecha</th>
-                  <th style={{ padding: '0.75rem 1rem', borderRight: '2px solid black', fontWeight: 700 }}>Descripción</th>
+                  <th style={{ padding: '0.75rem 1rem', borderRight: '2px solid black', fontWeight: 700 }}>Descripción (Clic para editar)</th>
                   <th style={{ padding: '0.75rem 1rem', borderRight: '2px solid black', fontWeight: 700 }}>Tipo</th>
                   <th style={{ padding: '0.75rem 1rem', fontWeight: 700 }}>Monto</th>
                 </tr>
               </thead>
               <tbody>
-                {data.slice(0, 5).map((row, i) => (
-                  <tr key={i} style={{ borderBottom: i < 4 ? '2px solid black' : 'none' }}>
+                {data.map((row, i) => (
+                  <tr key={i} style={{ borderBottom: i < data.length - 1 ? '2px solid black' : 'none' }}>
                     <td style={{ padding: '0.75rem 1rem', borderRight: '2px solid black' }}>{row.date}</td>
-                    <td style={{ padding: '0.75rem 1rem', borderRight: '2px solid black' }}>{row.description}</td>
+                    <td style={{ padding: '0', borderRight: '2px solid black', position: 'relative' }}>
+                      <input 
+                        type="text" 
+                        value={row.description}
+                        onChange={(e) => handleDescriptionChange(i, e.target.value)}
+                        onBlur={() => handleDescriptionBlur(i)}
+                        style={{ 
+                          width: '100%', 
+                          padding: '0.75rem 1rem', 
+                          border: 'none', 
+                          background: 'transparent',
+                          fontWeight: row.description !== row.original_description ? 700 : 500,
+                          color: row.description !== row.original_description ? 'var(--primary)' : 'inherit',
+                          outline: 'none',
+                          cursor: 'text'
+                        }}
+                      />
+                      <Edit2 size={14} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.3, pointerEvents: 'none' }} />
+                    </td>
                     <td style={{ padding: '0.75rem 1rem', borderRight: '2px solid black' }}>
                       <span className={row.type === 'ingreso' ? 'badge badge-success' : 'badge badge-danger'}>
                         {row.type === 'ingreso' ? 'Abono' : 'Cargo'}
@@ -249,11 +288,6 @@ export default function CSVImport() {
               </tbody>
             </table>
           </div>
-          {data.length > 5 && (
-            <p style={{ marginTop: '1rem', color: 'var(--text-secondary)', fontWeight: 600, textAlign: 'center' }}>
-              Mostrando las primeras 5 filas de {data.length}...
-            </p>
-          )}
 
           <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
             <button className="btn btn-outline" onClick={() => setData([])} disabled={loading}>
