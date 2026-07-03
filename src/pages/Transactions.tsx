@@ -10,7 +10,7 @@ export const TAXONOMY: Record<string, Record<string, string[]>> = {
     'Transporte': ['Bencina', 'Autopista', 'Seguro Auto', 'Municipalidad', 'Permisos', 'Revisión Técnica'],
     'Vivienda': ['Fijo', 'Contribuciones', 'Dividendo'],
     'Cuentas Básicas': ['Luz', 'Agua', 'Gas', 'GGCC', 'Internet Hogar', 'Internet Móvil'],
-    'Hogar/Materiales': ['Bazar-Chinos', 'Ferretería', 'Mantenimiento/Mejoras'],
+    'Hogar/Materiales': ['Bazar-Chinos', 'Ferretería', 'Mantenimiento/Mejoras', 'Muebles'],
     'Salud': ['Salud'],
     'Personal': ['Cuidado Personal', 'Ropa', 'Otros'],
     'Educación': ['Educación'],
