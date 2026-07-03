@@ -138,8 +138,47 @@ export default function CSVImport() {
     setError(null);
 
     try {
+      if (data.length === 0) {
+        toast.error("No hay datos para guardar.");
+        return;
+      }
+
+      // Buscar rango de fechas de la subida para limitar la consulta
+      const dates = data.map(t => new Date(t.date).getTime());
+      const minDateStr = new Date(Math.min(...dates)).toISOString().split('T')[0] + 'T00:00:00.000Z';
+      const maxDateStr = new Date(Math.max(...dates)).toISOString().split('T')[0] + 'T23:59:59.999Z';
+
+      // Obtener transacciones que ya existen en este rango de fechas
+      const { data: existing, error: fetchError } = await supabase
+        .from('transactions')
+        .select('date, amount, raw_data')
+        .eq('user_id', user.id)
+        .gte('date', minDateStr)
+        .lte('date', maxDateStr);
+
+      if (fetchError) throw fetchError;
+
+      // Crear firmas únicas para lo que ya existe
+      const existingSet = new Set(existing?.map(t => {
+        const descKey = Object.keys(t.raw_data || {}).find(k => k.toLowerCase().includes('descripc') || k.toLowerCase().includes('movimiento') || k.toLowerCase().includes('detalle')) || '';
+        const origDesc = t.raw_data ? (t.raw_data[descKey] || '') : '';
+        return `${t.date}_${t.amount}_${String(origDesc).trim()}`;
+      }));
+
+      // Filtrar las transacciones entrantes contra las firmas
+      const newTransactions = data.filter(t => {
+        const sig = `${t.date}_${t.amount}_${t.original_description}`;
+        return !existingSet.has(sig);
+      });
+
+      if (newTransactions.length === 0) {
+        toast.success("No hay datos nuevos. ¡Todas estas transacciones ya estaban en tu sistema!");
+        navigate('/transactions');
+        return;
+      }
+
       const { error } = await supabase.from('transactions').insert(
-        data.map(t => ({
+        newTransactions.map(t => ({
           user_id: user.id,
           date: t.date,
           description: t.description,
@@ -151,7 +190,8 @@ export default function CSVImport() {
 
       if (error) throw error;
       
-      toast.success("Transacciones guardadas exitosamente!");
+      const omitidas = data.length - newTransactions.length;
+      toast.success(`Se guardaron ${newTransactions.length} nuevas transacciones.` + (omitidas > 0 ? ` (Se omitieron ${omitidas} duplicadas)` : ''));
       navigate('/transactions');
     } catch (err: any) {
       setError(err.message || "Error al guardar en la base de datos.");
