@@ -32,6 +32,13 @@ export const TAXONOMY: Record<string, Record<string, string[]>> = {
   }
 };
 
+const getTipoForPrincipal = (principal: string) => {
+  for (const [tipo, categories] of Object.entries(TAXONOMY)) {
+    if (categories[principal]) return tipo;
+  }
+  return null;
+}
+
 const CascadingCategorySelector = ({ 
   initialTipo, 
   initialPrincipal, 
@@ -43,68 +50,88 @@ const CascadingCategorySelector = ({
   initialSecundaria: string | null,
   onSave: (t: string|null, p: string|null, s: string|null) => void 
 }) => {
-  const [tipo, setTipo] = useState(initialTipo || '');
   const [principal, setPrincipal] = useState(initialPrincipal || '');
   const [secundaria, setSecundaria] = useState(initialSecundaria || '');
 
-  // Efecto para auto-seleccionar si hay solo 1 opción
-  useEffect(() => {
-    if (tipo && TAXONOMY[tipo]) {
-      const keys = Object.keys(TAXONOMY[tipo]);
-      if (keys.length === 1 && principal !== keys[0]) {
-        setPrincipal(keys[0]);
-      }
-    }
-  }, [tipo]);
+  const tipo = principal ? getTipoForPrincipal(principal) : '';
 
-  useEffect(() => {
-    if (tipo && principal && TAXONOMY[tipo] && TAXONOMY[tipo][principal]) {
-      const arr = TAXONOMY[tipo][principal];
-      if (arr.length === 1 && secundaria !== arr[0]) {
-        setSecundaria(arr[0]);
-      }
+  const handlePrincipalChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newPrincipal = e.target.value;
+    setPrincipal(newPrincipal);
+    
+    if (!newPrincipal) {
+      setSecundaria('');
+      onSave(null, null, null);
+      return;
     }
-  }, [tipo, principal]);
 
-  const handleSave = () => {
-    onSave(tipo || null, principal || null, secundaria || null);
+    const newTipo = getTipoForPrincipal(newPrincipal);
+    if (!newTipo) return;
+
+    const options = TAXONOMY[newTipo][newPrincipal];
+    if (options.length === 1) {
+      setSecundaria(options[0]);
+      onSave(newTipo, newPrincipal, options[0]);
+    } else {
+      setSecundaria('');
+    }
   };
+
+  const handleSecundariaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newSecundaria = e.target.value;
+    setSecundaria(newSecundaria);
+    if (newSecundaria && tipo && principal) {
+      onSave(tipo, principal, newSecundaria);
+    }
+  };
+
+  const hasChanged = (tipo !== initialTipo || principal !== initialPrincipal || secundaria !== initialSecundaria);
 
   return (
     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
       <select 
-        value={tipo} 
-        onChange={e => { setTipo(e.target.value); setPrincipal(''); setSecundaria(''); }}
-        className="input" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', width: 'auto' }}
+        value={principal} 
+        onChange={handlePrincipalChange}
+        className="input"
+        style={{ 
+          padding: '0.25rem 0.5rem', 
+          fontSize: '0.875rem', 
+          width: 'auto',
+          fontWeight: 600,
+          backgroundColor: principal ? '#bfdbfe' : 'white',
+          borderColor: 'black'
+        }}
       >
-        <option value="">Tipo...</option>
-        {Object.keys(TAXONOMY).map(k => <option key={k} value={k}>{k}</option>)}
+        <option value="">Clasificar...</option>
+        {Object.entries(TAXONOMY).map(([tKey, categories]) => (
+          <optgroup key={tKey} label={tKey}>
+            {Object.keys(categories).map(p => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </optgroup>
+        ))}
       </select>
       
-      {tipo && (
-        <select 
-          value={principal} 
-          onChange={e => { setPrincipal(e.target.value); setSecundaria(''); }}
-          className="input" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', width: 'auto' }}
-        >
-          <option value="">Categoría...</option>
-          {Object.keys(TAXONOMY[tipo]).map(k => <option key={k} value={k}>{k}</option>)}
-        </select>
-      )}
-
-      {principal && (
+      {tipo && principal && TAXONOMY[tipo] && TAXONOMY[tipo][principal]?.length > 1 && (
         <select 
           value={secundaria} 
-          onChange={e => setSecundaria(e.target.value)}
-          className="input" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', width: 'auto' }}
+          onChange={handleSecundariaChange}
+          className="input"
+          style={{ 
+            padding: '0.25rem 0.5rem', 
+            fontSize: '0.875rem', 
+            width: 'auto',
+            backgroundColor: secundaria ? '#bbf7d0' : 'white',
+            borderColor: 'black'
+          }}
         >
           <option value="">Detalle...</option>
           {TAXONOMY[tipo][principal].map(k => <option key={k} value={k}>{k}</option>)}
         </select>
       )}
 
-      {tipo && principal && secundaria && (tipo !== initialTipo || principal !== initialPrincipal || secundaria !== initialSecundaria) && (
-        <button className="btn btn-primary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }} onClick={handleSave}>Ok</button>
+      {hasChanged && (!tipo || !principal || !secundaria) && (
+        <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Pendiente...</span>
       )}
     </div>
   );
