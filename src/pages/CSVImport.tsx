@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import Papa from 'papaparse';
 import { UploadCloud, CheckCircle2, AlertTriangle } from 'lucide-react';

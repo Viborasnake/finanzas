@@ -1,4 +1,4 @@
-import React from 'react';
+import { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, FileSpreadsheet, Receipt, Settings, LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -15,7 +15,7 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuth();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();

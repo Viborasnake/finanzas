@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { supabase } from '../services/supabase';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
