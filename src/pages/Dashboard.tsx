@@ -11,7 +11,7 @@ export default function Dashboard() {
   
   const [filterYear, setFilterYear] = useState('all');
   const [filterMonth, setFilterMonth] = useState('all');
-  const [groupByCategory, setGroupByCategory] = useState(false);
+  const [groupByCategory, setGroupByCategory] = useState(true);
   const [hiddenCategories, setHiddenCategories] = useState<string[]>([]);
 
   const { user } = useAuth();
@@ -383,36 +383,37 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: '3rem' }}>
-        <h3 style={{ fontSize: '1.5rem', marginBottom: '2rem' }}>Evolución Mensual</h3>
-        {chartData.length > 0 ? (
-          <div style={{ height: '400px', width: '100%' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#000" vertical={false} />
-                <XAxis dataKey="name" stroke="#000" tick={{ fill: '#000', fontWeight: 600 }} />
-                <YAxis stroke="#000" tick={{ fill: '#000', fontWeight: 600 }} />
-                <Tooltip 
-                  contentStyle={{ border: '2px solid black', boxShadow: '4px 4px 0px black', borderRadius: '8px', fontWeight: 600 }}
-                  itemStyle={{ fontWeight: 700 }}
-                />
-                <Legend wrapperStyle={{ fontWeight: 600, paddingTop: '1rem' }} />
-                <Bar dataKey="Egresos" fill="var(--danger)" stroke="black" strokeWidth={2} radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Ingresos" fill="var(--success)" stroke="black" strokeWidth={2} radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        ) : (
-          <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-            No hay datos suficientes para graficar. Importa un CSV para comenzar.
-          </div>
-        )}
-      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '2rem', marginBottom: '4rem' }}>
+        {/* Evolución Mensual */}
+        <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+          <h3 style={{ fontSize: '1.5rem', marginBottom: '2rem', marginTop: 0 }}>Evolución Mensual</h3>
+          {chartData.length > 0 ? (
+            <div style={{ height: '400px', width: '100%', flex: 1 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#000" vertical={false} />
+                  <XAxis dataKey="name" stroke="#000" tick={{ fill: '#000', fontWeight: 600 }} />
+                  <YAxis stroke="#000" tick={{ fill: '#000', fontWeight: 600 }} />
+                  <Tooltip 
+                    contentStyle={{ border: '2px solid black', boxShadow: '4px 4px 0px black', borderRadius: '8px', fontWeight: 600 }}
+                    itemStyle={{ fontWeight: 700 }}
+                  />
+                  <Legend wrapperStyle={{ fontWeight: 600, paddingTop: '1rem' }} />
+                  <Bar dataKey="Egresos" fill="var(--danger)" stroke="black" strokeWidth={2} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Ingresos" fill="var(--success)" stroke="black" strokeWidth={2} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+              No hay datos suficientes para graficar. Importa un CSV para comenzar.
+            </div>
+          )}
+        </div>
 
-      <div style={{ marginBottom: '4rem' }}>
-        <h2 style={{ marginBottom: '1.5rem', fontSize: '2rem' }}>Estructura de Presupuesto</h2>
-        
-        <div className="card" style={{ padding: '2rem' }}>
+        {/* Estructura de Presupuesto */}
+        <div className="card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column' }}>
+          <h3 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', marginTop: 0 }}>Estructura de Presupuesto</h3>
           {/* Barra de progreso 50/30/20 */}
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontWeight: 700, fontSize: '0.875rem' }}>
             <span>Distribución sobre Ingresos (${ingresos.toLocaleString('es-CL')})</span>
@@ -472,9 +473,9 @@ export default function Dashboard() {
           <p style={{ fontWeight: 600, fontSize: '1.2rem' }}>Aún no hay suficientes datos para detectar gastos recurrentes.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem', alignItems: 'start' }}>
           {/* Tabla de Top Recurrentes */}
-          <div className="card" style={{ gridColumn: '1 / -1', padding: '0', overflow: 'hidden' }}>
+          <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
             <div style={{ padding: '2rem', backgroundColor: '#bfdbfe', borderBottom: '2px solid black', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.5rem', marginBottom: '0.5rem' }}>Top Gastos Recurrentes</h3>
