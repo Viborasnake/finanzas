@@ -8,7 +8,8 @@ export const TAXONOMY: Record<string, Record<string, string[]>> = {
   'Gasto Real': {
     'Alimentación': ['Feria', 'Abarrotes', 'Delivery/Restaurantes'],
     'Transporte': ['Bencina', 'Autopista'],
-    'Vivienda': ['Fijo', 'Contribuciones', 'Dividendo', 'Gastos Depto'],
+    'Vivienda': ['Fijo', 'Contribuciones', 'Dividendo'],
+    'Cuentas Básicas': ['Luz', 'Agua', 'Gas', 'GGCC', 'Internet Hogar', 'Internet Móvil'],
     'Hogar/Materiales': ['Bazar-Chinos', 'Ferretería'],
     'Salud': ['Salud'],
     'Educación': ['Educación'],
