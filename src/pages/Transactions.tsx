@@ -14,7 +14,7 @@ export const TAXONOMY: Record<string, Record<string, string[]>> = {
     'Salud': ['Salud'],
     'Educación': ['Educación'],
     'Benja': ['Benja'],
-    'Suscripciones': ['Suscripciones'],
+    'Suscripciones': ['HBO MAX', 'Claude', 'Chat GPT', 'Google', 'Netflix', 'Spotify', 'Amazon Prime', 'Otras'],
     'Actividad Extra': ['Actividad Extra'],
     'Retro Gaming/Hobbies': ['Retro Gaming/Hobbies'],
     'Herramientas/Software': ['Herramientas/Software'],
