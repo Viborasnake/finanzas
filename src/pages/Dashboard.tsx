@@ -172,6 +172,7 @@ export default function Dashboard() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
         
+        {/* Card Balance */}
         <div className="card" style={{ backgroundColor: 'var(--pastel-purple)', color: 'black' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <h3 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700 }}>Balance Total</h3>
@@ -184,6 +185,7 @@ export default function Dashboard() {
           </p>
         </div>
 
+        {/* Card Ingresos */}
         <div className="card" style={{ backgroundColor: 'var(--pastel-green)', color: 'black' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <h3 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700 }}>Ingresos</h3>
@@ -196,6 +198,7 @@ export default function Dashboard() {
           </p>
         </div>
 
+        {/* Card Egresos */}
         <div className="card" style={{ backgroundColor: 'var(--pastel-yellow)', color: 'black' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <h3 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700 }}>Egresos</h3>
@@ -209,10 +212,121 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <div className="card" style={{ marginBottom: '3rem' }}>
+        <h3 style={{ fontSize: '1.5rem', marginBottom: '2rem' }}>Evolución Mensual</h3>
+        {chartData.length > 0 ? (
+          <div style={{ height: '400px', width: '100%' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#000" vertical={false} />
+                <XAxis dataKey="name" stroke="#000" tick={{ fill: '#000', fontWeight: 600 }} />
+                <YAxis stroke="#000" tick={{ fill: '#000', fontWeight: 600 }} />
+                <Tooltip 
+                  contentStyle={{ border: '2px solid black', boxShadow: '4px 4px 0px black', borderRadius: '8px', fontWeight: 600 }}
+                  itemStyle={{ fontWeight: 700 }}
+                />
+                <Legend wrapperStyle={{ fontWeight: 600, paddingTop: '1rem' }} />
+                <Bar dataKey="Egresos" fill="var(--danger)" stroke="black" strokeWidth={2} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Ingresos" fill="var(--success)" stroke="black" strokeWidth={2} radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
             No hay datos suficientes para graficar. Importa un CSV para comenzar.
           </div>
         )}
       </div>
+
+      <h2 style={{ marginBottom: '1.5rem', fontSize: '2rem' }}>Inteligencia y Hallazgos</h2>
+      
+      {recurringExpenses.length === 0 ? (
+        <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
+          <Search size={48} style={{ margin: '0 auto 1rem', opacity: 0.2 }} />
+          <p style={{ fontWeight: 600, fontSize: '1.2rem' }}>Aún no hay suficientes datos para detectar gastos recurrentes.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', alignItems: 'start' }}>
+          {/* Tabla de Top Recurrentes */}
+          <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
+            <div style={{ padding: '1.5rem', borderBottom: '2px solid black', backgroundColor: 'var(--pastel-blue)' }}>
+              <h3 style={{ margin: 0, fontSize: '1.25rem' }}>Top Gastos Recurrentes</h3>
+              <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 500, opacity: 0.8 }}>Haz clic en un ítem para ver su tendencia</p>
+            </div>
+            <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead style={{ backgroundColor: 'var(--primary-light)', borderBottom: '2px solid black' }}>
+                  <tr>
+                    <th style={{ padding: '0.75rem 1rem', borderRight: '2px solid black', fontWeight: 700 }}>Ítem</th>
+                    <th style={{ padding: '0.75rem 1rem', borderRight: '2px solid black', fontWeight: 700 }}>Veces</th>
+                    <th style={{ padding: '0.75rem 1rem', fontWeight: 700 }}>Total Pagado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recurringExpenses.map((item, i) => (
+                    <tr 
+                      key={i} 
+                      onClick={() => setSelectedRecurringItem(item.name)}
+                      style={{ 
+                        borderBottom: i < recurringExpenses.length - 1 ? '2px solid black' : 'none',
+                        backgroundColor: selectedRecurringItem === item.name ? 'var(--pastel-yellow)' : 'transparent',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.1s'
+                      }} 
+                      className="table-row"
+                    >
+                      <td style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 600 }}>{item.name}</td>
+                      <td style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 500 }}>{item.count}</td>
+                      <td style={{ padding: '1rem', fontWeight: 700, color: 'var(--danger)' }}>
+                        ${item.total.toLocaleString('es-CL')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Gráfico de Tendencia Específico */}
+          <div className="card">
+            <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem' }}>
+              Tendencia Mensual: <span style={{ color: 'var(--primary)' }}>{selectedRecurringItem}</span>
+            </h3>
+            {specificItemTrendData.length > 0 ? (
+              <div style={{ height: '300px', width: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={specificItemTrendData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#ccc" />
+                    <XAxis dataKey="name" stroke="black" fontWeight="600" />
+                    <YAxis stroke="black" fontWeight="600" />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'white', 
+                        border: '2px solid black', 
+                        boxShadow: '4px 4px 0px black',
+                        borderRadius: 'var(--radius-sm)',
+                        fontWeight: '600'
+                      }}
+                      formatter={(value: any) => [`$${Number(value).toLocaleString('es-CL')}`, 'Gasto']}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="Gasto" 
+                      stroke="var(--danger)" 
+                      strokeWidth={4} 
+                      activeDot={{ r: 8, stroke: 'black', strokeWidth: 2 }} 
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <p style={{ textAlign: 'center', fontWeight: 500, color: 'var(--text-secondary)', padding: '2rem 0' }}>
+                Selecciona un ítem para ver su tendencia
+              </p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
