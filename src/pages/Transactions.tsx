@@ -13,6 +13,8 @@ export default function Transactions() {
   const [filterYear, setFilterYear] = useState('all');
   const [filterMonth, setFilterMonth] = useState('all');
 
+  const [viewMode, setViewMode] = useState<'individual' | 'bulk'>('individual');
+
   const { user } = useAuth();
 
   useEffect(() => {
@@ -77,6 +79,54 @@ export default function Transactions() {
     (currentPage - 1) * itemsPerPage, 
     currentPage * itemsPerPage
   );
+
+  const bulkGroups = useMemo(() => {
+    if (viewMode !== 'bulk') return [];
+    
+    const uncategorized = transactions.filter(t => !t.category || t.category.id === 'uncategorized');
+    const groups: { [desc: string]: { count: number, total: number, ids: string[] } } = {};
+    
+    uncategorized.forEach(t => {
+      const desc = (t.original_description || t.description || '').trim();
+      if (!desc) return;
+
+      if (!groups[desc]) {
+        groups[desc] = { count: 0, total: 0, ids: [] };
+      }
+      groups[desc].count += 1;
+      // Tratar ingresos como negativos en este contexto de "fugas" o separar
+      groups[desc].total += t.type === 'egreso' ? t.amount : 0; 
+      groups[desc].ids.push(t.id);
+    });
+
+    return Object.entries(groups)
+      .map(([name, info]) => ({ name, ...info }))
+      .sort((a, b) => b.total - a.total);
+  }, [transactions, viewMode]);
+
+  const handleBulkCategorize = async (groupIds: string[], categoryId: string) => {
+    if (!categoryId || categoryId === 'uncategorized') return;
+    
+    try {
+      const { error } = await supabase
+        .from('transactions')
+        .update({ category_id: categoryId })
+        .in('id', groupIds);
+        
+      if (error) throw error;
+      
+      const cat = categories.find(c => c.id === categoryId);
+      
+      setTransactions(prev => prev.map(t => 
+        groupIds.includes(t.id) ? { ...t, category_id: categoryId, category: { id: cat.id, name: cat.name, color: cat.color } } : t
+      ));
+      
+      toast.success(`Se categorizaron ${groupIds.length} transacciones`);
+    } catch (error) {
+      console.error(error);
+      toast.error('Error al categorizar');
+    }
+  };
 
   const handleDescriptionChange = (id: string, newDesc: string) => {
     setTransactions(prev => prev.map(t => t.id === id ? { ...t, description: newDesc } : t));
@@ -297,120 +347,199 @@ export default function Transactions() {
         </div>
       </div>
 
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+        <button 
+          className={`btn ${viewMode === 'individual' ? '' : 'btn-outline'}`}
+          onClick={() => setViewMode('individual')}
+          style={{ flex: 1, fontSize: '1.125rem' }}
+        >
+          Lista Individual
+        </button>
+        <button 
+          className={`btn ${viewMode === 'bulk' ? '' : 'btn-outline'}`}
+          onClick={() => setViewMode('bulk')}
+          style={{ flex: 1, fontSize: '1.125rem', backgroundColor: viewMode === 'bulk' ? 'var(--pastel-yellow)' : 'transparent' }}
+        >
+          Categorización Masiva ✨
+        </button>
+      </div>
+
       <div className="card">
-        {loading ? (
-          <div style={{ padding: '2rem', textAlign: 'center', fontWeight: 600 }}>Cargando transacciones...</div>
-        ) : filteredTransactions.length === 0 ? (
-          <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
-            <h3 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>No hay transacciones</h3>
-            <p style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
-              Importa un archivo CSV o cambia tus filtros para ver resultados.
-            </p>
-          </div>
-        ) : (
-          <>
+        {viewMode === 'bulk' ? (
+          bulkGroups.length === 0 ? (
+            <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
+              <h3 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>No hay transacciones pendientes</h3>
+              <p style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
+                ¡Excelente trabajo! No tienes gastos sin clasificar.
+              </p>
+            </div>
+          ) : (
             <div style={{ overflowX: 'auto', border: '2px solid black', borderRadius: 'var(--radius-sm)' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead style={{ backgroundColor: 'var(--primary-light)', borderBottom: '2px solid black' }}>
+                <thead style={{ backgroundColor: 'var(--pastel-yellow)', borderBottom: '2px solid black' }}>
                   <tr>
-                    <th style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 700 }}>Fecha</th>
-                    <th style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 700 }}>Descripción (Alias)</th>
-                    <th style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 700 }}>Categoría</th>
-                    <th style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 700 }}>Tipo</th>
-                    <th style={{ padding: '1rem', fontWeight: 700, textAlign: 'right' }}>Monto</th>
+                    <th style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 800 }}>Descripción de Cargo</th>
+                    <th style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 800, textAlign: 'center' }}>Cant. Pagos</th>
+                    <th style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 800, textAlign: 'right' }}>Monto Acumulado</th>
+                    <th style={{ padding: '1rem', fontWeight: 800, textAlign: 'center' }}>Asignar Categoría Masiva</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedTransactions.map((t, i) => {
-                    const descKey = Object.keys(t.raw_data || {}).find(k => k.toLowerCase().includes('descripc')) || '';
-                    const rawDesc = t.raw_data ? t.raw_data[descKey] : t.description;
-                    
-                    return (
-                      <tr key={t.id} style={{ borderBottom: i < paginatedTransactions.length - 1 ? '2px solid black' : 'none', transition: 'background-color 0.1s' }} className="table-row">
-                        <td style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 500 }}>
-                          {new Date(t.date).toLocaleDateString('es-CL')}
-                        </td>
-                        <td style={{ padding: '0', borderRight: '2px solid black', position: 'relative' }}>
-                          <input 
-                            type="text"
-                            value={t.description}
-                            onChange={(e) => handleDescriptionChange(t.id, e.target.value)}
-                            onBlur={() => handleDescriptionBlur(t.id, t.description, rawDesc)}
-                            style={{ 
-                              width: '100%', 
-                              padding: '1rem', 
-                              border: 'none', 
-                              background: 'transparent',
-                              fontWeight: t.description !== rawDesc ? 700 : 500,
-                              color: t.description !== rawDesc ? 'var(--primary)' : 'inherit',
-                              outline: 'none',
-                              cursor: 'text'
-                            }}
-                          />
-                          <Edit2 size={14} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.3, pointerEvents: 'none' }} />
-                        </td>
-                        <td style={{ padding: '0.5rem 1rem', borderRight: '2px solid black' }}>
-                          <select
-                            className="input-field"
-                            style={{ 
-                              padding: '0.5rem', 
-                              border: '2px solid black', 
-                              borderRadius: 'var(--radius-sm)',
-                              width: '100%', 
-                              maxWidth: '180px', 
-                              backgroundColor: t.category?.color || 'white',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              outline: 'none'
-                            }}
-                            value={t.category_id || ''}
-                            onChange={(e) => handleCategoryChange(t.id, e.target.value, t.description)}
-                          >
-                            <option value="">Sin Categoría</option>
-                            {categories.map(c => (
-                              <option key={c.id} value={c.id} style={{ backgroundColor: 'white' }}>{c.name}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td style={{ padding: '1rem', borderRight: '2px solid black' }}>
-                          <span className={t.type === 'ingreso' ? 'badge badge-success' : 'badge badge-danger'}>
-                            {t.type === 'ingreso' ? 'Abono' : 'Cargo'}
-                          </span>
-                        </td>
-                        <td style={{ padding: '1rem', fontWeight: 700, textAlign: 'right', fontSize: '1.125rem' }}>
-                          ${t.amount.toLocaleString('es-CL')}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {bulkGroups.map((g, i) => (
+                    <tr key={g.name} style={{ borderBottom: i < bulkGroups.length - 1 ? '2px solid black' : 'none', backgroundColor: 'var(--bg-color)' }}>
+                      <td style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 700 }}>
+                        {g.name}
+                      </td>
+                      <td style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 600, textAlign: 'center' }}>
+                        <span style={{ backgroundColor: '#f1f5f9', padding: '0.2rem 0.6rem', borderRadius: '1rem', border: '2px solid black' }}>
+                          {g.count}
+                        </span>
+                      </td>
+                      <td style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 800, textAlign: 'right', fontSize: '1.125rem', color: 'var(--danger)' }}>
+                        ${g.total.toLocaleString('es-CL')}
+                      </td>
+                      <td style={{ padding: '0.75rem 1rem' }}>
+                        <select
+                          className="input-field"
+                          style={{ 
+                            padding: '0.5rem', 
+                            border: '2px solid black', 
+                            borderRadius: 'var(--radius-sm)',
+                            width: '100%', 
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            outline: 'none'
+                          }}
+                          value=""
+                          onChange={(e) => handleBulkCategorize(g.ids, e.target.value)}
+                        >
+                          <option value="">Selecciona Categoría...</option>
+                          {categories.map(c => (
+                            <option key={c.id} value={c.id} style={{ backgroundColor: 'white' }}>{c.name}</option>
+                          ))}
+                        </select>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
-            
-            {totalPages > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', padding: '0.5rem' }}>
-                <p style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
-                  Mostrando {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredTransactions.length)} de {filteredTransactions.length}
-                </p>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button 
-                    className="btn btn-outline" 
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(p => p - 1)}
-                  >
-                    Anterior
-                  </button>
-                  <button 
-                    className="btn btn-outline" 
-                    disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage(p => p + 1)}
-                  >
-                    Siguiente
-                  </button>
-                </div>
+          )
+        ) : (
+          loading ? (
+            <div style={{ padding: '2rem', textAlign: 'center', fontWeight: 600 }}>Cargando transacciones...</div>
+          ) : filteredTransactions.length === 0 ? (
+            <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
+              <h3 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>No hay transacciones</h3>
+              <p style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
+                Importa un archivo CSV o cambia tus filtros para ver resultados.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div style={{ overflowX: 'auto', border: '2px solid black', borderRadius: 'var(--radius-sm)' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead style={{ backgroundColor: 'var(--primary-light)', borderBottom: '2px solid black' }}>
+                    <tr>
+                      <th style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 700 }}>Fecha</th>
+                      <th style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 700 }}>Descripción (Alias)</th>
+                      <th style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 700 }}>Categoría</th>
+                      <th style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 700 }}>Tipo</th>
+                      <th style={{ padding: '1rem', fontWeight: 700, textAlign: 'right' }}>Monto</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedTransactions.map((t, i) => {
+                      const descKey = Object.keys(t.raw_data || {}).find(k => k.toLowerCase().includes('descripc')) || '';
+                      const rawDesc = t.raw_data ? t.raw_data[descKey] : t.description;
+                      
+                      return (
+                        <tr key={t.id} style={{ borderBottom: i < paginatedTransactions.length - 1 ? '2px solid black' : 'none', transition: 'background-color 0.1s' }} className="table-row">
+                          <td style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 500 }}>
+                            {new Date(t.date).toLocaleDateString('es-CL')}
+                          </td>
+                          <td style={{ padding: '0', borderRight: '2px solid black', position: 'relative' }}>
+                            <input 
+                              type="text"
+                              value={t.description}
+                              onChange={(e) => handleDescriptionChange(t.id, e.target.value)}
+                              onBlur={() => handleDescriptionBlur(t.id, t.description, rawDesc)}
+                              style={{ 
+                                width: '100%', 
+                                padding: '1rem', 
+                                border: 'none', 
+                                background: 'transparent',
+                                fontWeight: t.description !== rawDesc ? 700 : 500,
+                                color: t.description !== rawDesc ? 'var(--primary)' : 'inherit',
+                                outline: 'none',
+                                cursor: 'text'
+                              }}
+                            />
+                            <Edit2 size={14} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.3, pointerEvents: 'none' }} />
+                          </td>
+                          <td style={{ padding: '0.5rem 1rem', borderRight: '2px solid black' }}>
+                            <select
+                              className="input-field"
+                              style={{ 
+                                padding: '0.5rem', 
+                                border: '2px solid black', 
+                                borderRadius: 'var(--radius-sm)',
+                                width: '100%', 
+                                maxWidth: '180px', 
+                                backgroundColor: t.category?.color || 'white',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                outline: 'none'
+                              }}
+                              value={t.category_id || ''}
+                              onChange={(e) => handleCategoryChange(t.id, e.target.value, t.description)}
+                            >
+                              <option value="">Sin Categoría</option>
+                              {categories.map(c => (
+                                <option key={c.id} value={c.id} style={{ backgroundColor: 'white' }}>{c.name}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td style={{ padding: '1rem', borderRight: '2px solid black' }}>
+                            <span className={t.type === 'ingreso' ? 'badge badge-success' : 'badge badge-danger'}>
+                              {t.type === 'ingreso' ? 'Abono' : 'Cargo'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '1rem', fontWeight: 700, textAlign: 'right', fontSize: '1.125rem' }}>
+                            ${t.amount.toLocaleString('es-CL')}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-            )}
-          </>
+              
+              {totalPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', padding: '0.5rem' }}>
+                  <p style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
+                    Mostrando {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredTransactions.length)} de {filteredTransactions.length}
+                  </p>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button 
+                      className="btn btn-outline" 
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage(p => p - 1)}
+                    >
+                      Anterior
+                    </button>
+                    <button 
+                      className="btn btn-outline" 
+                      disabled={currentPage === totalPages}
+                      onClick={() => setCurrentPage(p => p + 1)}
+                    >
+                      Siguiente
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )
         )}
       </div>
     </div>
