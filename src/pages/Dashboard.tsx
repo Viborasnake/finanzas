@@ -9,8 +9,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [selectedRecurringItem, setSelectedRecurringItem] = useState<string | null>(null);
   
+  type PeriodType = 'month' | 'quarter' | 'semester' | 'year' | 'all';
+  const [periodType, setPeriodType] = useState<PeriodType>('month');
   const [filterYear, setFilterYear] = useState('all');
-  const [filterMonth, setFilterMonth] = useState('all');
+  const [filterPeriod, setFilterPeriod] = useState('all');
   const [groupByCategory, setGroupByCategory] = useState(true);
   const [hiddenCategories, setHiddenCategories] = useState<string[]>([]);
   const [isRealExpenseMode, setIsRealExpenseMode] = useState(true);
@@ -63,16 +65,24 @@ export default function Dashboard() {
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
       const date = new Date(t.date);
+      const m = date.getMonth() + 1;
+      
       const matchesYear = filterYear === 'all' || date.getFullYear().toString() === filterYear;
-      const matchesMonth = filterMonth === 'all' || (date.getMonth() + 1).toString() === filterMonth;
+      
+      let matchesPeriod = filterPeriod === 'all';
+      if (!matchesPeriod) {
+        if (periodType === 'month') matchesPeriod = m.toString() === filterPeriod;
+        else if (periodType === 'quarter') matchesPeriod = `Q${Math.ceil(m / 3)}` === filterPeriod;
+        else if (periodType === 'semester') matchesPeriod = `H${m <= 6 ? 1 : 2}` === filterPeriod;
+      }
       
       const categoryId = t.category?.id || 'uncategorized';
       const isHidden = hiddenCategories.includes(categoryId);
       const isTransfer = isRealExpenseMode && t.is_internal_transfer;
 
-      return matchesYear && matchesMonth && !isHidden && !isTransfer;
+      return matchesYear && matchesPeriod && !isHidden && !isTransfer;
     });
-  }, [transactions, filterYear, filterMonth, hiddenCategories, isRealExpenseMode]);
+  }, [transactions, filterYear, filterPeriod, periodType, hiddenCategories, isRealExpenseMode]);
 
   const calculateSummary = () => {
     let ingresos = 0;
@@ -83,14 +93,22 @@ export default function Dashboard() {
       if (t.type === 'egreso') egresos += t.amount;
     });
 
-    // Calcular montos absolutos sin importar el modo actual (para desglose semántico)
     const baseTransactions = transactions.filter(t => {
       const date = new Date(t.date);
+      const m = date.getMonth() + 1;
+      
       const matchesYear = filterYear === 'all' || date.getFullYear().toString() === filterYear;
-      const matchesMonth = filterMonth === 'all' || (date.getMonth() + 1).toString() === filterMonth;
+      
+      let matchesPeriod = filterPeriod === 'all';
+      if (!matchesPeriod) {
+        if (periodType === 'month') matchesPeriod = m.toString() === filterPeriod;
+        else if (periodType === 'quarter') matchesPeriod = `Q${Math.ceil(m / 3)}` === filterPeriod;
+        else if (periodType === 'semester') matchesPeriod = `H${m <= 6 ? 1 : 2}` === filterPeriod;
+      }
+      
       const categoryId = t.category?.id || 'uncategorized';
       const isHidden = hiddenCategories.includes(categoryId);
-      return matchesYear && matchesMonth && !isHidden;
+      return matchesYear && matchesPeriod && !isHidden;
     });
 
     let realBalance = 0;
@@ -105,14 +123,101 @@ export default function Dashboard() {
       }
     });
 
-    return { ingresos, egresos, balance: ingresos - egresos, realBalance, transfersBalance };
+    // --- CÁLCULO DE PERÍODO ANTERIOR ---
+    let prevIngresos = 0;
+    let prevEgresos = 0;
+    let hasPrevData = false;
+    let prevLabel = '';
+
+    if (filterYear !== 'all' && (filterPeriod !== 'all' || periodType === 'year') && periodType !== 'all') {
+      let py = parseInt(filterYear);
+      let pp = filterPeriod;
+      
+      if (periodType === 'year') {
+        py -= 1;
+        prevLabel = 'año anterior';
+      } else if (periodType === 'month') {
+        let pm = parseInt(filterPeriod);
+        if (pm === 1) { pm = 12; py -= 1; } else { pm -= 1; }
+        pp = pm.toString();
+        prevLabel = 'mes anterior';
+      } else if (periodType === 'quarter') {
+        let pq = parseInt(filterPeriod.replace('Q', ''));
+        if (pq === 1) { pq = 4; py -= 1; } else { pq -= 1; }
+        pp = `Q${pq}`;
+        prevLabel = 'trimestre anterior';
+      } else if (periodType === 'semester') {
+        let ph = parseInt(filterPeriod.replace('H', ''));
+        if (ph === 1) { ph = 2; py -= 1; } else { ph -= 1; }
+        pp = `H${ph}`;
+        prevLabel = 'semestre anterior';
+      }
+
+      transactions.forEach(t => {
+        const date = new Date(t.date);
+        const y = date.getFullYear();
+        const m = date.getMonth() + 1;
+        
+        if (y !== py) return;
+        
+        let matchesPrevPeriod = true;
+        if (periodType === 'month') matchesPrevPeriod = m.toString() === pp;
+        else if (periodType === 'quarter') matchesPrevPeriod = `Q${Math.ceil(m / 3)}` === pp;
+        else if (periodType === 'semester') matchesPrevPeriod = `H${m <= 6 ? 1 : 2}` === pp;
+
+        if (matchesPrevPeriod) {
+          const categoryId = t.category?.id || 'uncategorized';
+          if (!hiddenCategories.includes(categoryId) && !(isRealExpenseMode && t.is_internal_transfer)) {
+            hasPrevData = true;
+            if (t.type === 'ingreso') prevIngresos += t.amount;
+            if (t.type === 'egreso') prevEgresos += t.amount;
+          }
+        }
+      });
+    }
+
+    return { 
+      ingresos, egresos, balance: ingresos - egresos, 
+      realBalance, transfersBalance,
+      prevIngresos, prevEgresos, hasPrevData, prevLabel
+    };
   };
 
   const getChartData = () => {
+    let targetTransactions = filteredTransactions;
+
+    if (filterYear !== 'all' || (filterPeriod !== 'all' && periodType !== 'year' && periodType !== 'all')) {
+      let endY = filterYear === 'all' ? new Date().getFullYear() : parseInt(filterYear);
+      let endM = 12;
+
+      if (filterPeriod !== 'all' && periodType !== 'all' && periodType !== 'year') {
+        if (periodType === 'month') endM = parseInt(filterPeriod);
+        else if (periodType === 'quarter') endM = parseInt(filterPeriod.replace('Q', '')) * 3;
+        else if (periodType === 'semester') endM = parseInt(filterPeriod.replace('H', '')) * 6;
+      }
+
+      const endDate = new Date(endY, endM, 0, 23, 59, 59); // Ultimo dia del mes final
+      const startDate = new Date(endY, endM - 6, 1); // 6 meses atras
+
+      targetTransactions = transactions.filter(t => {
+        // Para evitar problemas de UTC, parseamos la fecha tal cual (o simplificamos)
+        // t.date viene en YYYY-MM-DD
+        const [y, m, d] = t.date.split('-');
+        const date = new Date(parseInt(y), parseInt(m)-1, parseInt(d));
+        
+        const categoryId = t.category?.id || 'uncategorized';
+        const isHidden = hiddenCategories.includes(categoryId);
+        const isTransfer = isRealExpenseMode && t.is_internal_transfer;
+
+        return date >= startDate && date <= endDate && !isHidden && !isTransfer;
+      });
+    }
+
     const monthlyData: { [key: string]: { name: string, Ingresos: number, Egresos: number, dateObj: Date } } = {};
 
-    filteredTransactions.forEach(t => {
-      const date = new Date(t.date);
+    targetTransactions.forEach(t => {
+      const [y, m] = t.date.split('-');
+      const date = new Date(parseInt(y), parseInt(m)-1, 1);
       const monthYear = `${date.getMonth() + 1}/${date.getFullYear()}`;
       
       if (!monthlyData[monthYear]) {
@@ -212,7 +317,7 @@ export default function Dashboard() {
     return Object.values(monthly).sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
   };
 
-  const { ingresos, egresos, balance } = calculateSummary();
+  const { balance, realBalance, transfersBalance, ingresos, egresos, prevIngresos, prevEgresos, hasPrevData, prevLabel } = calculateSummary();
   const chartData = getChartData();
   const recurringExpenses = getRecurringExpenses();
 
@@ -227,9 +332,16 @@ export default function Dashboard() {
   const renderUncategorizedAlert = () => {
     const uncategorized = transactions.filter(t => {
       const date = new Date(t.date);
+      const m = date.getMonth() + 1;
       const matchesYear = filterYear === 'all' || date.getFullYear().toString() === filterYear;
-      const matchesMonth = filterMonth === 'all' || (date.getMonth() + 1).toString() === filterMonth;
-      return matchesYear && matchesMonth && (!t.category || t.category.id === 'uncategorized');
+      
+      let matchesPeriod = filterPeriod === 'all';
+      if (!matchesPeriod) {
+        if (periodType === 'month') matchesPeriod = m.toString() === filterPeriod;
+        else if (periodType === 'quarter') matchesPeriod = `Q${Math.ceil(m / 3)}` === filterPeriod;
+        else if (periodType === 'semester') matchesPeriod = `H${m <= 6 ? 1 : 2}` === filterPeriod;
+      }
+      return matchesYear && matchesPeriod && (!t.category || t.category.id === 'uncategorized');
     });
 
     if (uncategorized.length === 0) return null;
@@ -251,11 +363,15 @@ export default function Dashboard() {
     );
   };
 
-  const generateInsightReport = () => {
+  const generateInsightReport = (
+    balance: number, 
+    realBalance: number, 
+    transfersBalance: number, 
+    ingresos: number, 
+    isDeficit: boolean
+  ) => {
     if (filteredTransactions.length === 0) return <p>Importa tus datos o cambia los filtros para ver un análisis inteligente de tu situación financiera.</p>;
 
-    const { balance, realBalance, transfersBalance } = calculateSummary();
-    const isDeficit = balance < 0;
     
     const ingresosTx = filteredTransactions.filter(t => t.type === 'ingreso');
     const groupedIngresos: {[key:string]: number} = {};
@@ -343,6 +459,33 @@ export default function Dashboard() {
     return <div style={{ padding: '2rem', textAlign: 'center', fontWeight: 600 }}>Cargando resumen...</div>;
   }
 
+
+
+  const renderChangeBadge = (current: number, prev: number, label: string, inverseColors = false) => {
+    if (!hasPrevData) return null;
+    
+    if (prev === 0) {
+      if (current === 0) return <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#64748b' }}>Sin cambios vs {label}</span>;
+      return <span style={{ fontSize: '0.875rem', fontWeight: 600, color: inverseColors ? '#ef4444' : '#22c55e' }}>▲ 100% vs {label}</span>;
+    }
+
+    const pct = ((current - prev) / prev) * 100;
+    const isPositive = pct > 0;
+    const isNegative = pct < 0;
+    
+    let color = '#64748b';
+    if (isPositive) color = inverseColors ? '#ef4444' : '#22c55e';
+    if (isNegative) color = inverseColors ? '#22c55e' : '#ef4444';
+
+    const arrow = isPositive ? '▲' : isNegative ? '▼' : '▬';
+    
+    return (
+      <span style={{ fontSize: '1rem', fontWeight: 700, color: color, display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.5rem' }}>
+        {arrow} {Math.abs(pct).toFixed(1)}% <span style={{ fontWeight: 500, color: '#64748b' }}>vs {label}</span>
+      </span>
+    );
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
@@ -382,14 +525,40 @@ export default function Dashboard() {
               <span style={{ fontWeight: 800 }}>/</span>
               <select 
                 style={{ padding: '0.25rem', border: 'none', backgroundColor: 'transparent', outline: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '1rem' }}
-                value={filterMonth}
-                onChange={(e) => setFilterMonth(e.target.value)}
+                value={periodType}
+                onChange={(e) => {
+                  setPeriodType(e.target.value as PeriodType);
+                  setFilterPeriod('all');
+                }}
               >
-                <option value="all">Todos los meses</option>
-                {Array.from({length: 12}, (_, i) => (
-                  <option key={i+1} value={(i+1).toString()}>{new Date(2000, i, 1).toLocaleString('es-CL', { month: 'long' })}</option>
-                ))}
+                <option value="month">Mensual</option>
+                <option value="quarter">Trimestral</option>
+                <option value="semester">Semestral</option>
+                <option value="year">Anual (Todo el año)</option>
+                <option value="all">Historico (Todos los años)</option>
               </select>
+              
+              {periodType !== 'year' && periodType !== 'all' && (
+                <>
+                  <span style={{ fontWeight: 800 }}>/</span>
+                  <select 
+                    style={{ padding: '0.25rem', border: 'none', backgroundColor: 'transparent', outline: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '1rem' }}
+                    value={filterPeriod}
+                    onChange={(e) => setFilterPeriod(e.target.value)}
+                  >
+                    <option value="all">Todos</option>
+                    {periodType === 'month' && Array.from({length: 12}, (_, i) => (
+                      <option key={`m${i+1}`} value={(i+1).toString()}>{new Date(2000, i, 1).toLocaleString('es-CL', { month: 'long' })}</option>
+                    ))}
+                    {periodType === 'quarter' && [1, 2, 3, 4].map(q => (
+                      <option key={`q${q}`} value={`Q${q}`}>Q{q} (Trimestre {q})</option>
+                    ))}
+                    {periodType === 'semester' && [1, 2].map(h => (
+                      <option key={`h${h}`} value={`H${h}`}>H{h} (Semestre {h})</option>
+                    ))}
+                  </select>
+                </>
+              )}
             </div>
           )}
 
@@ -432,7 +601,7 @@ export default function Dashboard() {
       {renderUncategorizedAlert()}
 
       {/* Verbalización Inteligente */}
-      {generateInsightReport()}
+      {generateInsightReport(balance, realBalance, transfersBalance, ingresos, balance < 0)}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
         
@@ -457,9 +626,12 @@ export default function Dashboard() {
               <TrendingUp size={24} />
             </div>
           </div>
-          <p style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0 }}>
-            ${ingresos.toLocaleString('es-CL')}
-          </p>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <p style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0 }}>
+              ${ingresos.toLocaleString('es-CL')}
+            </p>
+            {renderChangeBadge(ingresos, prevIngresos, prevLabel, false)}
+          </div>
         </div>
 
         {/* Card Egresos */}
@@ -470,9 +642,12 @@ export default function Dashboard() {
               <TrendingDown size={24} />
             </div>
           </div>
-          <p style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0 }}>
-            ${egresos.toLocaleString('es-CL')}
-          </p>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <p style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0 }}>
+              ${egresos.toLocaleString('es-CL')}
+            </p>
+            {renderChangeBadge(egresos, prevEgresos, prevLabel, true)}
+          </div>
         </div>
       </div>
 

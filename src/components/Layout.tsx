@@ -14,7 +14,7 @@ const navItems = [
 export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleSignOut = async () => {
@@ -51,7 +51,24 @@ export default function Layout() {
         </nav>
 
         <div className="sidebar-footer">
-          <button className="nav-item logout-btn" onClick={handleSignOut}>
+          {user && (
+            <div style={{ 
+              padding: '1rem 1.5rem', 
+              borderBottom: '2px solid black', 
+              fontWeight: 700, 
+              fontSize: '0.85rem', 
+              overflow: 'hidden', 
+              textOverflow: 'ellipsis', 
+              whiteSpace: 'nowrap', 
+              backgroundColor: '#bfdbfe',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              <span style={{ fontSize: '1.25rem' }}>👤</span> {user.email}
+            </div>
+          )}
+          <button className="nav-item logout-btn" onClick={handleSignOut} style={{ backgroundColor: '#fecaca', color: 'black', fontWeight: 800 }}>
             <LogOut size={20} />
             <span>Cerrar Sesión</span>
           </button>
