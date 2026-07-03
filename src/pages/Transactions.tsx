@@ -32,11 +32,20 @@ export default function Transactions() {
     }
   };
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50; // Mostrar 50 por página (aprox un mes de movimientos)
+
   const filteredTransactions = transactions.filter(t => {
     const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = filterType === 'all' || t.type === filterType;
     return matchesSearch && matchesType;
   });
+
+  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
+  const paginatedTransactions = filteredTransactions.slice(
+    (currentPage - 1) * itemsPerPage, 
+    currentPage * itemsPerPage
+  );
 
   return (
     <div>
@@ -57,14 +66,20 @@ export default function Transactions() {
               placeholder="Buscar gasto..." 
               style={{ paddingLeft: '3rem', width: '250px' }}
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1); // Reset page on search
+              }}
             />
           </div>
           <select 
             className="input" 
             style={{ width: '150px', cursor: 'pointer' }}
             value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
+            onChange={(e) => {
+              setFilterType(e.target.value);
+              setCurrentPage(1); // Reset page on filter
+            }}
           >
             <option value="all">Todos</option>
             <option value="ingreso">Abonos</option>
@@ -84,44 +99,71 @@ export default function Transactions() {
             </p>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto', border: '2px solid black', borderRadius: 'var(--radius-sm)' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead style={{ backgroundColor: 'var(--primary-light)', borderBottom: '2px solid black' }}>
-                <tr>
-                  <th style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 700 }}>Fecha</th>
-                  <th style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 700 }}>Descripción</th>
-                  <th style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 700 }}>Categoría</th>
-                  <th style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 700 }}>Tipo</th>
-                  <th style={{ padding: '1rem', fontWeight: 700, textAlign: 'right' }}>Monto</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTransactions.map((t, i) => (
-                  <tr key={t.id} style={{ borderBottom: i < filteredTransactions.length - 1 ? '2px solid black' : 'none', transition: 'background-color 0.1s' }} className="table-row">
-                    <td style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 500 }}>
-                      {new Date(t.date).toLocaleDateString('es-CL')}
-                    </td>
-                    <td style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 600 }}>
-                      {t.description}
-                    </td>
-                    <td style={{ padding: '1rem', borderRight: '2px solid black' }}>
-                      <span className="badge" style={{ backgroundColor: '#e2e8f0', color: 'black' }}>
-                        Sin Categoría
-                      </span>
-                    </td>
-                    <td style={{ padding: '1rem', borderRight: '2px solid black' }}>
-                      <span className={t.type === 'ingreso' ? 'badge badge-success' : 'badge badge-danger'}>
-                        {t.type === 'ingreso' ? 'Abono' : 'Cargo'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '1rem', fontWeight: 700, textAlign: 'right', fontSize: '1.125rem' }}>
-                      ${t.amount.toLocaleString('es-CL')}
-                    </td>
+          <>
+            <div style={{ overflowX: 'auto', border: '2px solid black', borderRadius: 'var(--radius-sm)' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead style={{ backgroundColor: 'var(--primary-light)', borderBottom: '2px solid black' }}>
+                  <tr>
+                    <th style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 700 }}>Fecha</th>
+                    <th style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 700 }}>Descripción</th>
+                    <th style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 700 }}>Categoría</th>
+                    <th style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 700 }}>Tipo</th>
+                    <th style={{ padding: '1rem', fontWeight: 700, textAlign: 'right' }}>Monto</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {paginatedTransactions.map((t, i) => (
+                    <tr key={t.id} style={{ borderBottom: i < paginatedTransactions.length - 1 ? '2px solid black' : 'none', transition: 'background-color 0.1s' }} className="table-row">
+                      <td style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 500 }}>
+                        {new Date(t.date).toLocaleDateString('es-CL')}
+                      </td>
+                      <td style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 600 }}>
+                        {t.description}
+                      </td>
+                      <td style={{ padding: '1rem', borderRight: '2px solid black' }}>
+                        <span className="badge" style={{ backgroundColor: '#e2e8f0', color: 'black' }}>
+                          Sin Categoría
+                        </span>
+                      </td>
+                      <td style={{ padding: '1rem', borderRight: '2px solid black' }}>
+                        <span className={t.type === 'ingreso' ? 'badge badge-success' : 'badge badge-danger'}>
+                          {t.type === 'ingreso' ? 'Abono' : 'Cargo'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '1rem', fontWeight: 700, textAlign: 'right', fontSize: '1.125rem' }}>
+                        ${t.amount.toLocaleString('es-CL')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            
+            {/* Paginador */}
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', padding: '0.5rem' }}>
+                <p style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
+                  Mostrando {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredTransactions.length)} de {filteredTransactions.length}
+                </p>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button 
+                    className="btn btn-outline" 
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(p => p - 1)}
+                  >
+                    Anterior
+                  </button>
+                  <button 
+                    className="btn btn-outline" 
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(p => p + 1)}
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
