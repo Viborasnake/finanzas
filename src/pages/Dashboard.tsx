@@ -126,6 +126,46 @@ export default function Dashboard() {
       .sort((a, b) => b.total - a.total);
   };
 
+  const getBudgetStructure = () => {
+    let fijos = 0;
+    let ahorros = 0;
+    let variables = 0;
+    const fijosList: any[] = [];
+    const ahorrosList: any[] = [];
+    const variablesList: any[] = [];
+
+    filteredTransactions.forEach(t => {
+      if (t.type === 'egreso') {
+        const catName = t.category?.name?.toLowerCase() || '';
+        
+        if (catName.includes('fijo')) {
+          fijos += t.amount;
+          fijosList.push(t);
+        } else if (catName.includes('ahorro') || catName.includes('inversión') || catName.includes('inversion')) {
+          ahorros += t.amount;
+          ahorrosList.push(t);
+        } else {
+          variables += t.amount;
+          variablesList.push(t);
+        }
+      }
+    });
+
+    const { ingresos } = calculateSummary();
+    const totalEgresosEstructurales = fijos + ahorros + variables;
+    
+    const pctFijos = ingresos > 0 ? (fijos / ingresos) * 100 : 0;
+    const pctAhorros = ingresos > 0 ? (ahorros / ingresos) * 100 : 0;
+    const pctVariables = ingresos > 0 ? (variables / ingresos) * 100 : 0;
+
+    return { 
+      fijos, ahorros, variables, 
+      fijosList, ahorrosList, variablesList,
+      pctFijos, pctAhorros, pctVariables,
+      totalEgresosEstructurales
+    };
+  };
+
   const getSpecificItemTrend = (itemName: string) => {
     const recurringData = getRecurringExpenses();
     const itemData = recurringData.find(i => i.name === itemName);
@@ -226,6 +266,8 @@ export default function Dashboard() {
       </div>
     );
   };
+
+  const budget = getBudgetStructure();
 
   if (loading) {
     return <div style={{ padding: '2rem', textAlign: 'center', fontWeight: 600 }}>Cargando resumen...</div>;
@@ -365,6 +407,61 @@ export default function Dashboard() {
             No hay datos suficientes para graficar. Importa un CSV para comenzar.
           </div>
         )}
+      </div>
+
+      <div style={{ marginBottom: '4rem' }}>
+        <h2 style={{ marginBottom: '1.5rem', fontSize: '2rem' }}>Estructura de Presupuesto</h2>
+        
+        <div className="card" style={{ padding: '2rem' }}>
+          {/* Barra de progreso 50/30/20 */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontWeight: 700, fontSize: '0.875rem' }}>
+            <span>Distribución sobre Ingresos (${ingresos.toLocaleString('es-CL')})</span>
+            <span>Egresos Estructurales: ${(budget.fijos + budget.variables + budget.ahorros).toLocaleString('es-CL')}</span>
+          </div>
+          
+          <div style={{ height: '32px', display: 'flex', borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '2px solid black', marginBottom: '2rem', backgroundColor: '#f1f5f9' }}>
+            {budget.pctFijos > 0 && <div style={{ width: `${budget.pctFijos}%`, backgroundColor: '#fca5a5', borderRight: '2px solid black', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.75rem' }} title={`Fijos: ${budget.pctFijos.toFixed(1)}%`}>{budget.pctFijos > 5 ? `${budget.pctFijos.toFixed(0)}%` : ''}</div>}
+            {budget.pctVariables > 0 && <div style={{ width: `${budget.pctVariables}%`, backgroundColor: '#fef08a', borderRight: '2px solid black', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.75rem' }} title={`Variables: ${budget.pctVariables.toFixed(1)}%`}>{budget.pctVariables > 5 ? `${budget.pctVariables.toFixed(0)}%` : ''}</div>}
+            {budget.pctAhorros > 0 && <div style={{ width: `${budget.pctAhorros}%`, backgroundColor: '#86efac', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.75rem' }} title={`Ahorros: ${budget.pctAhorros.toFixed(1)}%`}>{budget.pctAhorros > 5 ? `${budget.pctAhorros.toFixed(0)}%` : ''}</div>}
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
+            {/* Card Fijos */}
+            <div style={{ padding: '1.5rem', backgroundColor: '#fca5a5', border: '2px solid black', borderRadius: 'var(--radius-sm)', boxShadow: '4px 4px 0px black' }}>
+              <h4 style={{ margin: '0 0 0.5rem 0', fontWeight: 800, fontSize: '1.25rem', textTransform: 'uppercase' }}>Gastos Fijos</h4>
+              <p style={{ margin: '0 0 1rem 0', fontSize: '2rem', fontWeight: 900 }}>${budget.fijos.toLocaleString('es-CL')}</p>
+              <div style={{ backgroundColor: 'white', padding: '0.5rem 1rem', borderRadius: '2rem', border: '2px solid black', display: 'inline-block', fontWeight: 800 }}>
+                {budget.pctFijos.toFixed(1)}% del ingreso
+              </div>
+            </div>
+            
+            {/* Card Variables */}
+            <div style={{ padding: '1.5rem', backgroundColor: '#fef08a', border: '2px solid black', borderRadius: 'var(--radius-sm)', boxShadow: '4px 4px 0px black' }}>
+              <h4 style={{ margin: '0 0 0.5rem 0', fontWeight: 800, fontSize: '1.25rem', textTransform: 'uppercase' }}>Gastos Variables</h4>
+              <p style={{ margin: '0 0 1rem 0', fontSize: '2rem', fontWeight: 900 }}>${budget.variables.toLocaleString('es-CL')}</p>
+              <div style={{ backgroundColor: 'white', padding: '0.5rem 1rem', borderRadius: '2rem', border: '2px solid black', display: 'inline-block', fontWeight: 800 }}>
+                {budget.pctVariables.toFixed(1)}% del ingreso
+              </div>
+            </div>
+
+            {/* Card Ahorros */}
+            <div style={{ padding: '1.5rem', backgroundColor: '#86efac', border: '2px solid black', borderRadius: 'var(--radius-sm)', boxShadow: '4px 4px 0px black' }}>
+              <h4 style={{ margin: '0 0 0.5rem 0', fontWeight: 800, fontSize: '1.25rem', textTransform: 'uppercase' }}>Ahorro & Inversión</h4>
+              <p style={{ margin: '0 0 1rem 0', fontSize: '2rem', fontWeight: 900 }}>${budget.ahorros.toLocaleString('es-CL')}</p>
+              <div style={{ backgroundColor: 'white', padding: '0.5rem 1rem', borderRadius: '2rem', border: '2px solid black', display: 'inline-block', fontWeight: 800 }}>
+                {budget.pctAhorros.toFixed(1)}% del ingreso
+              </div>
+            </div>
+          </div>
+          
+          <div style={{ marginTop: '2rem', padding: '1.5rem', backgroundColor: 'black', color: 'white', borderRadius: 'var(--radius-sm)' }}>
+            <h4 style={{ margin: '0 0 0.5rem 0', color: '#bfdbfe', textTransform: 'uppercase', letterSpacing: '1px' }}>Balance Estructural</h4>
+            <p style={{ margin: 0, fontSize: '1.15rem', lineHeight: '1.6' }}>
+              Ingresaste <strong>${ingresos.toLocaleString('es-CL')}</strong>. Tus gastos fijos consumieron el <strong>{budget.pctFijos.toFixed(1)}%</strong>, 
+              y lograste ahorrar un <strong>{budget.pctAhorros.toFixed(1)}%</strong>. Te quedó un saldo real de <strong>${(ingresos - budget.fijos - budget.ahorros).toLocaleString('es-CL')}</strong> para gastos variables.
+            </p>
+          </div>
+        </div>
       </div>
 
       <h2 style={{ marginBottom: '1.5rem', fontSize: '2rem' }}>Inteligencia y Hallazgos</h2>
