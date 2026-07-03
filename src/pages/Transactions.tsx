@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 
 export const TAXONOMY: Record<string, Record<string, string[]>> = {
   'Gasto Real': {
-    'Alimentación': ['Supermercado', 'Feria', 'Abarrotes', 'Panadería', 'Cafetería/Snacks', 'Delivery/Restaurantes'],
+    'Alimentación': ['Supermercado', 'Feria', 'Abarrotes', 'Panadería', 'Cafetería/Snacks', 'Agua', 'Delivery/Restaurantes'],
     'Transporte': ['Bencina', 'Autopista', 'Estacionamiento', 'Transporte Público', 'Uber/Taxi', 'Seguro Auto', 'Mantención/Taller', 'Lavado Auto', 'Permisos', 'Municipalidad', 'Revisión Técnica'],
     'Vivienda': ['Dividendo', 'Contribuciones', 'Fijo', 'Seguro Hogar'],
     'Cuentas Básicas': ['Luz', 'Agua', 'Gas', 'GGCC', 'Internet Hogar', 'Internet Móvil', 'TV Cable', 'Telefonía'],
