@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, X } from 'lucide-react';
 
 export default function Settings() {
   const [categories, setCategories] = useState<any[]>([]);
   const [newCategory, setNewCategory] = useState('');
   const [loading, setLoading] = useState(true);
+  
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  
   const { user } = useAuth();
 
   useEffect(() => {
@@ -62,6 +66,21 @@ export default function Settings() {
     }
   };
 
+  const handleUpdateCategory = async (id: string) => {
+    if (!editName.trim()) return;
+    try {
+      const { error } = await supabase
+        .from('categories')
+        .update({ name: editName.trim() })
+        .eq('id', id);
+      if (error) throw error;
+      setCategories(categories.map(c => c.id === id ? { ...c, name: editName.trim() } : c));
+      setEditingId(null);
+    } catch (error) {
+      console.error('Error updating category:', error);
+    }
+  };
+
   return (
     <div>
       <h1 style={{ fontSize: '2.5rem', marginBottom: '2rem' }}>Configuración</h1>
@@ -97,15 +116,52 @@ export default function Settings() {
                 <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>No has creado categorías aún.</p>
               ) : (
                 categories.map(cat => (
-                  <div key={cat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', border: '2px solid black', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-color)' }}>
-                    <span style={{ fontWeight: 600 }}>{cat.name}</span>
-                    <button 
-                      className="btn" 
-                      style={{ padding: '0.5rem', color: 'var(--danger)', border: 'none', boxShadow: 'none' }}
-                      onClick={() => handleDeleteCategory(cat.id)}
-                    >
-                      <Trash2 size={20} />
-                    </button>
+                  <div key={cat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', border: '2px solid black', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-color)' }}>
+                    {editingId === cat.id ? (
+                      <div style={{ display: 'flex', gap: '0.5rem', flex: 1, marginRight: '1rem' }}>
+                        <input
+                          type="text"
+                          className="input"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleUpdateCategory(cat.id);
+                            if (e.key === 'Escape') setEditingId(null);
+                          }}
+                          style={{ padding: '0.5rem', flex: 1 }}
+                        />
+                        <button className="btn" style={{ padding: '0.5rem', backgroundColor: '#bbf7d0' }} onClick={() => handleUpdateCategory(cat.id)}>
+                          <Check size={20} />
+                        </button>
+                        <button className="btn" style={{ padding: '0.5rem', backgroundColor: '#fecaca' }} onClick={() => setEditingId(null)}>
+                          <X size={20} />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <span style={{ fontWeight: 600 }}>{cat.name}</span>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button 
+                            className="btn" 
+                            style={{ padding: '0.5rem', color: 'black', border: 'none', boxShadow: 'none' }}
+                            onClick={() => {
+                              setEditingId(cat.id);
+                              setEditName(cat.name);
+                            }}
+                          >
+                            <Edit2 size={20} />
+                          </button>
+                          <button 
+                            className="btn" 
+                            style={{ padding: '0.5rem', color: 'var(--danger)', border: 'none', boxShadow: 'none' }}
+                            onClick={() => handleDeleteCategory(cat.id)}
+                          >
+                            <Trash2 size={20} />
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ))
               )}
