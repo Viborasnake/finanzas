@@ -275,68 +275,72 @@ export default function Dashboard() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1.5rem' }}>
         <h1 style={{ margin: 0, fontSize: '2.5rem' }}>Resumen Financiero</h1>
         
-        {transactions.length > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'white', padding: '0.5rem 1rem', border: '2px solid black', borderRadius: 'var(--radius-sm)', boxShadow: '2px 2px 0px black' }}>
-            <Filter size={20} />
-            <select 
-              style={{ padding: '0.25rem', border: 'none', backgroundColor: 'transparent', outline: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '1rem' }}
-              value={filterYear}
-              onChange={(e) => setFilterYear(e.target.value)}
-            >
-              <option value="all">Todos los años</option>
-              {availableYears.map(year => (
-                <option key={year} value={year.toString()}>{year}</option>
-              ))}
-            </select>
-            <span style={{ fontWeight: 800 }}>/</span>
-            <select 
-              style={{ padding: '0.25rem', border: 'none', backgroundColor: 'transparent', outline: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '1rem' }}
-              value={filterMonth}
-              onChange={(e) => setFilterMonth(e.target.value)}
-            >
-              <option value="all">Todos los meses</option>
-              {Array.from({length: 12}, (_, i) => (
-                <option key={i+1} value={(i+1).toString()}>{new Date(2000, i, 1).toLocaleString('es-CL', { month: 'long' })}</option>
-              ))}
-            </select>
-          </div>
-        )}
-      </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', alignItems: 'flex-end' }}>
+          {transactions.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'white', padding: '0.5rem 1rem', border: '2px solid black', borderRadius: 'var(--radius-sm)', boxShadow: '2px 2px 0px black' }}>
+              <Filter size={20} />
+              <select 
+                style={{ padding: '0.25rem', border: 'none', backgroundColor: 'transparent', outline: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '1rem' }}
+                value={filterYear}
+                onChange={(e) => setFilterYear(e.target.value)}
+              >
+                <option value="all">Todos los años</option>
+                {availableYears.map(year => (
+                  <option key={year} value={year.toString()}>{year}</option>
+                ))}
+              </select>
+              <span style={{ fontWeight: 800 }}>/</span>
+              <select 
+                style={{ padding: '0.25rem', border: 'none', backgroundColor: 'transparent', outline: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '1rem' }}
+                value={filterMonth}
+                onChange={(e) => setFilterMonth(e.target.value)}
+              >
+                <option value="all">Todos los meses</option>
+                {Array.from({length: 12}, (_, i) => (
+                  <option key={i+1} value={(i+1).toString()}>{new Date(2000, i, 1).toLocaleString('es-CL', { month: 'long' })}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
-      {transactions.length > 0 && availableCategories.length > 0 && (
-        <div style={{ marginBottom: '2.5rem', backgroundColor: 'white', padding: '1rem', border: '2px solid black', borderRadius: 'var(--radius-sm)', boxShadow: '4px 4px 0px black' }}>
-          <p style={{ margin: '0 0 0.75rem 0', fontWeight: 700, fontSize: '0.875rem', textTransform: 'uppercase' }}>Analizar estas categorías:</p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            {availableCategories.map(cat => {
-              const isHidden = hiddenCategories.includes(cat.id);
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => toggleCategory(cat.id)}
-                  style={{
-                    padding: '0.25rem 0.75rem',
-                    borderRadius: '2rem',
-                    border: '2px solid black',
-                    backgroundColor: isHidden ? '#f1f5f9' : (cat.color || '#bfdbfe'),
-                    color: isHidden ? '#94a3b8' : 'black',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    boxShadow: isHidden ? 'none' : '2px 2px 0px black',
-                    textDecoration: isHidden ? 'line-through' : 'none',
-                    transition: 'all 0.1s'
-                  }}
-                  title={isHidden ? 'Click para incluir en el reporte' : 'Click para ignorar en el reporte'}
-                >
-                  {cat.name}
-                </button>
-              );
-            })}
-          </div>
+          {transactions.length > 0 && availableCategories.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <span style={{ fontWeight: 700, fontSize: '0.875rem' }}>Incluir:</span>
+              {availableCategories.map(cat => {
+                const isHidden = hiddenCategories.includes(cat.id);
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => toggleCategory(cat.id)}
+                    style={{
+                      padding: '0.2rem 0.5rem',
+                      borderRadius: '1rem',
+                      border: '2px solid black',
+                      backgroundColor: isHidden ? '#f1f5f9' : (cat.color || '#bfdbfe'),
+                      color: isHidden ? '#94a3b8' : 'black',
+                      fontWeight: 700,
+                      fontSize: '0.75rem',
+                      cursor: 'pointer',
+                      boxShadow: isHidden ? 'none' : '1px 1px 0px black',
+                      opacity: isHidden ? 0.7 : 1,
+                      transition: 'all 0.1s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.25rem'
+                    }}
+                    title={isHidden ? 'Click para incluir en el reporte' : 'Click para ocultar del reporte'}
+                  >
+                    <span>{isHidden ? '❌' : '✅'}</span> {cat.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Verbalización Inteligente */}
       {generateInsightReport()}
