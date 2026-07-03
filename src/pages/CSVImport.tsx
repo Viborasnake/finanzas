@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import Papa from 'papaparse';
 import { UploadCloud, CheckCircle2, AlertTriangle, Edit2 } from 'lucide-react';
@@ -6,6 +6,7 @@ import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { extractAndNormalizeRUT } from '../utils/rutParser';
 
 interface Transaction {
   date: string;
@@ -20,8 +21,28 @@ export default function CSVImport() {
   const [data, setData] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [myRut, setMyRut] = useState<string | null>(null);
+  const [knownContacts, setKnownContacts] = useState<any[]>([]);
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      const fetchData = async () => {
+        try {
+          const [{ data: s }, { data: c }] = await Promise.all([
+            supabase.from('user_settings').select('*').eq('user_id', user.id).maybeSingle(),
+            supabase.from('known_contacts').select('*').eq('user_id', user.id)
+          ]);
+          if (s) setMyRut(s.rut);
+          if (c) setKnownContacts(c);
+        } catch (e) {
+          console.error(e);
+        }
+      };
+      fetchData();
+    }
+  }, [user]);
 
   const parseScotiabankDate = (dateStr: string) => {
     if (!dateStr) return null;
@@ -180,13 +201,26 @@ export default function CSVImport() {
       const { error } = await supabase.from('transactions').insert(
         newTransactions.map(t => {
           const descForCheck = (t.original_description || t.description || '').toLowerCase();
-          const isTransfer = 
-            descForCheck.includes('tef 16424491') || 
-            descForCheck.includes('transferencia personal') || 
-            descForCheck.includes('traspaso fondo') ||
-            descForCheck.includes('abono a l.credito') ||
-            descForCheck.includes('pago tarjeta') ||
-            descForCheck.includes('pago tj');
+          
+          let tipo_movimiento = null;
+          let categoria_principal = null;
+          let categoria_secundaria = null;
+          
+          const rutExtracted = extractAndNormalizeRUT(descForCheck);
+          const normalizedMyRut = myRut ? extractAndNormalizeRUT(myRut) : null;
+          
+          if (rutExtracted && normalizedMyRut && rutExtracted === normalizedMyRut) {
+            tipo_movimiento = 'Movimiento Interno';
+            categoria_principal = descForCheck.includes('fondo') ? 'Traspaso fondo' : 'Transferencia personal';
+            categoria_secundaria = categoria_principal;
+          } else if (rutExtracted) {
+            const contact = knownContacts.find(c => c.rut && extractAndNormalizeRUT(c.rut) === rutExtracted);
+            if (contact) {
+              tipo_movimiento = 'Gasto Real';
+              categoria_principal = 'Apoyo Familiar/Amigos';
+              categoria_secundaria = 'Apoyo Familiar/Amigos';
+            }
+          }
 
           return {
             user_id: user.id,
@@ -195,7 +229,9 @@ export default function CSVImport() {
             amount: t.amount,
             type: t.type,
             raw_data: t.raw_data,
-            is_internal_transfer: isTransfer
+            tipo_movimiento,
+            categoria_principal,
+            categoria_secundaria
           };
         })
       );

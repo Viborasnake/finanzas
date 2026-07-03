@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, Trash2, Edit2, Check, X } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, X, Save } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { extractAndNormalizeRUT } from '../utils/rutParser';
 
 export default function Settings() {
   const [categories, setCategories] = useState<any[]>([]);
@@ -13,11 +15,96 @@ export default function Settings() {
   
   const { user } = useAuth();
 
+  // Settings
+  const [myRut, setMyRut] = useState('');
+  const [isSavingRut, setIsSavingRut] = useState(false);
+
+  // Contacts
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [newContactName, setNewContactName] = useState('');
+  const [newContactRut, setNewContactRut] = useState('');
+
   useEffect(() => {
     if (user) {
       fetchCategories();
+      fetchSettingsAndContacts();
     }
   }, [user]);
+
+  const fetchSettingsAndContacts = async () => {
+    try {
+      const [{ data: s }, { data: c }] = await Promise.all([
+        supabase.from('user_settings').select('*').eq('user_id', user!.id).maybeSingle(),
+        supabase.from('known_contacts').select('*').eq('user_id', user!.id)
+      ]);
+      if (s && s.rut) setMyRut(s.rut);
+      if (c) setContacts(c);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleSaveRut = async () => {
+    if (!user) return;
+    const normalized = extractAndNormalizeRUT(myRut);
+    if (!normalized) {
+      toast.error('RUT inválido. Verifica el formato.');
+      return;
+    }
+    
+    setIsSavingRut(true);
+    try {
+      const { error } = await supabase
+        .from('user_settings')
+        .upsert({ user_id: user.id, rut: normalized }, { onConflict: 'user_id' });
+      if (error) throw error;
+      setMyRut(normalized);
+      toast.success('RUT guardado exitosamente.');
+    } catch (e) {
+      console.error(e);
+      toast.error('Error guardando el RUT.');
+    } finally {
+      setIsSavingRut(false);
+    }
+  };
+
+  const handleAddContact = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newContactName.trim() || !user) return;
+    
+    const normalizedRut = newContactRut ? extractAndNormalizeRUT(newContactRut) : null;
+    
+    try {
+      const { data, error } = await supabase
+        .from('known_contacts')
+        .insert([{ name: newContactName.trim(), rut: normalizedRut, user_id: user.id }])
+        .select();
+        
+      if (error) throw error;
+      setContacts([...contacts, data[0]]);
+      setNewContactName('');
+      setNewContactRut('');
+      toast.success('Contacto agregado');
+    } catch (error) {
+      console.error('Error adding contact:', error);
+      toast.error('Error guardando contacto');
+    }
+  };
+
+  const handleDeleteContact = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('known_contacts')
+        .delete()
+        .eq('id', id);
+        
+      if (error) throw error;
+      setContacts(contacts.filter(c => c.id !== id));
+      toast.success('Contacto eliminado');
+    } catch (error) {
+      console.error('Error deleting contact:', error);
+    }
+  };
 
   const fetchCategories = async () => {
     try {
@@ -87,11 +174,85 @@ export default function Settings() {
       
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', maxWidth: '800px' }}>
         
-        {/* Categorías */}
+        {/* Identificación (RUT) */}
         <div className="card">
-          <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Tus Categorías</h2>
+          <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Detección Automática (Tu RUT)</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
-            Crea categorías personalizadas para organizar tus transacciones (Ej: Supermercado, Bencina, Arriendo).
+            Ingresa tu RUT para que el sistema reconozca automáticamente las transferencias entre tus propias cuentas y no las sume como Gasto o Ingreso Real.
+          </p>
+          
+          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+            <input 
+              type="text" 
+              className="input" 
+              placeholder="Ej: 16.424.491-1" 
+              value={myRut}
+              onChange={(e) => setMyRut(e.target.value)}
+            />
+            <button className="btn btn-primary" onClick={handleSaveRut} disabled={isSavingRut}>
+              <Save size={20} />
+              Guardar RUT
+            </button>
+          </div>
+        </div>
+
+        {/* Contactos Frecuentes */}
+        <div className="card">
+          <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Contactos Conocidos</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
+            Agrega RUTs de amigos o familiares. Cuando importes, el sistema clasificará automáticamente los traspasos a ellos como "Apoyo Familiar/Amigos".
+          </p>
+          
+          <form onSubmit={handleAddContact} style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+            <input 
+              type="text" 
+              className="input" 
+              placeholder="Nombre (ej. Juan)" 
+              value={newContactName}
+              onChange={(e) => setNewContactName(e.target.value)}
+              required
+            />
+            <input 
+              type="text" 
+              className="input" 
+              placeholder="RUT (opcional)" 
+              value={newContactRut}
+              onChange={(e) => setNewContactRut(e.target.value)}
+            />
+            <button type="submit" className="btn btn-primary">
+              <Plus size={20} />
+              Agregar
+            </button>
+          </form>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {contacts.length === 0 ? (
+              <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>No hay contactos guardados.</p>
+            ) : (
+              contacts.map(c => (
+                <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', border: '2px solid black', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-color)' }}>
+                  <div>
+                    <span style={{ fontWeight: 600, display: 'block' }}>{c.name}</span>
+                    {c.rut && <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>RUT: {c.rut}</span>}
+                  </div>
+                  <button 
+                    className="btn" 
+                    style={{ padding: '0.5rem', color: 'var(--danger)', border: 'none', boxShadow: 'none' }}
+                    onClick={() => handleDeleteContact(c.id)}
+                  >
+                    <Trash2 size={20} />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Categorías Antiguas */}
+        <div className="card" style={{ opacity: 0.7 }}>
+          <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Categorías Antiguas (Deprecated)</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
+            Estas son las categorías de tu sistema antiguo. Se mantendrán por compatibilidad, pero el nuevo sistema usa la taxonomía de 3 niveles.
           </p>
           
           <form onSubmit={handleAddCategory} style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
@@ -112,72 +273,57 @@ export default function Settings() {
             <p>Cargando categorías...</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {categories.length === 0 ? (
-                <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>No has creado categorías aún.</p>
-              ) : (
-                categories.map(cat => (
-                  <div key={cat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', border: '2px solid black', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-color)' }}>
-                    {editingId === cat.id ? (
-                      <div style={{ display: 'flex', gap: '0.5rem', flex: 1, marginRight: '1rem' }}>
-                        <input
-                          type="text"
-                          className="input"
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleUpdateCategory(cat.id);
-                            if (e.key === 'Escape') setEditingId(null);
+              {categories.map(cat => (
+                <div key={cat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', border: '2px solid black', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-color)' }}>
+                  {editingId === cat.id ? (
+                    <div style={{ display: 'flex', gap: '0.5rem', flex: 1, marginRight: '1rem' }}>
+                      <input
+                        type="text"
+                        className="input"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleUpdateCategory(cat.id);
+                          if (e.key === 'Escape') setEditingId(null);
+                        }}
+                        style={{ padding: '0.5rem', flex: 1 }}
+                      />
+                      <button className="btn" style={{ padding: '0.5rem', backgroundColor: '#bbf7d0' }} onClick={() => handleUpdateCategory(cat.id)}>
+                        <Check size={20} />
+                      </button>
+                      <button className="btn" style={{ padding: '0.5rem', backgroundColor: '#fecaca' }} onClick={() => setEditingId(null)}>
+                        <X size={20} />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <span style={{ fontWeight: 600 }}>{cat.name}</span>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button 
+                          className="btn" 
+                          style={{ padding: '0.5rem', color: 'black', border: 'none', boxShadow: 'none' }}
+                          onClick={() => {
+                            setEditingId(cat.id);
+                            setEditName(cat.name);
                           }}
-                          style={{ padding: '0.5rem', flex: 1 }}
-                        />
-                        <button className="btn" style={{ padding: '0.5rem', backgroundColor: '#bbf7d0' }} onClick={() => handleUpdateCategory(cat.id)}>
-                          <Check size={20} />
+                        >
+                          <Edit2 size={20} />
                         </button>
-                        <button className="btn" style={{ padding: '0.5rem', backgroundColor: '#fecaca' }} onClick={() => setEditingId(null)}>
-                          <X size={20} />
+                        <button 
+                          className="btn" 
+                          style={{ padding: '0.5rem', color: 'var(--danger)', border: 'none', boxShadow: 'none' }}
+                          onClick={() => handleDeleteCategory(cat.id)}
+                        >
+                          <Trash2 size={20} />
                         </button>
                       </div>
-                    ) : (
-                      <>
-                        <span style={{ fontWeight: 600 }}>{cat.name}</span>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <button 
-                            className="btn" 
-                            style={{ padding: '0.5rem', color: 'black', border: 'none', boxShadow: 'none' }}
-                            onClick={() => {
-                              setEditingId(cat.id);
-                              setEditName(cat.name);
-                            }}
-                          >
-                            <Edit2 size={20} />
-                          </button>
-                          <button 
-                            className="btn" 
-                            style={{ padding: '0.5rem', color: 'var(--danger)', border: 'none', boxShadow: 'none' }}
-                            onClick={() => handleDeleteCategory(cat.id)}
-                          >
-                            <Trash2 size={20} />
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))
-              )}
+                    </>
+                  )}
+                </div>
+              ))}
             </div>
           )}
-        </div>
-
-        {/* Permisos */}
-        <div className="card">
-          <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Cuentas Compartidas</h2>
-          <p style={{ color: 'var(--text-secondary)', fontWeight: 500, marginBottom: '1.5rem' }}>
-            Próximamente: Aquí podrás invitar a tu esposa u otros perfiles para que vean y administren los gastos contigo.
-          </p>
-          <button className="btn btn-outline" disabled style={{ opacity: 0.5 }}>
-            Invitar Usuario
-          </button>
         </div>
 
       </div>

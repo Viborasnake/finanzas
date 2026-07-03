@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Search, Filter, AlertTriangle } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Search, Filter, AlertTriangle, PiggyBank, Shuffle } from 'lucide-react';
 
 export default function Dashboard() {
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -13,8 +13,8 @@ export default function Dashboard() {
   const [periodType, setPeriodType] = useState<PeriodType>('month');
   const [filterYear, setFilterYear] = useState('all');
   const [filterPeriod, setFilterPeriod] = useState('all');
-  const [groupByCategory, setGroupByCategory] = useState(true);
-  const [hiddenCategories, setHiddenCategories] = useState<string[]>([]);
+  const [groupByPrincipal, setGroupByPrincipal] = useState(true);
+  const [hiddenPrincipals, setHiddenPrincipals] = useState<string[]>([]);
   const [isRealExpenseMode, setIsRealExpenseMode] = useState(true);
 
   const { user } = useAuth();
@@ -29,7 +29,7 @@ export default function Dashboard() {
     try {
       const { data, error } = await supabase
         .from('transactions')
-        .select('*, category:categories(id, name, color)')
+        .select('*')
         .order('date', { ascending: true });
 
       if (error) throw error;
@@ -46,23 +46,24 @@ export default function Dashboard() {
     return Array.from(years).sort((a, b) => b - a);
   }, [transactions]);
 
-  const availableCategories = useMemo(() => {
-    const cats = new Map();
+  const availablePrincipals = useMemo(() => {
+    const cats = new Set<string>();
     transactions.forEach(t => {
-      if (t.category) {
-        cats.set(t.category.id, t.category);
+      if (t.categoria_principal) {
+        cats.add(t.categoria_principal);
       }
     });
-    return Array.from(cats.values()).sort((a, b) => a.name.localeCompare(b.name));
+    return Array.from(cats).sort();
   }, [transactions]);
 
-  const toggleCategory = (id: string) => {
-    setHiddenCategories(prev => 
-      prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
+  const toggleCategory = (catName: string) => {
+    setHiddenPrincipals(prev => 
+      prev.includes(catName) ? prev.filter(c => c !== catName) : [...prev, catName]
     );
   };
 
-  const filteredTransactions = useMemo(() => {
+  // Base transactions respecting only time and hidden categories filters
+  const baseTransactions = useMemo(() => {
     return transactions.filter(t => {
       const date = new Date(t.date);
       const m = date.getMonth() + 1;
@@ -76,56 +77,47 @@ export default function Dashboard() {
         else if (periodType === 'semester') matchesPeriod = `H${m <= 6 ? 1 : 2}` === filterPeriod;
       }
       
-      const categoryId = t.category?.id || 'uncategorized';
-      const isHidden = hiddenCategories.includes(categoryId);
-      const isTransfer = isRealExpenseMode && t.is_internal_transfer;
+      const catPrincipal = t.categoria_principal || 'Sin Clasificar';
+      const isHidden = hiddenPrincipals.includes(catPrincipal);
 
-      return matchesYear && matchesPeriod && !isHidden && !isTransfer;
-    });
-  }, [transactions, filterYear, filterPeriod, periodType, hiddenCategories, isRealExpenseMode]);
-
-  const calculateSummary = () => {
-    let ingresos = 0;
-    let egresos = 0;
-    
-    filteredTransactions.forEach(t => {
-      if (t.type === 'ingreso') ingresos += t.amount;
-      if (t.type === 'egreso') egresos += t.amount;
-    });
-
-    const baseTransactions = transactions.filter(t => {
-      const date = new Date(t.date);
-      const m = date.getMonth() + 1;
-      
-      const matchesYear = filterYear === 'all' || date.getFullYear().toString() === filterYear;
-      
-      let matchesPeriod = filterPeriod === 'all';
-      if (!matchesPeriod) {
-        if (periodType === 'month') matchesPeriod = m.toString() === filterPeriod;
-        else if (periodType === 'quarter') matchesPeriod = `Q${Math.ceil(m / 3)}` === filterPeriod;
-        else if (periodType === 'semester') matchesPeriod = `H${m <= 6 ? 1 : 2}` === filterPeriod;
-      }
-      
-      const categoryId = t.category?.id || 'uncategorized';
-      const isHidden = hiddenCategories.includes(categoryId);
       return matchesYear && matchesPeriod && !isHidden;
     });
+  }, [transactions, filterYear, filterPeriod, periodType, hiddenPrincipals]);
 
-    let realBalance = 0;
-    let transfersBalance = 0;
+  const calculateSummary = () => {
+    let ingresosBrutos = 0;
+    let ingresosReales = 0;
+    let egresosReales = 0;
+    let egresosTotales = 0;
+    let ahorro = 0;
+    let movimientosInternosIngreso = 0;
+    let movimientosInternosEgreso = 0;
     
     baseTransactions.forEach(t => {
-      const amt = t.type === 'ingreso' ? t.amount : -t.amount;
-      if (t.is_internal_transfer) {
-        transfersBalance += amt;
+      const isInternal = t.tipo_movimiento === 'Movimiento Interno';
+      const isAhorro = t.tipo_movimiento === 'Ahorro/Inversión';
+      const isGastoReal = t.tipo_movimiento === 'Gasto Real';
+
+      if (t.type === 'ingreso') {
+        ingresosBrutos += t.amount;
+        if (!isInternal) ingresosReales += t.amount;
+        else movimientosInternosIngreso += t.amount;
       } else {
-        realBalance += amt;
+        egresosTotales += t.amount;
+        if (isGastoReal) egresosReales += t.amount;
+        if (isAhorro) ahorro += t.amount;
+        if (isInternal) movimientosInternosEgreso += t.amount;
       }
     });
 
+    const balanceReal = ingresosReales - egresosReales;
+    const balanceFlujoCaja = ingresosBrutos - egresosTotales;
+
     // --- CÁLCULO DE PERÍODO ANTERIOR ---
-    let prevIngresos = 0;
-    let prevEgresos = 0;
+    let prevIngresosReales = 0;
+    let prevEgresosReales = 0;
+    let prevIngresosBrutos = 0;
+    let prevEgresosTotales = 0;
     let hasPrevData = false;
     let prevLabel = '';
 
@@ -166,25 +158,34 @@ export default function Dashboard() {
         else if (periodType === 'semester') matchesPrevPeriod = `H${m <= 6 ? 1 : 2}` === pp;
 
         if (matchesPrevPeriod) {
-          const categoryId = t.category?.id || 'uncategorized';
-          if (!hiddenCategories.includes(categoryId) && !(isRealExpenseMode && t.is_internal_transfer)) {
+          const catPrincipal = t.categoria_principal || 'Sin Clasificar';
+          if (!hiddenPrincipals.includes(catPrincipal)) {
             hasPrevData = true;
-            if (t.type === 'ingreso') prevIngresos += t.amount;
-            if (t.type === 'egreso') prevEgresos += t.amount;
+            
+            const isInternal = t.tipo_movimiento === 'Movimiento Interno';
+            const isGastoReal = t.tipo_movimiento === 'Gasto Real';
+
+            if (t.type === 'ingreso') {
+              prevIngresosBrutos += t.amount;
+              if (!isInternal) prevIngresosReales += t.amount;
+            } else {
+              prevEgresosTotales += t.amount;
+              if (isGastoReal) prevEgresosReales += t.amount;
+            }
           }
         }
       });
     }
 
     return { 
-      ingresos, egresos, balance: ingresos - egresos, 
-      realBalance, transfersBalance,
-      prevIngresos, prevEgresos, hasPrevData, prevLabel
+      ingresosBrutos, ingresosReales, egresosReales, egresosTotales, ahorro, movimientosInternosIngreso, movimientosInternosEgreso,
+      balanceReal, balanceFlujoCaja,
+      prevIngresosReales, prevEgresosReales, prevIngresosBrutos, prevEgresosTotales, hasPrevData, prevLabel
     };
   };
 
   const getChartData = () => {
-    let targetTransactions = filteredTransactions;
+    let targetTransactions = baseTransactions;
 
     if (filterYear !== 'all' || (filterPeriod !== 'all' && periodType !== 'year' && periodType !== 'all')) {
       let endY = filterYear === 'all' ? new Date().getFullYear() : parseInt(filterYear);
@@ -200,16 +201,13 @@ export default function Dashboard() {
       const startDate = new Date(endY, endM - 6, 1); // 6 meses atras
 
       targetTransactions = transactions.filter(t => {
-        // Para evitar problemas de UTC, parseamos la fecha tal cual (o simplificamos)
-        // t.date viene en YYYY-MM-DD
         const [y, m, d] = t.date.split('-');
         const date = new Date(parseInt(y), parseInt(m)-1, parseInt(d));
         
-        const categoryId = t.category?.id || 'uncategorized';
-        const isHidden = hiddenCategories.includes(categoryId);
-        const isTransfer = isRealExpenseMode && t.is_internal_transfer;
+        const catPrincipal = t.categoria_principal || 'Sin Clasificar';
+        const isHidden = hiddenPrincipals.includes(catPrincipal);
 
-        return date >= startDate && date <= endDate && !isHidden && !isTransfer;
+        return date >= startDate && date <= endDate && !isHidden;
       });
     }
 
@@ -224,10 +222,15 @@ export default function Dashboard() {
         monthlyData[monthYear] = { name: monthYear, Ingresos: 0, Egresos: 0, dateObj: date };
       }
       
-      if (t.type === 'ingreso') {
-        monthlyData[monthYear].Ingresos += t.amount;
+      const isInternal = t.tipo_movimiento === 'Movimiento Interno';
+      const isGastoReal = t.tipo_movimiento === 'Gasto Real';
+
+      if (isRealExpenseMode) {
+        if (t.type === 'ingreso' && !isInternal) monthlyData[monthYear].Ingresos += t.amount;
+        if (t.type === 'egreso' && isGastoReal) monthlyData[monthYear].Egresos += t.amount;
       } else {
-        monthlyData[monthYear].Egresos += t.amount;
+        if (t.type === 'ingreso') monthlyData[monthYear].Ingresos += t.amount;
+        if (t.type === 'egreso') monthlyData[monthYear].Egresos += t.amount;
       }
     });
 
@@ -235,21 +238,21 @@ export default function Dashboard() {
   };
 
   const getRecurringExpenses = () => {
-    const expenses: { [desc: string]: { count: number, total: number, data: any[], color: string } } = {};
+    const expenses: { [desc: string]: { count: number, total: number, data: any[] } } = {};
     
-    filteredTransactions.forEach(t => {
-      const categoryId = t.category?.id || 'uncategorized';
-      const isFijo = t.category?.name?.toLowerCase().includes('fijo');
+    baseTransactions.forEach(t => {
+      const catPrincipal = t.categoria_principal || 'Sin Clasificar';
+      const isFijo = catPrincipal.toLowerCase().includes('vivienda') || catPrincipal.toLowerCase().includes('fijo');
       
-      // Excluir Sin Categoría y Fijos de las "Fugas recurrentes"
-      if (t.type === 'egreso' && categoryId !== 'uncategorized' && !isFijo) {
-        const desc = groupByCategory ? t.category?.name : t.description;
-        if (!expenses[desc!]) {
-          expenses[desc!] = { count: 0, total: 0, data: [], color: t.category?.color || '#e2e8f0' };
+      // En modo gasto real, analizamos los "Gasto Real" variables
+      if (t.type === 'egreso' && t.tipo_movimiento === 'Gasto Real' && !isFijo) {
+        const desc = groupByPrincipal ? catPrincipal : (t.categoria_secundaria || catPrincipal);
+        if (!expenses[desc]) {
+          expenses[desc] = { count: 0, total: 0, data: [] };
         }
-        expenses[desc!].count += 1;
-        expenses[desc!].total += t.amount;
-        expenses[desc!].data.push(t);
+        expenses[desc].count += 1;
+        expenses[desc].total += t.amount;
+        expenses[desc].data.push(t);
       }
     });
 
@@ -257,46 +260,6 @@ export default function Dashboard() {
       .filter(([_, info]) => info.count > 1)
       .map(([name, info]) => ({ name, ...info }))
       .sort((a, b) => b.total - a.total);
-  };
-
-  const getBudgetStructure = () => {
-    let fijos = 0;
-    let ahorros = 0;
-    let variables = 0;
-    const fijosList: any[] = [];
-    const ahorrosList: any[] = [];
-    const variablesList: any[] = [];
-
-    filteredTransactions.forEach(t => {
-      if (t.type === 'egreso') {
-        const catName = t.category?.name?.toLowerCase() || '';
-        
-        if (catName.includes('fijo')) {
-          fijos += t.amount;
-          fijosList.push(t);
-        } else if (catName.includes('ahorro') || catName.includes('inversión') || catName.includes('inversion')) {
-          ahorros += t.amount;
-          ahorrosList.push(t);
-        } else {
-          variables += t.amount;
-          variablesList.push(t);
-        }
-      }
-    });
-
-    const { ingresos } = calculateSummary();
-    const totalEgresosEstructurales = fijos + ahorros + variables;
-    
-    const pctFijos = ingresos > 0 ? (fijos / ingresos) * 100 : 0;
-    const pctAhorros = ingresos > 0 ? (ahorros / ingresos) * 100 : 0;
-    const pctVariables = ingresos > 0 ? (variables / ingresos) * 100 : 0;
-
-    return { 
-      fijos, ahorros, variables, 
-      fijosList, ahorrosList, variablesList,
-      pctFijos, pctAhorros, pctVariables,
-      totalEgresosEstructurales
-    };
   };
 
   const getSpecificItemTrend = (itemName: string) => {
@@ -317,7 +280,12 @@ export default function Dashboard() {
     return Object.values(monthly).sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
   };
 
-  const { balance, realBalance, transfersBalance, ingresos, egresos, prevIngresos, prevEgresos, hasPrevData, prevLabel } = calculateSummary();
+  const { 
+    ingresosBrutos, ingresosReales, egresosReales, egresosTotales, ahorro, movimientosInternosIngreso, movimientosInternosEgreso,
+    balanceReal, balanceFlujoCaja,
+    prevIngresosReales, prevEgresosReales, prevIngresosBrutos, prevEgresosTotales, hasPrevData, prevLabel 
+  } = calculateSummary();
+  
   const chartData = getChartData();
   const recurringExpenses = getRecurringExpenses();
 
@@ -330,33 +298,25 @@ export default function Dashboard() {
   const specificItemTrendData = selectedRecurringItem ? getSpecificItemTrend(selectedRecurringItem) : [];
 
   const renderUncategorizedAlert = () => {
-    const uncategorized = transactions.filter(t => {
-      const date = new Date(t.date);
-      const m = date.getMonth() + 1;
-      const matchesYear = filterYear === 'all' || date.getFullYear().toString() === filterYear;
-      
-      let matchesPeriod = filterPeriod === 'all';
-      if (!matchesPeriod) {
-        if (periodType === 'month') matchesPeriod = m.toString() === filterPeriod;
-        else if (periodType === 'quarter') matchesPeriod = `Q${Math.ceil(m / 3)}` === filterPeriod;
-        else if (periodType === 'semester') matchesPeriod = `H${m <= 6 ? 1 : 2}` === filterPeriod;
-      }
-      return matchesYear && matchesPeriod && (!t.category || t.category.id === 'uncategorized');
-    });
+    const uncategorized = baseTransactions.filter(t => !t.tipo_movimiento);
 
     if (uncategorized.length === 0) return null;
 
     const totalUncat = uncategorized.reduce((acc, t) => acc + t.amount, 0);
+    const pct = baseTransactions.length > 0 ? (uncategorized.length / baseTransactions.length) * 100 : 0;
 
     return (
-      <div style={{ backgroundColor: '#fef08a', padding: '1.5rem', border: '2px solid black', borderRadius: 'var(--radius-sm)', boxShadow: '4px 4px 0px black', marginBottom: '3rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+      <div style={{ backgroundColor: pct > 10 ? '#fecaca' : '#fef08a', padding: '1.5rem', border: '2px solid black', borderRadius: 'var(--radius-sm)', boxShadow: '4px 4px 0px black', marginBottom: '3rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
         <div style={{ backgroundColor: 'white', padding: '1rem', border: '2px solid black', borderRadius: '50%' }}>
-          <AlertTriangle size={28} color="#ca8a04" />
+          <AlertTriangle size={28} color={pct > 10 ? "#b91c1c" : "#ca8a04"} />
         </div>
         <div>
-          <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.25rem', color: '#854d0e' }}>⚠️ Alerta de Calidad de Datos</h3>
-          <p style={{ margin: 0, fontSize: '1rem', fontWeight: 500, color: '#a16207' }}>
-            Tienes <strong>{uncategorized.length} pagos</strong> sin clasificar por un total de <strong>${totalUncat.toLocaleString('es-CL')}</strong> en este período. Clasifícalos en la sección de Transacciones para asegurarte de que no haya gastos o fugas ocultas.
+          <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.25rem', color: pct > 10 ? '#7f1d1d' : '#854d0e' }}>
+            ⚠️ Alerta de Calidad de Datos {pct > 10 ? '(Crítica)' : ''}
+          </h3>
+          <p style={{ margin: 0, fontSize: '1rem', fontWeight: 500, color: pct > 10 ? '#991b1b' : '#a16207' }}>
+            Tienes <strong>{uncategorized.length} pagos</strong> sin clasificar ({pct.toFixed(1)}% del total) sumando <strong>${totalUncat.toLocaleString('es-CL')}</strong>. 
+            {pct > 10 && " Esto distorsiona severamente tu análisis financiero."} Ve a Transacciones para solucionarlo.
           </p>
         </div>
       </div>
@@ -365,26 +325,21 @@ export default function Dashboard() {
 
   const generateInsightReport = (
     balance: number, 
-    realBalance: number, 
-    transfersBalance: number, 
-    ingresos: number, 
-    isDeficit: boolean
+    isDeficit: boolean,
+    ingresoPrincipalVal: number
   ) => {
-    if (filteredTransactions.length === 0) return <p>Importa tus datos o cambia los filtros para ver un análisis inteligente de tu situación financiera.</p>;
-
+    if (baseTransactions.length === 0) return <p>Importa tus datos para ver un análisis inteligente.</p>;
     
-    const ingresosTx = filteredTransactions.filter(t => t.type === 'ingreso');
+    const ingresosTx = baseTransactions.filter(t => t.type === 'ingreso' && t.tipo_movimiento !== 'Movimiento Interno');
     const groupedIngresos: {[key:string]: number} = {};
     ingresosTx.forEach(t => {
       groupedIngresos[t.description] = (groupedIngresos[t.description] || 0) + t.amount;
     });
     const mainIngreso = Object.entries(groupedIngresos).sort((a,b) => b[1] - a[1])[0];
-
     const topRecurrente = recurringExpenses.length > 0 ? recurringExpenses[0] : null;
 
     return (
       <div className="card" style={{ marginBottom: '3rem', backgroundColor: 'white', position: 'relative', overflow: 'hidden', padding: '2rem' }}>
-        {/* Barra de colores mágica superior */}
         <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '8px', background: 'linear-gradient(90deg, #c084fc, #38bdf8, #facc15)' }}></div>
         
         <h2 style={{ fontSize: '1.75rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: 0 }}>
@@ -393,48 +348,30 @@ export default function Dashboard() {
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
           
-          {/* Fila 1 */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
             <div style={{ backgroundColor: isDeficit ? '#fecaca' : '#bbf7d0', padding: '1rem', border: '2px solid black', borderRadius: '50%', boxShadow: '3px 3px 0px black' }}>
               {isDeficit ? <TrendingDown size={28} /> : <TrendingUp size={28} />}
             </div>
             <div>
               <p style={{ margin: 0, fontSize: '1.15rem', lineHeight: '1.6', fontWeight: 500, color: 'var(--text-primary)' }}>
-                Tu balance actual indica un <span style={{ fontWeight: 800, backgroundColor: isDeficit ? '#fecaca' : '#bbf7d0', padding: '0.2rem 0.6rem', border: '2px solid black', borderRadius: 'var(--radius-sm)', textTransform: 'uppercase' }}>{isDeficit ? 'Déficit' : 'Superávit'}</span> de <strong>${Math.abs(balance).toLocaleString('es-CL')}</strong>. 
-                {isDeficit ? (
-                  <>
-                    {' '}Presta atención, tus gastos están superando a tus ingresos en este periodo.
-                    {isRealExpenseMode && transfersBalance !== 0 && (
-                      <span style={{ display: 'block', marginTop: '0.5rem', fontSize: '1rem', color: '#64748b' }}>
-                        💡 Nota: Este cálculo excluye <strong>${Math.abs(transfersBalance).toLocaleString('es-CL')}</strong> en traspasos entre tus propias cuentas.
-                      </span>
-                    )}
-                    {!isRealExpenseMode && transfersBalance !== 0 && (
-                      <span style={{ display: 'block', marginTop: '0.5rem', fontSize: '1rem', color: '#64748b' }}>
-                        💡 Desglose: <strong>${Math.abs(realBalance).toLocaleString('es-CL')}</strong> es tu gasto real y <strong>${Math.abs(transfersBalance).toLocaleString('es-CL')}</strong> es movimiento entre cuentas.
-                      </span>
-                    )}
-                  </>
-                ) : ' ¡Vas por excelente camino manteniendo tus finanzas en verde!'}
+                Tu <strong>Gasto Real</strong> {isDeficit ? 'ha superado' : 'es menor'} a tu <strong>Ingreso Real</strong>, generando un <span style={{ fontWeight: 800, backgroundColor: isDeficit ? '#fecaca' : '#bbf7d0', padding: '0.2rem 0.6rem', border: '2px solid black', borderRadius: 'var(--radius-sm)', textTransform: 'uppercase' }}>{isDeficit ? 'Déficit' : 'Superávit'}</span> de <strong>${Math.abs(balance).toLocaleString('es-CL')}</strong>.
               </p>
             </div>
           </div>
 
-          {/* Fila 2 */}
-          {mainIngreso && ingresos > 0 && (
+          {mainIngreso && ingresoPrincipalVal > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
               <div style={{ backgroundColor: '#bfdbfe', padding: '1rem', border: '2px solid black', borderRadius: '50%', boxShadow: '3px 3px 0px black' }}>
                 <DollarSign size={28} />
               </div>
               <div>
                 <p style={{ margin: 0, fontSize: '1.15rem', lineHeight: '1.6', fontWeight: 500, color: 'var(--text-primary)' }}>
-                  Tu motor principal de ingresos es <strong>"{mainIngreso[0]}"</strong>, el cual representa el <span style={{ fontWeight: 800, backgroundColor: '#bfdbfe', padding: '0.2rem 0.6rem', border: '2px solid black', borderRadius: 'var(--radius-sm)' }}>{Math.round((mainIngreso[1] / ingresos) * 100)}%</span> de todas tus entradas de dinero.
+                  Tu motor principal de ingresos reales es <strong>"{mainIngreso[0]}"</strong>, representando el <span style={{ fontWeight: 800, backgroundColor: '#bfdbfe', padding: '0.2rem 0.6rem', border: '2px solid black', borderRadius: 'var(--radius-sm)' }}>{Math.round((mainIngreso[1] / ingresoPrincipalVal) * 100)}%</span> de tus entradas de capital neto.
                 </p>
               </div>
             </div>
           )}
 
-          {/* Fila 3 */}
           {topRecurrente && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
               <div style={{ backgroundColor: '#fef08a', padding: '1rem', border: '2px solid black', borderRadius: '50%', boxShadow: '3px 3px 0px black' }}>
@@ -442,7 +379,7 @@ export default function Dashboard() {
               </div>
               <div>
                 <p style={{ margin: 0, fontSize: '1.15rem', lineHeight: '1.6', fontWeight: 500, color: 'var(--text-primary)' }}>
-                  Hemos detectado una fuga recurrente de capital en <strong>"{topRecurrente.name}"</strong>, con un acumulado de <span style={{ fontWeight: 800, backgroundColor: '#fef08a', padding: '0.2rem 0.6rem', border: '2px solid black', borderRadius: 'var(--radius-sm)' }}>${topRecurrente.total.toLocaleString('es-CL')}</span> repartido en {topRecurrente.count} pagos.
+                  Hemos detectado una fuga recurrente de capital en <strong>"{topRecurrente.name}"</strong>, con un acumulado de <span style={{ fontWeight: 800, backgroundColor: '#fef08a', padding: '0.2rem 0.6rem', border: '2px solid black', borderRadius: 'var(--radius-sm)' }}>${topRecurrente.total.toLocaleString('es-CL')}</span>.
                 </p>
               </div>
             </div>
@@ -453,22 +390,16 @@ export default function Dashboard() {
     );
   };
 
-  const budget = getBudgetStructure();
-
   if (loading) {
     return <div style={{ padding: '2rem', textAlign: 'center', fontWeight: 600 }}>Cargando resumen...</div>;
   }
 
-
-
   const renderChangeBadge = (current: number, prev: number, label: string, inverseColors = false) => {
     if (!hasPrevData) return null;
-    
     if (prev === 0) {
       if (current === 0) return <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#64748b' }}>Sin cambios vs {label}</span>;
       return <span style={{ fontSize: '0.875rem', fontWeight: 600, color: inverseColors ? '#ef4444' : '#22c55e' }}>▲ 100% vs {label}</span>;
     }
-
     const pct = ((current - prev) / prev) * 100;
     const isPositive = pct > 0;
     const isNegative = pct < 0;
@@ -485,6 +416,12 @@ export default function Dashboard() {
       </span>
     );
   };
+
+  const currentIngresos = isRealExpenseMode ? ingresosReales : ingresosBrutos;
+  const currentEgresos = isRealExpenseMode ? egresosReales : egresosTotales;
+  const currentBalance = isRealExpenseMode ? balanceReal : balanceFlujoCaja;
+  const prevIngr = isRealExpenseMode ? prevIngresosReales : prevIngresosBrutos;
+  const prevEgr = isRealExpenseMode ? prevEgresosReales : prevEgresosTotales;
 
   return (
     <div>
@@ -535,7 +472,7 @@ export default function Dashboard() {
                 <option value="quarter">Trimestral</option>
                 <option value="semester">Semestral</option>
                 <option value="year">Anual (Todo el año)</option>
-                <option value="all">Historico (Todos los años)</option>
+                <option value="all">Historico</option>
               </select>
               
               {periodType !== 'year' && periodType !== 'all' && (
@@ -548,48 +485,35 @@ export default function Dashboard() {
                   >
                     <option value="all">Todos</option>
                     {periodType === 'month' && Array.from({length: 12}, (_, i) => (
-                      <option key={`m${i+1}`} value={(i+1).toString()}>{new Date(2000, i, 1).toLocaleString('es-CL', { month: 'long' })}</option>
+                      <option key={`m${i+1}`} value={(i+1).toString()}>{new Date(2000, i, 1).toLocaleString('es-CL', { month: 'short' })}</option>
                     ))}
-                    {periodType === 'quarter' && [1, 2, 3, 4].map(q => (
-                      <option key={`q${q}`} value={`Q${q}`}>Q{q} (Trimestre {q})</option>
-                    ))}
-                    {periodType === 'semester' && [1, 2].map(h => (
-                      <option key={`h${h}`} value={`H${h}`}>H{h} (Semestre {h})</option>
-                    ))}
+                    {periodType === 'quarter' && [1, 2, 3, 4].map(q => <option key={`q${q}`} value={`Q${q}`}>Q{q}</option>)}
+                    {periodType === 'semester' && [1, 2].map(h => <option key={`h${h}`} value={`H${h}`}>H{h}</option>)}
                   </select>
                 </>
               )}
             </div>
           )}
 
-          {transactions.length > 0 && availableCategories.length > 0 && (
+          {transactions.length > 0 && availablePrincipals.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               <span style={{ fontWeight: 700, fontSize: '0.875rem' }}>Incluir:</span>
-              {availableCategories.map(cat => {
-                const isHidden = hiddenCategories.includes(cat.id);
+              {availablePrincipals.map(catName => {
+                const isHidden = hiddenPrincipals.includes(catName);
                 return (
                   <button
-                    key={cat.id}
-                    onClick={() => toggleCategory(cat.id)}
+                    key={catName}
+                    onClick={() => toggleCategory(catName)}
                     style={{
-                      padding: '0.2rem 0.5rem',
-                      borderRadius: '1rem',
-                      border: '2px solid black',
-                      backgroundColor: isHidden ? '#f1f5f9' : (cat.color || '#bfdbfe'),
+                      padding: '0.2rem 0.5rem', borderRadius: '1rem', border: '2px solid black',
+                      backgroundColor: isHidden ? '#f1f5f9' : '#bfdbfe',
                       color: isHidden ? '#94a3b8' : 'black',
-                      fontWeight: 700,
-                      fontSize: '0.75rem',
-                      cursor: 'pointer',
+                      fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer',
                       boxShadow: isHidden ? 'none' : '1px 1px 0px black',
-                      opacity: isHidden ? 0.7 : 1,
-                      transition: 'all 0.1s',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.25rem'
+                      opacity: isHidden ? 0.7 : 1, transition: 'all 0.1s'
                     }}
-                    title={isHidden ? 'Click para incluir en el reporte' : 'Click para ocultar del reporte'}
                   >
-                    <span>{isHidden ? '❌' : '✅'}</span> {cat.name}
+                    {isHidden ? '❌' : '✅'} {catName}
                   </button>
                 );
               })}
@@ -600,56 +524,89 @@ export default function Dashboard() {
 
       {renderUncategorizedAlert()}
 
-      {/* Verbalización Inteligente */}
-      {generateInsightReport(balance, realBalance, transfersBalance, ingresos, balance < 0)}
+      {generateInsightReport(currentBalance, currentBalance < 0, ingresosReales)}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
         
         {/* Card Balance */}
         <div className="card" style={{ backgroundColor: 'var(--pastel-purple)', color: 'black' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700 }}>Balance Total</h3>
+            <h3 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700 }}>{isRealExpenseMode ? 'Balance Estructural' : 'Balance Flujo de Caja'}</h3>
             <div style={{ backgroundColor: 'black', color: 'white', padding: '0.25rem', borderRadius: '50%' }}>
               <DollarSign size={24} />
             </div>
           </div>
           <p style={{ fontSize: '3rem', fontWeight: 800, margin: 0 }}>
-            ${balance.toLocaleString('es-CL')}
+            ${currentBalance.toLocaleString('es-CL')}
+          </p>
+          <p style={{ margin: '0.5rem 0 0 0', fontWeight: 600, fontSize: '0.9rem', opacity: 0.8 }}>
+            {isRealExpenseMode ? 'Ingreso Real - Gasto Real' : 'Total Entradas - Total Salidas'}
           </p>
         </div>
 
         {/* Card Ingresos */}
         <div className="card" style={{ backgroundColor: 'var(--pastel-green)', color: 'black' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700 }}>Ingresos</h3>
+            <h3 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700 }}>{isRealExpenseMode ? 'Ingreso Real' : 'Total Entradas'}</h3>
             <div style={{ backgroundColor: 'black', color: 'var(--success)', padding: '0.25rem', borderRadius: '50%' }}>
               <TrendingUp size={24} />
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <p style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0 }}>
-              ${ingresos.toLocaleString('es-CL')}
+              ${currentIngresos.toLocaleString('es-CL')}
             </p>
-            {renderChangeBadge(ingresos, prevIngresos, prevLabel, false)}
+            {renderChangeBadge(currentIngresos, prevIngr, prevLabel, false)}
+            {isRealExpenseMode && movimientosInternosIngreso > 0 && (
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, marginTop: '0.5rem' }}>
+                Excluye ${movimientosInternosIngreso.toLocaleString('es-CL')} propios
+              </span>
+            )}
           </div>
         </div>
 
         {/* Card Egresos */}
         <div className="card" style={{ backgroundColor: 'var(--pastel-yellow)', color: 'black' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700 }}>Egresos</h3>
+            <h3 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700 }}>{isRealExpenseMode ? 'Gasto Real' : 'Total Salidas'}</h3>
             <div style={{ backgroundColor: 'black', color: 'var(--danger)', padding: '0.25rem', borderRadius: '50%' }}>
               <TrendingDown size={24} />
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <p style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0 }}>
-              ${egresos.toLocaleString('es-CL')}
+              ${currentEgresos.toLocaleString('es-CL')}
             </p>
-            {renderChangeBadge(egresos, prevEgresos, prevLabel, true)}
+            {renderChangeBadge(currentEgresos, prevEgr, prevLabel, true)}
           </div>
         </div>
       </div>
+      
+      {/* Cards secundarias para Ahorro y Movimientos Internos */}
+      {isRealExpenseMode && (ahorro > 0 || movimientosInternosEgreso > 0) && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
+          {ahorro > 0 && (
+            <div className="card" style={{ backgroundColor: '#86efac', borderStyle: 'dashed' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <h3 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 700 }}>Patrimonio / Ahorro</h3>
+                <PiggyBank size={20} />
+              </div>
+              <p style={{ fontSize: '2rem', fontWeight: 800, margin: 0 }}>${ahorro.toLocaleString('es-CL')}</p>
+              <p style={{ fontSize: '0.85rem', fontWeight: 600, margin: '0.5rem 0 0 0', opacity: 0.8 }}>Capital retenido (No resta del balance)</p>
+            </div>
+          )}
+          {movimientosInternosEgreso > 0 && (
+            <div className="card" style={{ backgroundColor: '#e2e8f0', borderStyle: 'dashed' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <h3 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 700 }}>Movimientos Internos</h3>
+                <Shuffle size={20} />
+              </div>
+              <p style={{ fontSize: '2rem', fontWeight: 800, margin: 0 }}>${movimientosInternosEgreso.toLocaleString('es-CL')}</p>
+              <p style={{ fontSize: '0.85rem', fontWeight: 600, margin: '0.5rem 0 0 0', opacity: 0.8 }}>Traspasos entre tus propias cuentas</p>
+            </div>
+          )}
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '2rem', marginBottom: '4rem' }}>
         {/* Evolución Mensual */}
@@ -679,190 +636,88 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Estructura de Presupuesto */}
-        <div className="card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column' }}>
-          <h3 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', marginTop: 0 }}>Estructura de Presupuesto</h3>
-          {/* Barra de progreso 50/30/20 */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontWeight: 700, fontSize: '0.875rem' }}>
-            <span>Distribución sobre Ingresos (${ingresos.toLocaleString('es-CL')})</span>
-            <span>Egresos Estructurales: ${(budget.fijos + budget.variables + budget.ahorros).toLocaleString('es-CL')}</span>
-          </div>
-          
-          <div style={{ height: '32px', display: 'flex', borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '2px solid black', marginBottom: '2rem', backgroundColor: '#f1f5f9' }}>
-            {budget.pctFijos > 0 && <div style={{ width: `${budget.pctFijos}%`, backgroundColor: '#fca5a5', borderRight: '2px solid black', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.75rem' }} title={`Fijos: ${budget.pctFijos.toFixed(1)}%`}>{budget.pctFijos > 5 ? `${budget.pctFijos.toFixed(0)}%` : ''}</div>}
-            {budget.pctVariables > 0 && <div style={{ width: `${budget.pctVariables}%`, backgroundColor: '#fef08a', borderRight: '2px solid black', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.75rem' }} title={`Variables: ${budget.pctVariables.toFixed(1)}%`}>{budget.pctVariables > 5 ? `${budget.pctVariables.toFixed(0)}%` : ''}</div>}
-            {budget.pctAhorros > 0 && <div style={{ width: `${budget.pctAhorros}%`, backgroundColor: '#86efac', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.75rem' }} title={`Ahorros: ${budget.pctAhorros.toFixed(1)}%`}>{budget.pctAhorros > 5 ? `${budget.pctAhorros.toFixed(0)}%` : ''}</div>}
-          </div>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
-            {/* Card Fijos */}
-            <div style={{ padding: '1.5rem', backgroundColor: '#fca5a5', border: '2px solid black', borderRadius: 'var(--radius-sm)', boxShadow: '4px 4px 0px black' }}>
-              <h4 style={{ margin: '0 0 0.5rem 0', fontWeight: 800, fontSize: '1.25rem', textTransform: 'uppercase' }}>Gastos Fijos</h4>
-              <p style={{ margin: '0 0 1rem 0', fontSize: '2rem', fontWeight: 900 }}>${budget.fijos.toLocaleString('es-CL')}</p>
-              <div style={{ backgroundColor: 'white', padding: '0.5rem 1rem', borderRadius: '2rem', border: '2px solid black', display: 'inline-block', fontWeight: 800 }}>
-                {budget.pctFijos.toFixed(1)}% del ingreso
-              </div>
+        <div className="card" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '2rem', backgroundColor: '#bfdbfe', borderBottom: '2px solid black', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1.5rem', marginBottom: '0.5rem' }}>Top Fugas Recurrentes</h3>
+              <p style={{ margin: 0, color: 'var(--text-secondary)', fontWeight: 500 }}>Basado en Gasto Real Variable</p>
             </div>
             
-            {/* Card Variables */}
-            <div style={{ padding: '1.5rem', backgroundColor: '#fef08a', border: '2px solid black', borderRadius: 'var(--radius-sm)', boxShadow: '4px 4px 0px black' }}>
-              <h4 style={{ margin: '0 0 0.5rem 0', fontWeight: 800, fontSize: '1.25rem', textTransform: 'uppercase' }}>Gastos Variables</h4>
-              <p style={{ margin: '0 0 1rem 0', fontSize: '2rem', fontWeight: 900 }}>${budget.variables.toLocaleString('es-CL')}</p>
-              <div style={{ backgroundColor: 'white', padding: '0.5rem 1rem', borderRadius: '2rem', border: '2px solid black', display: 'inline-block', fontWeight: 800 }}>
-                {budget.pctVariables.toFixed(1)}% del ingreso
-              </div>
-            </div>
-
-            {/* Card Ahorros */}
-            <div style={{ padding: '1.5rem', backgroundColor: '#86efac', border: '2px solid black', borderRadius: 'var(--radius-sm)', boxShadow: '4px 4px 0px black' }}>
-              <h4 style={{ margin: '0 0 0.5rem 0', fontWeight: 800, fontSize: '1.25rem', textTransform: 'uppercase' }}>Ahorro & Inversión</h4>
-              <p style={{ margin: '0 0 1rem 0', fontSize: '2rem', fontWeight: 900 }}>${budget.ahorros.toLocaleString('es-CL')}</p>
-              <div style={{ backgroundColor: 'white', padding: '0.5rem 1rem', borderRadius: '2rem', border: '2px solid black', display: 'inline-block', fontWeight: 800 }}>
-                {budget.pctAhorros.toFixed(1)}% del ingreso
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', backgroundColor: 'white', border: '2px solid black', borderRadius: 'var(--radius-sm)', overflow: 'hidden', boxShadow: '2px 2px 0px black' }}>
+              <button 
+                onClick={() => { setGroupByPrincipal(false); setSelectedRecurringItem(null); }}
+                style={{ padding: '0.5rem 1rem', border: 'none', background: !groupByPrincipal ? 'black' : 'transparent', color: !groupByPrincipal ? 'white' : 'black', fontWeight: 700, cursor: 'pointer', borderRight: '2px solid black', outline: 'none' }}
+              >
+                Subcategoría
+              </button>
+              <button 
+                onClick={() => { setGroupByPrincipal(true); setSelectedRecurringItem(null); }}
+                style={{ padding: '0.5rem 1rem', border: 'none', background: groupByPrincipal ? 'black' : 'transparent', color: groupByPrincipal ? 'white' : 'black', fontWeight: 700, cursor: 'pointer', outline: 'none' }}
+              >
+                Principal
+              </button>
             </div>
           </div>
-          
-          <div style={{ marginTop: '2rem', padding: '1.5rem', backgroundColor: 'black', color: 'white', borderRadius: 'var(--radius-sm)' }}>
-            <h4 style={{ margin: '0 0 0.5rem 0', color: '#bfdbfe', textTransform: 'uppercase', letterSpacing: '1px' }}>Balance Estructural</h4>
-            <p style={{ margin: 0, fontSize: '1.15rem', lineHeight: '1.6' }}>
-              Ingresaste <strong>${ingresos.toLocaleString('es-CL')}</strong>. Tus gastos fijos consumieron el <strong>{budget.pctFijos.toFixed(1)}%</strong>, 
-              y lograste ahorrar un <strong>{budget.pctAhorros.toFixed(1)}%</strong>. Te quedó un saldo real de <strong>${(ingresos - budget.fijos - budget.ahorros).toLocaleString('es-CL')}</strong> para gastos variables.
-            </p>
+          <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead style={{ backgroundColor: 'var(--primary-light)', borderBottom: '2px solid black' }}>
+                <tr>
+                  <th style={{ padding: '0.75rem 1rem', borderRight: '2px solid black', fontWeight: 700 }}>Concepto</th>
+                  <th style={{ padding: '0.75rem 1rem', borderRight: '2px solid black', fontWeight: 700 }}>Cant.</th>
+                  <th style={{ padding: '0.75rem 1rem', fontWeight: 700 }}>Total Pagado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recurringExpenses.map((item, i) => (
+                  <tr 
+                    key={i} 
+                    onClick={() => setSelectedRecurringItem(item.name)}
+                    style={{ 
+                      borderBottom: i < recurringExpenses.length - 1 ? '2px solid black' : 'none',
+                      backgroundColor: selectedRecurringItem === item.name ? 'var(--pastel-yellow)' : 'transparent',
+                      cursor: 'pointer', transition: 'background-color 0.1s'
+                    }} 
+                    className="table-row"
+                  >
+                    <td style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 600 }}>{item.name}</td>
+                    <td style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 500 }}>{item.count}</td>
+                    <td style={{ padding: '1rem', fontWeight: 700, color: 'var(--danger)' }}>
+                      ${item.total.toLocaleString('es-CL')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
-
-      <h2 style={{ marginBottom: '1.5rem', fontSize: '2rem' }}>Inteligencia y Hallazgos</h2>
       
-      {recurringExpenses.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
-          <Search size={48} style={{ margin: '0 auto 1rem', opacity: 0.2 }} />
-          <p style={{ fontWeight: 600, fontSize: '1.2rem' }}>Aún no hay suficientes datos para detectar gastos recurrentes.</p>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem', alignItems: 'start' }}>
-          {/* Tabla de Top Recurrentes */}
-          <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
-            <div style={{ padding: '2rem', backgroundColor: '#bfdbfe', borderBottom: '2px solid black', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.5rem', marginBottom: '0.5rem' }}>Top Gastos Recurrentes</h3>
-                <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Haz clic en un ítem para ver su tendencia</p>
-              </div>
-              
-              <div style={{ display: 'flex', alignItems: 'center', backgroundColor: 'white', border: '2px solid black', borderRadius: 'var(--radius-sm)', overflow: 'hidden', boxShadow: '2px 2px 0px black' }}>
-                <button 
-                  onClick={() => { setGroupByCategory(false); setSelectedRecurringItem(null); }}
-                  style={{ 
-                    padding: '0.5rem 1rem', 
-                    border: 'none', 
-                    background: !groupByCategory ? 'black' : 'transparent',
-                    color: !groupByCategory ? 'white' : 'black',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    borderRight: '2px solid black',
-                    outline: 'none'
-                  }}
-                >
-                  Por Ítem
-                </button>
-                <button 
-                  onClick={() => { setGroupByCategory(true); setSelectedRecurringItem(null); }}
-                  style={{ 
-                    padding: '0.5rem 1rem', 
-                    border: 'none', 
-                    background: groupByCategory ? 'black' : 'transparent',
-                    color: groupByCategory ? 'white' : 'black',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    outline: 'none'
-                  }}
-                >
-                  Por Categoría
-                </button>
-              </div>
+      {/* Gráfico de Tendencia Específico */}
+      {selectedRecurringItem && (
+        <div className="card" style={{ marginBottom: '4rem' }}>
+          <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem' }}>
+            Tendencia Mensual: <span style={{ color: 'var(--primary)' }}>{selectedRecurringItem}</span>
+          </h3>
+          {specificItemTrendData.length > 0 ? (
+            <div style={{ height: '300px', width: '100%' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={specificItemTrendData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#ccc" />
+                  <XAxis dataKey="name" stroke="black" fontWeight="600" />
+                  <YAxis stroke="black" fontWeight="600" />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'white', border: '2px solid black', boxShadow: '4px 4px 0px black', borderRadius: 'var(--radius-sm)', fontWeight: '600' }}
+                    formatter={(value: any) => [`$${Number(value).toLocaleString('es-CL')}`, 'Gasto']}
+                  />
+                  <Line type="monotone" dataKey="Gasto" stroke="var(--danger)" strokeWidth={4} activeDot={{ r: 8, stroke: 'black', strokeWidth: 2 }} />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
-            <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead style={{ backgroundColor: 'var(--primary-light)', borderBottom: '2px solid black' }}>
-                  <tr>
-                    <th style={{ padding: '0.75rem 1rem', borderRight: '2px solid black', fontWeight: 700 }}>Ítem</th>
-                    <th style={{ padding: '0.75rem 1rem', borderRight: '2px solid black', fontWeight: 700 }}>Veces</th>
-                    <th style={{ padding: '0.75rem 1rem', fontWeight: 700 }}>Total Pagado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recurringExpenses.map((item, i) => (
-                    <tr 
-                      key={i} 
-                      onClick={() => setSelectedRecurringItem(item.name)}
-                      style={{ 
-                        borderBottom: i < recurringExpenses.length - 1 ? '2px solid black' : 'none',
-                        backgroundColor: selectedRecurringItem === item.name ? 'var(--pastel-yellow)' : 'transparent',
-                        cursor: 'pointer',
-                        transition: 'background-color 0.1s'
-                      }} 
-                      className="table-row"
-                    >
-                      <td style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 600 }}>
-                        {groupByCategory ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <div style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: item.color || '#ccc', border: '2px solid black' }}></div>
-                            {item.name}
-                          </div>
-                        ) : (
-                          item.name
-                        )}
-                      </td>
-                      <td style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 500 }}>{item.count}</td>
-                      <td style={{ padding: '1rem', fontWeight: 700, color: 'var(--danger)' }}>
-                        ${item.total.toLocaleString('es-CL')}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Gráfico de Tendencia Específico */}
-          <div className="card">
-            <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem' }}>
-              Tendencia Mensual: <span style={{ color: 'var(--primary)' }}>{selectedRecurringItem}</span>
-            </h3>
-            {specificItemTrendData.length > 0 ? (
-              <div style={{ height: '300px', width: '100%' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={specificItemTrendData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#ccc" />
-                    <XAxis dataKey="name" stroke="black" fontWeight="600" />
-                    <YAxis stroke="black" fontWeight="600" />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'white', 
-                        border: '2px solid black', 
-                        boxShadow: '4px 4px 0px black',
-                        borderRadius: 'var(--radius-sm)',
-                        fontWeight: '600'
-                      }}
-                      formatter={(value: any) => [`$${Number(value).toLocaleString('es-CL')}`, 'Gasto']}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="Gasto" 
-                      stroke="var(--danger)" 
-                      strokeWidth={4} 
-                      activeDot={{ r: 8, stroke: 'black', strokeWidth: 2 }} 
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <p style={{ textAlign: 'center', fontWeight: 500, color: 'var(--text-secondary)', padding: '2rem 0' }}>
-                Selecciona un ítem para ver su tendencia
-              </p>
-            )}
-          </div>
+          ) : (
+            <p style={{ textAlign: 'center', fontWeight: 500, color: 'var(--text-secondary)', padding: '2rem 0' }}>
+              Sin datos temporales suficientes.
+            </p>
+          )}
         </div>
       )}
     </div>

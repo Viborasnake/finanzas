@@ -4,15 +4,118 @@ import { useAuth } from '../contexts/AuthContext';
 import { Search, Edit2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+export const TAXONOMY: Record<string, Record<string, string[]>> = {
+  'Gasto Real': {
+    'Alimentación': ['Feria', 'Abarrotes', 'Delivery/Restaurantes'],
+    'Transporte': ['Bencina', 'Autopista'],
+    'Vivienda': ['Fijo', 'Contribuciones', 'Dividendo'],
+    'Hogar/Materiales': ['Bazar-Chinos', 'Ferretería'],
+    'Salud': ['Salud'],
+    'Educación/Benja': ['Educación/Benja'],
+    'Suscripciones': ['Suscripciones'],
+    'Actividad Extra': ['Actividad Extra'],
+    'Retro Gaming/Hobbies': ['Retro Gaming/Hobbies'],
+    'Herramientas/Software': ['Herramientas/Software'],
+    'Apoyo Familiar/Amigos': ['Apoyo Familiar/Amigos'],
+    'Impuestos': ['Impuestos'],
+    'Intereses y Comisiones': ['Intereses'],
+    'Pago Tarjeta Crédito': ['Tarjeta Credito']
+  },
+  'Movimiento Interno': {
+    'Transferencia personal': ['Transferencia personal'],
+    'Traspaso fondo': ['Traspaso fondo']
+  },
+  'Ahorro/Inversión': {
+    'Ahorro': ['Ahorro'],
+    'Inversión': ['Inversión']
+  }
+};
+
+const CascadingCategorySelector = ({ 
+  initialTipo, 
+  initialPrincipal, 
+  initialSecundaria, 
+  onSave 
+}: { 
+  initialTipo: string | null, 
+  initialPrincipal: string | null, 
+  initialSecundaria: string | null,
+  onSave: (t: string|null, p: string|null, s: string|null) => void 
+}) => {
+  const [tipo, setTipo] = useState(initialTipo || '');
+  const [principal, setPrincipal] = useState(initialPrincipal || '');
+  const [secundaria, setSecundaria] = useState(initialSecundaria || '');
+
+  // Efecto para auto-seleccionar si hay solo 1 opción
+  useEffect(() => {
+    if (tipo && TAXONOMY[tipo]) {
+      const keys = Object.keys(TAXONOMY[tipo]);
+      if (keys.length === 1 && principal !== keys[0]) {
+        setPrincipal(keys[0]);
+      }
+    }
+  }, [tipo]);
+
+  useEffect(() => {
+    if (tipo && principal && TAXONOMY[tipo] && TAXONOMY[tipo][principal]) {
+      const arr = TAXONOMY[tipo][principal];
+      if (arr.length === 1 && secundaria !== arr[0]) {
+        setSecundaria(arr[0]);
+      }
+    }
+  }, [tipo, principal]);
+
+  const handleSave = () => {
+    onSave(tipo || null, principal || null, secundaria || null);
+  };
+
+  return (
+    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+      <select 
+        value={tipo} 
+        onChange={e => { setTipo(e.target.value); setPrincipal(''); setSecundaria(''); }}
+        className="input" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', width: 'auto' }}
+      >
+        <option value="">Tipo...</option>
+        {Object.keys(TAXONOMY).map(k => <option key={k} value={k}>{k}</option>)}
+      </select>
+      
+      {tipo && (
+        <select 
+          value={principal} 
+          onChange={e => { setPrincipal(e.target.value); setSecundaria(''); }}
+          className="input" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', width: 'auto' }}
+        >
+          <option value="">Categoría...</option>
+          {Object.keys(TAXONOMY[tipo]).map(k => <option key={k} value={k}>{k}</option>)}
+        </select>
+      )}
+
+      {principal && (
+        <select 
+          value={secundaria} 
+          onChange={e => setSecundaria(e.target.value)}
+          className="input" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', width: 'auto' }}
+        >
+          <option value="">Detalle...</option>
+          {TAXONOMY[tipo][principal].map(k => <option key={k} value={k}>{k}</option>)}
+        </select>
+      )}
+
+      {tipo && principal && secundaria && (tipo !== initialTipo || principal !== initialPrincipal || secundaria !== initialSecundaria) && (
+        <button className="btn btn-primary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }} onClick={handleSave}>Ok</button>
+      )}
+    </div>
+  );
+};
+
 export default function Transactions() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState('all');
   
   const [filterYear, setFilterYear] = useState('all');
   const [filterMonth, setFilterMonth] = useState('all');
-
   const [viewMode, setViewMode] = useState<'individual' | 'bulk'>('individual');
 
   const { user } = useAuth();
@@ -27,7 +130,7 @@ export default function Transactions() {
     try {
       const { data, error } = await supabase
         .from('transactions')
-        .select('*, category:categories(id, name, color)')
+        .select('*')
         .eq('user_id', user?.id)
         .order('date', { ascending: false });
 
@@ -41,20 +144,6 @@ export default function Transactions() {
     }
   };
 
-  const [categories, setCategories] = useState<any[]>([]);
-  useEffect(() => {
-    if (user) {
-      fetchCategories();
-    }
-  }, [user]);
-
-  const fetchCategories = async () => {
-    try {
-      const { data, error } = await supabase.from('categories').select('*').order('name');
-      if (!error && data) setCategories(data);
-    } catch (err) {}
-  };
-
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
 
@@ -64,14 +153,14 @@ export default function Transactions() {
   }, [transactions]);
 
   const filteredTransactions = transactions.filter(t => {
-    const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = filterType === 'all' || t.type === filterType;
+    const desc = t.description || '';
+    const matchesSearch = desc.toLowerCase().includes(searchTerm.toLowerCase());
     
     const date = new Date(t.date);
     const matchesYear = filterYear === 'all' || date.getFullYear().toString() === filterYear;
     const matchesMonth = filterMonth === 'all' || (date.getMonth() + 1).toString() === filterMonth;
 
-    return matchesSearch && matchesType && matchesYear && matchesMonth;
+    return matchesSearch && matchesYear && matchesMonth;
   });
 
   const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
@@ -83,7 +172,8 @@ export default function Transactions() {
   const bulkGroups = useMemo(() => {
     if (viewMode !== 'bulk') return [];
     
-    const uncategorized = transactions.filter(t => !t.category || t.category.id === 'uncategorized');
+    // Sin clasificar son las que no tienen tipo_movimiento
+    const uncategorized = transactions.filter(t => !t.tipo_movimiento);
     const groups: { [desc: string]: { count: number, total: number, ids: string[] } } = {};
     
     uncategorized.forEach(t => {
@@ -94,7 +184,6 @@ export default function Transactions() {
         groups[desc] = { count: 0, total: 0, ids: [] };
       }
       groups[desc].count += 1;
-      // Tratar ingresos como negativos en este contexto de "fugas" o separar
       groups[desc].total += t.type === 'egreso' ? t.amount : 0; 
       groups[desc].ids.push(t.id);
     });
@@ -104,115 +193,18 @@ export default function Transactions() {
       .sort((a, b) => b.total - a.total);
   }, [transactions, viewMode]);
 
-  const handleBulkCategorize = async (groupIds: string[], categoryId: string) => {
-    if (!categoryId || categoryId === 'uncategorized') return;
-    
-    try {
-      const { error } = await supabase
-        .from('transactions')
-        .update({ category_id: categoryId })
-        .in('id', groupIds);
-        
-      if (error) throw error;
-      
-      const cat = categories.find(c => c.id === categoryId);
-      
-      setTransactions(prev => prev.map(t => 
-        groupIds.includes(t.id) ? { ...t, category_id: categoryId, category: { id: cat.id, name: cat.name, color: cat.color } } : t
-      ));
-      
-      toast.success(`Se categorizaron ${groupIds.length} transacciones`);
-    } catch (error) {
-      console.error(error);
-      toast.error('Error al categorizar');
-    }
-  };
+  const handleCategorize = async (id: string, currentDesc: string, tipo: string | null, principal: string | null, secundaria: string | null) => {
+    // Update locally
+    setTransactions(prev => prev.map(t => t.id === id ? { ...t, tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria } : t));
 
-  const handleDescriptionChange = (id: string, newDesc: string) => {
-    setTransactions(prev => prev.map(t => t.id === id ? { ...t, description: newDesc } : t));
-  };
+    const othersCount = transactions.filter(t => t.id !== id && t.description === currentDesc && !t.tipo_movimiento).length;
 
-  const handleDescriptionBlur = async (id: string, currentDesc: string, rawDesc: string) => {
-    const originalTx = transactions.find(t => t.id === id);
-    if (!originalTx || originalTx.description.trim() === '') return;
-
-    const othersCount = transactions.filter(t => t.id !== id && t.raw_data && t.raw_data[Object.keys(t.raw_data).find(k => k.toLowerCase().includes('descripc')) || ''] === rawDesc && t.description !== currentDesc).length;
-
-    if (othersCount > 0) {
-      toast.custom((t) => (
-        <div className="card" style={{ padding: '1.5rem', border: '2px solid black', boxShadow: '4px 4px 0px black', background: 'white', maxWidth: '400px' }}>
-          <h3 style={{ marginTop: 0, fontSize: '1.125rem' }}>Renombrado Múltiple</h3>
-          <p style={{ margin: '0.5rem 0 1.5rem' }}>
-            Hay otras {othersCount} transacciones que originalmente se llamaban igual. ¿Quieres aplicar el alias "{currentDesc}" a todas ellas también?
-          </p>
-          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-            <button 
-              className="btn btn-outline" 
-              style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }} 
-              onClick={async () => {
-                toast.dismiss(t.id);
-                const { error } = await supabase.from('transactions').update({ description: currentDesc }).eq('id', id);
-                if (error) toast.error("Error al actualizar");
-                else toast.success("Alias actualizado");
-              }}
-            >
-              Solo a esta
-            </button>
-            <button 
-              className="btn btn-primary" 
-              style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }} 
-              onClick={async () => {
-                toast.dismiss(t.id);
-                
-                const descKey = Object.keys(originalTx.raw_data).find(k => k.toLowerCase().includes('descripc')) || '';
-                
-                setTransactions(prev => prev.map(tx => {
-                  if (tx.raw_data && tx.raw_data[descKey] === rawDesc) {
-                    return { ...tx, description: currentDesc };
-                  }
-                  return tx;
-                }));
-
-                const { error } = await supabase
-                  .from('transactions')
-                  .update({ description: currentDesc })
-                  .eq('user_id', user?.id)
-                  .contains('raw_data', { [descKey]: rawDesc });
-
-                if (error) {
-                  console.error(error);
-                  toast.error("Error al actualizar masivamente");
-                } else {
-                  toast.success("Alias actualizado masivamente");
-                }
-              }}
-            >
-              Sí, a todas
-            </button>
-          </div>
-        </div>
-      ), { duration: Infinity });
-    } else {
-      const { error } = await supabase.from('transactions').update({ description: currentDesc }).eq('id', id);
-      if (error) toast.error("Error al actualizar");
-      else toast.success("Alias actualizado");
-    }
-  };
-
-  const handleCategoryChange = async (id: string, newCategoryId: string, currentDesc: string) => {
-    const newCategory = categories.find(c => c.id === newCategoryId) || null;
-    
-    // update locally immediately
-    setTransactions(prev => prev.map(t => t.id === id ? { ...t, category_id: newCategoryId || null, category: newCategory } : t));
-
-    const othersCount = transactions.filter(t => t.id !== id && t.description === currentDesc && t.category_id !== newCategoryId).length;
-
-    if (othersCount > 0 && newCategoryId) {
+    if (othersCount > 0 && tipo) {
       toast.custom((t) => (
         <div className="card" style={{ padding: '1.5rem', border: '2px solid black', boxShadow: '4px 4px 0px black', background: 'white', maxWidth: '400px' }}>
           <h3 style={{ marginTop: 0, fontSize: '1.125rem' }}>Categorización Múltiple</h3>
           <p style={{ margin: '0.5rem 0 1.5rem' }}>
-            Hay otras {othersCount} transacciones con el alias "{currentDesc}". ¿Quieres asignarles la categoría "{newCategory?.name}" a todas ellas también?
+            Hay otras {othersCount} transacciones sin clasificar con el alias "{currentDesc}". ¿Quieres aplicarles esta misma categoría?
           </p>
           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
             <button 
@@ -220,7 +212,7 @@ export default function Transactions() {
               style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }} 
               onClick={async () => {
                 toast.dismiss(t.id);
-                const { error } = await supabase.from('transactions').update({ category_id: newCategoryId || null }).eq('id', id);
+                const { error } = await supabase.from('transactions').update({ tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria }).eq('id', id);
                 if (error) toast.error("Error al actualizar");
                 else toast.success("Categoría actualizada");
               }}
@@ -234,23 +226,24 @@ export default function Transactions() {
                 toast.dismiss(t.id);
                 
                 setTransactions(prev => prev.map(tx => {
-                  if (tx.description === currentDesc) {
-                    return { ...tx, category_id: newCategoryId || null, category: newCategory };
+                  if (tx.description === currentDesc && !tx.tipo_movimiento) {
+                    return { ...tx, tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria };
                   }
                   return tx;
                 }));
 
                 const { error } = await supabase
                   .from('transactions')
-                  .update({ category_id: newCategoryId || null })
+                  .update({ tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria })
                   .eq('user_id', user?.id)
-                  .eq('description', currentDesc);
+                  .eq('description', currentDesc)
+                  .is('tipo_movimiento', null);
 
                 if (error) {
                   console.error(error);
                   toast.error("Error al actualizar masivamente");
                 } else {
-                  toast.success("Categoría aplicada masivamente");
+                  toast.success("Categoría actualizada masivamente");
                 }
               }}
             >
@@ -260,288 +253,268 @@ export default function Transactions() {
         </div>
       ), { duration: Infinity });
     } else {
-      const { error } = await supabase.from('transactions').update({ category_id: newCategoryId || null }).eq('id', id);
+      const { error } = await supabase.from('transactions').update({ tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria }).eq('id', id);
       if (error) toast.error("Error al actualizar");
       else toast.success("Categoría actualizada");
     }
   };
 
+  const handleBulkCategorize = async (groupIds: string[], tipo: string | null, principal: string | null, secundaria: string | null) => {
+    if (!tipo) return;
+    
+    try {
+      const { error } = await supabase
+        .from('transactions')
+        .update({ tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria })
+        .in('id', groupIds);
+        
+      if (error) throw error;
+      
+      setTransactions(prev => prev.map(t => 
+        groupIds.includes(t.id) ? { ...t, tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria } : t
+      ));
+      
+      toast.success(`Se categorizaron ${groupIds.length} transacciones`);
+    } catch (error) {
+      console.error(error);
+      toast.error('Error al categorizar');
+    }
+  };
+
+  const handleDescriptionBlur = async (id: string, currentDesc: string, rawDesc: string) => {
+    const originalTx = transactions.find(t => t.id === id);
+    if (!originalTx || originalTx.description.trim() === '') return;
+
+    const othersCount = transactions.filter(t => t.id !== id && t.raw_data && t.raw_data[Object.keys(t.raw_data).find(k => k.toLowerCase().includes('descripc')) || ''] === rawDesc && t.description !== currentDesc).length;
+
+    if (othersCount > 0) {
+      toast.custom((t) => (
+        <div className="card" style={{ padding: '1.5rem', border: '2px solid black', boxShadow: '4px 4px 0px black', background: 'white', maxWidth: '400px' }}>
+          <h3 style={{ marginTop: 0, fontSize: '1.125rem' }}>Renombrado Múltiple</h3>
+          <p style={{ margin: '0.5rem 0 1.5rem' }}>
+            Hay otras {othersCount} transacciones originales iguales. ¿Renombrar todas a "{currentDesc}"?
+          </p>
+          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+            <button 
+              className="btn btn-outline" 
+              onClick={async () => {
+                toast.dismiss(t.id);
+                await supabase.from('transactions').update({ description: currentDesc }).eq('id', id);
+              }}
+            >
+              Solo a esta
+            </button>
+            <button 
+              className="btn btn-primary" 
+              onClick={async () => {
+                toast.dismiss(t.id);
+                const descKey = Object.keys(originalTx.raw_data).find(k => k.toLowerCase().includes('descripc')) || '';
+                
+                setTransactions(prev => prev.map(tx => {
+                  if (tx.raw_data && tx.raw_data[descKey] === rawDesc) return { ...tx, description: currentDesc };
+                  return tx;
+                }));
+
+                await supabase.from('transactions').update({ description: currentDesc }).eq('user_id', user?.id).contains('raw_data', { [descKey]: rawDesc });
+                toast.success("Actualizado masivamente");
+              }}
+            >
+              Sí, a todas
+            </button>
+          </div>
+        </div>
+      ), { duration: Infinity });
+    } else {
+      await supabase.from('transactions').update({ description: currentDesc }).eq('id', id);
+    }
+  };
+
+  if (loading) return <div style={{ padding: '2rem' }}>Cargando transacciones...</div>;
+
+  const uncatCount = transactions.filter(t => !t.tipo_movimiento).length;
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 style={{ fontSize: '2.5rem', margin: 0 }}>Transacciones</h1>
-          <p style={{ color: 'var(--text-secondary)', fontWeight: 500, marginTop: '0.5rem' }}>
-            Revisa y filtra todos tus movimientos
-          </p>
+          <h1 style={{ margin: '0 0 1rem 0', fontSize: '2.5rem' }}>Transacciones</h1>
+          {uncatCount > 0 && (
+            <div style={{ display: 'inline-block', backgroundColor: '#fef08a', color: '#854d0e', padding: '0.5rem 1rem', borderRadius: '2rem', border: '2px solid black', fontWeight: 800, fontSize: '0.875rem' }}>
+              Faltan {uncatCount} transacciones por clasificar
+            </div>
+          )}
         </div>
         
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <div style={{ position: 'relative' }}>
-            <Search size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-            <input 
-              type="text" 
-              className="input" 
-              placeholder="Buscar gasto..." 
-              style={{ paddingLeft: '3rem', width: '200px' }}
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-              }}
-            />
-          </div>
-          
-          <select 
-            className="input" 
-            style={{ width: '120px', cursor: 'pointer' }}
-            value={filterYear}
-            onChange={(e) => {
-              setFilterYear(e.target.value);
-              setCurrentPage(1);
-            }}
+        <div style={{ display: 'flex', backgroundColor: 'white', border: '2px solid black', borderRadius: '2rem', overflow: 'hidden', boxShadow: '4px 4px 0px black' }}>
+          <button 
+            onClick={() => setViewMode('individual')}
+            style={{ padding: '0.75rem 1.5rem', border: 'none', background: viewMode === 'individual' ? 'black' : 'transparent', color: viewMode === 'individual' ? 'white' : 'black', fontWeight: 800, fontSize: '1rem', cursor: 'pointer', transition: 'all 0.1s' }}
           >
-            <option value="all">Año</option>
-            {availableYears.map(y => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
-
-          <select 
-            className="input" 
-            style={{ width: '120px', cursor: 'pointer' }}
-            value={filterMonth}
-            onChange={(e) => {
-              setFilterMonth(e.target.value);
-              setCurrentPage(1);
-            }}
+            Lista Individual
+          </button>
+          <button 
+            onClick={() => setViewMode('bulk')}
+            style={{ padding: '0.75rem 1.5rem', border: 'none', background: viewMode === 'bulk' ? 'black' : 'transparent', color: viewMode === 'bulk' ? 'white' : 'black', fontWeight: 800, fontSize: '1rem', cursor: 'pointer', transition: 'all 0.1s' }}
           >
-            <option value="all">Mes</option>
-            <option value="1">Enero</option>
-            <option value="2">Febrero</option>
-            <option value="3">Marzo</option>
-            <option value="4">Abril</option>
-            <option value="5">Mayo</option>
-            <option value="6">Junio</option>
-            <option value="7">Julio</option>
-            <option value="8">Agosto</option>
-            <option value="9">Septiembre</option>
-            <option value="10">Octubre</option>
-            <option value="11">Noviembre</option>
-            <option value="12">Diciembre</option>
-          </select>
-
-          <select 
-            className="input" 
-            style={{ width: '120px', cursor: 'pointer' }}
-            value={filterType}
-            onChange={(e) => {
-              setFilterType(e.target.value);
-              setCurrentPage(1);
-            }}
-          >
-            <option value="all">Tipo</option>
-            <option value="ingreso">Abonos</option>
-            <option value="egreso">Cargos</option>
-          </select>
+            Categorización Masiva ✨
+          </button>
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-        <button 
-          className={`btn ${viewMode === 'individual' ? '' : 'btn-outline'}`}
-          onClick={() => setViewMode('individual')}
-          style={{ flex: 1, fontSize: '1.125rem' }}
-        >
-          Lista Individual
-        </button>
-        <button 
-          className={`btn ${viewMode === 'bulk' ? '' : 'btn-outline'}`}
-          onClick={() => setViewMode('bulk')}
-          style={{ flex: 1, fontSize: '1.125rem', backgroundColor: viewMode === 'bulk' ? 'var(--pastel-yellow)' : 'transparent' }}
-        >
-          Categorización Masiva ✨
-        </button>
-      </div>
+      {viewMode === 'bulk' ? (
+        <div className="card" style={{ backgroundColor: 'var(--pastel-yellow)' }}>
+          <h2 style={{ marginTop: 0 }}>Categorización Masiva</h2>
+          <p style={{ fontWeight: 500, marginBottom: '2rem' }}>
+            Agrupamos las transacciones <strong>Sin Clasificar</strong> que tienen la misma descripción original para que las categorices todas con un solo clic.
+          </p>
 
-      <div className="card">
-        {viewMode === 'bulk' ? (
-          bulkGroups.length === 0 ? (
-            <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
-              <h3 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>No hay transacciones pendientes</h3>
-              <p style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
-                ¡Excelente trabajo! No tienes gastos sin clasificar.
-              </p>
-            </div>
-          ) : (
-            <div style={{ overflowX: 'auto', border: '2px solid black', borderRadius: 'var(--radius-sm)' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead style={{ backgroundColor: 'var(--pastel-yellow)', borderBottom: '2px solid black' }}>
-                  <tr>
-                    <th style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 800 }}>Descripción de Cargo</th>
-                    <th style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 800, textAlign: 'center' }}>Cant. Pagos</th>
-                    <th style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 800, textAlign: 'right' }}>Monto Acumulado</th>
-                    <th style={{ padding: '1rem', fontWeight: 800, textAlign: 'center' }}>Asignar Categoría Masiva</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bulkGroups.map((g, i) => (
-                    <tr key={g.name} style={{ borderBottom: i < bulkGroups.length - 1 ? '2px solid black' : 'none', backgroundColor: 'var(--bg-color)' }}>
-                      <td style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 700 }}>
-                        {g.name}
-                      </td>
-                      <td style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 600, textAlign: 'center' }}>
-                        <span style={{ backgroundColor: '#f1f5f9', padding: '0.2rem 0.6rem', borderRadius: '1rem', border: '2px solid black' }}>
-                          {g.count}
-                        </span>
-                      </td>
-                      <td style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 800, textAlign: 'right', fontSize: '1.125rem', color: 'var(--danger)' }}>
-                        ${g.total.toLocaleString('es-CL')}
-                      </td>
-                      <td style={{ padding: '0.75rem 1rem' }}>
-                        <select
-                          className="input-field"
-                          style={{ 
-                            padding: '0.5rem', 
-                            border: '2px solid black', 
-                            borderRadius: 'var(--radius-sm)',
-                            width: '100%', 
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            outline: 'none'
-                          }}
-                          value=""
-                          onChange={(e) => handleBulkCategorize(g.ids, e.target.value)}
-                        >
-                          <option value="">Selecciona Categoría...</option>
-                          {categories.map(c => (
-                            <option key={c.id} value={c.id} style={{ backgroundColor: 'white' }}>{c.name}</option>
-                          ))}
-                        </select>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )
-        ) : (
-          loading ? (
-            <div style={{ padding: '2rem', textAlign: 'center', fontWeight: 600 }}>Cargando transacciones...</div>
-          ) : filteredTransactions.length === 0 ? (
-            <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
-              <h3 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>No hay transacciones</h3>
-              <p style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
-                Importa un archivo CSV o cambia tus filtros para ver resultados.
-              </p>
-            </div>
-          ) : (
-            <>
-              <div style={{ overflowX: 'auto', border: '2px solid black', borderRadius: 'var(--radius-sm)' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                  <thead style={{ backgroundColor: 'var(--primary-light)', borderBottom: '2px solid black' }}>
-                    <tr>
-                      <th style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 700 }}>Fecha</th>
-                      <th style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 700 }}>Descripción (Alias)</th>
-                      <th style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 700 }}>Categoría</th>
-                      <th style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 700 }}>Tipo</th>
-                      <th style={{ padding: '1rem', fontWeight: 700, textAlign: 'right' }}>Monto</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedTransactions.map((t, i) => {
-                      const descKey = Object.keys(t.raw_data || {}).find(k => k.toLowerCase().includes('descripc')) || '';
-                      const rawDesc = t.raw_data ? t.raw_data[descKey] : t.description;
-                      
-                      return (
-                        <tr key={t.id} style={{ borderBottom: i < paginatedTransactions.length - 1 ? '2px solid black' : 'none', transition: 'background-color 0.1s' }} className="table-row">
-                          <td style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 500 }}>
-                            {new Date(t.date).toLocaleDateString('es-CL')}
-                          </td>
-                          <td style={{ padding: '0', borderRight: '2px solid black', position: 'relative' }}>
-                            <input 
-                              type="text"
-                              value={t.description}
-                              onChange={(e) => handleDescriptionChange(t.id, e.target.value)}
-                              onBlur={() => handleDescriptionBlur(t.id, t.description, rawDesc)}
-                              style={{ 
-                                width: '100%', 
-                                padding: '1rem', 
-                                border: 'none', 
-                                background: 'transparent',
-                                fontWeight: t.description !== rawDesc ? 700 : 500,
-                                color: t.description !== rawDesc ? 'var(--primary)' : 'inherit',
-                                outline: 'none',
-                                cursor: 'text'
-                              }}
-                            />
-                            <Edit2 size={14} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.3, pointerEvents: 'none' }} />
-                          </td>
-                          <td style={{ padding: '0.5rem 1rem', borderRight: '2px solid black' }}>
-                            <select
-                              className="input-field"
-                              style={{ 
-                                padding: '0.5rem', 
-                                border: '2px solid black', 
-                                borderRadius: 'var(--radius-sm)',
-                                width: '100%', 
-                                maxWidth: '180px', 
-                                backgroundColor: t.category?.color || 'white',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                outline: 'none'
-                              }}
-                              value={t.category_id || ''}
-                              onChange={(e) => handleCategoryChange(t.id, e.target.value, t.description)}
-                            >
-                              <option value="">Sin Categoría</option>
-                              {categories.map(c => (
-                                <option key={c.id} value={c.id} style={{ backgroundColor: 'white' }}>{c.name}</option>
-                              ))}
-                            </select>
-                          </td>
-                          <td style={{ padding: '1rem', borderRight: '2px solid black' }}>
-                            <span className={t.type === 'ingreso' ? 'badge badge-success' : 'badge badge-danger'}>
-                              {t.type === 'ingreso' ? 'Abono' : 'Cargo'}
-                            </span>
-                          </td>
-                          <td style={{ padding: '1rem', fontWeight: 700, textAlign: 'right', fontSize: '1.125rem' }}>
-                            ${t.amount.toLocaleString('es-CL')}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              
-              {totalPages > 1 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', padding: '0.5rem' }}>
-                  <p style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
-                    Mostrando {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredTransactions.length)} de {filteredTransactions.length}
-                  </p>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button 
-                      className="btn btn-outline" 
-                      disabled={currentPage === 1}
-                      onClick={() => setCurrentPage(p => p - 1)}
-                    >
-                      Anterior
-                    </button>
-                    <button 
-                      className="btn btn-outline" 
-                      disabled={currentPage === totalPages}
-                      onClick={() => setCurrentPage(p => p + 1)}
-                    >
-                      Siguiente
-                    </button>
-                  </div>
-                </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', backgroundColor: 'white', border: '2px solid black', borderRadius: 'var(--radius-sm)' }}>
+            <thead style={{ backgroundColor: 'black', color: 'white' }}>
+              <tr>
+                <th style={{ padding: '1rem', fontWeight: 800 }}>Descripción Base</th>
+                <th style={{ padding: '1rem', fontWeight: 800 }}>Cant.</th>
+                <th style={{ padding: '1rem', fontWeight: 800 }}>Monto Acumulado (Egresos)</th>
+                <th style={{ padding: '1rem', fontWeight: 800 }}>Clasificar como...</th>
+              </tr>
+            </thead>
+            <tbody>
+              {bulkGroups.map((group, i) => (
+                <tr key={i} style={{ borderBottom: '2px solid black' }}>
+                  <td style={{ padding: '1rem', fontWeight: 700 }}>{group.name}</td>
+                  <td style={{ padding: '1rem', fontWeight: 800, fontSize: '1.25rem' }}>{group.count}</td>
+                  <td style={{ padding: '1rem', fontWeight: 800, color: 'var(--danger)' }}>
+                    ${group.total.toLocaleString('es-CL')}
+                  </td>
+                  <td style={{ padding: '1rem' }}>
+                    <CascadingCategorySelector 
+                      initialTipo={null} initialPrincipal={null} initialSecundaria={null}
+                      onSave={(t, p, s) => handleBulkCategorize(group.ids, t, p, s)}
+                    />
+                  </td>
+                </tr>
+              ))}
+              {bulkGroups.length === 0 && (
+                <tr>
+                  <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', fontWeight: 600 }}>
+                    ¡No tienes transacciones pendientes de clasificar!
+                  </td>
+                </tr>
               )}
-            </>
-          )
-        )}
-      </div>
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          {/* Header filtros */}
+          <div style={{ padding: '1.5rem', backgroundColor: '#f1f5f9', borderBottom: '2px solid black', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ flex: 1, minWidth: '250px', position: 'relative' }}>
+              <Search size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+              <input 
+                type="text" 
+                className="input" 
+                placeholder="Buscar por descripción..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{ width: '100%', paddingLeft: '3rem' }}
+              />
+            </div>
+            
+            <select className="input" style={{ width: 'auto' }} value={filterYear} onChange={e => setFilterYear(e.target.value)}>
+              <option value="all">Todos los años</option>
+              {availableYears.map(y => <option key={y} value={y.toString()}>{y}</option>)}
+            </select>
+            
+            <select className="input" style={{ width: 'auto' }} value={filterMonth} onChange={e => setFilterMonth(e.target.value)}>
+              <option value="all">Todos los meses</option>
+              {Array.from({length: 12}, (_, i) => <option key={i+1} value={(i+1).toString()}>{new Date(2000, i, 1).toLocaleString('es-CL', { month: 'long' })}</option>)}
+            </select>
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' }}>
+              <thead style={{ backgroundColor: 'black', color: 'white' }}>
+                <tr>
+                  <th style={{ padding: '1rem', fontWeight: 800 }}>Fecha</th>
+                  <th style={{ padding: '1rem', fontWeight: 800, width: '30%' }}>Descripción (Editable)</th>
+                  <th style={{ padding: '1rem', fontWeight: 800 }}>Monto</th>
+                  <th style={{ padding: '1rem', fontWeight: 800, width: '40%' }}>Clasificación</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedTransactions.map((tx, i) => {
+                  const rawDescKey = tx.raw_data ? Object.keys(tx.raw_data).find(k => k.toLowerCase().includes('descripc')) || '' : '';
+                  const rawDesc = tx.raw_data ? tx.raw_data[rawDescKey] : '';
+
+                  return (
+                    <tr key={tx.id} style={{ borderBottom: '2px solid black', backgroundColor: i % 2 === 0 ? 'white' : 'rgba(0,0,0,0.02)' }} className="table-row">
+                      <td style={{ padding: '1rem', fontWeight: 600 }}>{tx.date}</td>
+                      <td style={{ padding: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'transparent', border: '1px solid transparent' }} className="editable-cell">
+                          <input 
+                            type="text" 
+                            value={tx.description} 
+                            onChange={(e) => setTransactions(prev => prev.map(t => t.id === tx.id ? { ...t, description: e.target.value } : t))}
+                            onBlur={(e) => handleDescriptionBlur(tx.id, e.target.value, rawDesc)}
+                            style={{ 
+                              border: 'none', background: 'transparent', fontWeight: 700, width: '100%', outline: 'none', fontSize: '1rem'
+                            }}
+                          />
+                          <Edit2 size={16} color="#94a3b8" />
+                        </div>
+                        {rawDesc && tx.description !== rawDesc && (
+                          <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem' }}>
+                            Orig: {rawDesc}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: '1rem', fontWeight: 800, color: tx.type === 'ingreso' ? 'var(--success)' : 'var(--danger)' }}>
+                        {tx.type === 'ingreso' ? '+' : '-'}${tx.amount.toLocaleString('es-CL')}
+                      </td>
+                      <td style={{ padding: '1rem' }}>
+                        <CascadingCategorySelector 
+                          initialTipo={tx.tipo_movimiento}
+                          initialPrincipal={tx.categoria_principal}
+                          initialSecundaria={tx.categoria_secundaria}
+                          onSave={(t, p, s) => handleCategorize(tx.id, tx.description, t, p, s)}
+                        />
+                      </td>
+                    </tr>
+                  )
+                })}
+                {paginatedTransactions.length === 0 && (
+                  <tr>
+                    <td colSpan={5} style={{ padding: '3rem', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                      No se encontraron transacciones.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {totalPages > 1 && (
+            <div style={{ padding: '1rem', borderTop: '2px solid black', display: 'flex', justifyContent: 'center', gap: '1rem', alignItems: 'center' }}>
+              <button 
+                className="btn btn-outline" 
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(p => p - 1)}
+              >
+                Anterior
+              </button>
+              <span style={{ fontWeight: 700 }}>
+                Página {currentPage} de {totalPages}
+              </span>
+              <button 
+                className="btn btn-outline" 
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(p => p + 1)}
+              >
+                Siguiente
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
