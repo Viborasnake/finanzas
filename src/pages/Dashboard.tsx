@@ -49,7 +49,7 @@ export default function Dashboard() {
       const matchesMonth = filterMonth === 'all' || (date.getMonth() + 1).toString() === filterMonth;
       
       const catName = t.category?.name?.toLowerCase() || '';
-      const isIgnored = catName.includes('ignorar') || catName.includes('traspaso');
+      const isIgnored = catName.includes('ignorar') || catName.includes('traspaso') || catName.includes('transferencia');
 
       return matchesYear && matchesMonth && !isIgnored;
     });
