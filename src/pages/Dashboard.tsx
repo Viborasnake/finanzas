@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Search, Filter } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Search, Filter, AlertTriangle } from 'lucide-react';
 
 export default function Dashboard() {
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -13,6 +13,7 @@ export default function Dashboard() {
   const [filterMonth, setFilterMonth] = useState('all');
   const [groupByCategory, setGroupByCategory] = useState(true);
   const [hiddenCategories, setHiddenCategories] = useState<string[]>([]);
+  const [isRealExpenseMode, setIsRealExpenseMode] = useState(true);
 
   const { user } = useAuth();
 
@@ -67,10 +68,11 @@ export default function Dashboard() {
       
       const categoryId = t.category?.id || 'uncategorized';
       const isHidden = hiddenCategories.includes(categoryId);
+      const isTransfer = isRealExpenseMode && t.is_internal_transfer;
 
-      return matchesYear && matchesMonth && !isHidden;
+      return matchesYear && matchesMonth && !isHidden && !isTransfer;
     });
-  }, [transactions, filterYear, filterMonth, hiddenCategories]);
+  }, [transactions, filterYear, filterMonth, hiddenCategories, isRealExpenseMode]);
 
   const calculateSummary = () => {
     let ingresos = 0;
@@ -81,7 +83,29 @@ export default function Dashboard() {
       if (t.type === 'egreso') egresos += t.amount;
     });
 
-    return { ingresos, egresos, balance: ingresos - egresos };
+    // Calcular montos absolutos sin importar el modo actual (para desglose semántico)
+    const baseTransactions = transactions.filter(t => {
+      const date = new Date(t.date);
+      const matchesYear = filterYear === 'all' || date.getFullYear().toString() === filterYear;
+      const matchesMonth = filterMonth === 'all' || (date.getMonth() + 1).toString() === filterMonth;
+      const categoryId = t.category?.id || 'uncategorized';
+      const isHidden = hiddenCategories.includes(categoryId);
+      return matchesYear && matchesMonth && !isHidden;
+    });
+
+    let realBalance = 0;
+    let transfersBalance = 0;
+    
+    baseTransactions.forEach(t => {
+      const amt = t.type === 'ingreso' ? t.amount : -t.amount;
+      if (t.is_internal_transfer) {
+        transfersBalance += amt;
+      } else {
+        realBalance += amt;
+      }
+    });
+
+    return { ingresos, egresos, balance: ingresos - egresos, realBalance, transfersBalance };
   };
 
   const getChartData = () => {
@@ -109,14 +133,18 @@ export default function Dashboard() {
     const expenses: { [desc: string]: { count: number, total: number, data: any[], color: string } } = {};
     
     filteredTransactions.forEach(t => {
-      if (t.type === 'egreso') {
-        const desc = groupByCategory ? (t.category?.name || 'Sin Categoría') : t.description;
-        if (!expenses[desc]) {
-          expenses[desc] = { count: 0, total: 0, data: [], color: t.category?.color || '#e2e8f0' };
+      const categoryId = t.category?.id || 'uncategorized';
+      const isFijo = t.category?.name?.toLowerCase().includes('fijo');
+      
+      // Excluir Sin Categoría y Fijos de las "Fugas recurrentes"
+      if (t.type === 'egreso' && categoryId !== 'uncategorized' && !isFijo) {
+        const desc = groupByCategory ? t.category?.name : t.description;
+        if (!expenses[desc!]) {
+          expenses[desc!] = { count: 0, total: 0, data: [], color: t.category?.color || '#e2e8f0' };
         }
-        expenses[desc].count += 1;
-        expenses[desc].total += t.amount;
-        expenses[desc].data.push(t);
+        expenses[desc!].count += 1;
+        expenses[desc!].total += t.amount;
+        expenses[desc!].data.push(t);
       }
     });
 
@@ -196,9 +224,37 @@ export default function Dashboard() {
 
   const specificItemTrendData = selectedRecurringItem ? getSpecificItemTrend(selectedRecurringItem) : [];
 
+  const renderUncategorizedAlert = () => {
+    const uncategorized = transactions.filter(t => {
+      const date = new Date(t.date);
+      const matchesYear = filterYear === 'all' || date.getFullYear().toString() === filterYear;
+      const matchesMonth = filterMonth === 'all' || (date.getMonth() + 1).toString() === filterMonth;
+      return matchesYear && matchesMonth && (!t.category || t.category.id === 'uncategorized');
+    });
+
+    if (uncategorized.length === 0) return null;
+
+    const totalUncat = uncategorized.reduce((acc, t) => acc + t.amount, 0);
+
+    return (
+      <div style={{ backgroundColor: '#fef08a', padding: '1.5rem', border: '2px solid black', borderRadius: 'var(--radius-sm)', boxShadow: '4px 4px 0px black', marginBottom: '3rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+        <div style={{ backgroundColor: 'white', padding: '1rem', border: '2px solid black', borderRadius: '50%' }}>
+          <AlertTriangle size={28} color="#ca8a04" />
+        </div>
+        <div>
+          <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.25rem', color: '#854d0e' }}>⚠️ Alerta de Calidad de Datos</h3>
+          <p style={{ margin: 0, fontSize: '1rem', fontWeight: 500, color: '#a16207' }}>
+            Tienes <strong>{uncategorized.length} pagos</strong> sin clasificar por un total de <strong>${totalUncat.toLocaleString('es-CL')}</strong> en este período. Clasifícalos en la sección de Transacciones para asegurarte de que no haya gastos o fugas ocultas.
+          </p>
+        </div>
+      </div>
+    );
+  };
+
   const generateInsightReport = () => {
     if (filteredTransactions.length === 0) return <p>Importa tus datos o cambia los filtros para ver un análisis inteligente de tu situación financiera.</p>;
 
+    const { balance, realBalance, transfersBalance } = calculateSummary();
     const isDeficit = balance < 0;
     
     const ingresosTx = filteredTransactions.filter(t => t.type === 'ingreso');
@@ -229,7 +285,21 @@ export default function Dashboard() {
             <div>
               <p style={{ margin: 0, fontSize: '1.15rem', lineHeight: '1.6', fontWeight: 500, color: 'var(--text-primary)' }}>
                 Tu balance actual indica un <span style={{ fontWeight: 800, backgroundColor: isDeficit ? '#fecaca' : '#bbf7d0', padding: '0.2rem 0.6rem', border: '2px solid black', borderRadius: 'var(--radius-sm)', textTransform: 'uppercase' }}>{isDeficit ? 'Déficit' : 'Superávit'}</span> de <strong>${Math.abs(balance).toLocaleString('es-CL')}</strong>. 
-                {isDeficit ? ' Presta atención, tus gastos están superando a tus ingresos en este periodo.' : ' ¡Vas por excelente camino manteniendo tus finanzas en verde!'}
+                {isDeficit ? (
+                  <>
+                    {' '}Presta atención, tus gastos están superando a tus ingresos en este periodo.
+                    {isRealExpenseMode && transfersBalance !== 0 && (
+                      <span style={{ display: 'block', marginTop: '0.5rem', fontSize: '1rem', color: '#64748b' }}>
+                        💡 Nota: Este cálculo excluye <strong>${Math.abs(transfersBalance).toLocaleString('es-CL')}</strong> en traspasos entre tus propias cuentas.
+                      </span>
+                    )}
+                    {!isRealExpenseMode && transfersBalance !== 0 && (
+                      <span style={{ display: 'block', marginTop: '0.5rem', fontSize: '1rem', color: '#64748b' }}>
+                        💡 Desglose: <strong>${Math.abs(realBalance).toLocaleString('es-CL')}</strong> es tu gasto real y <strong>${Math.abs(transfersBalance).toLocaleString('es-CL')}</strong> es movimiento entre cuentas.
+                      </span>
+                    )}
+                  </>
+                ) : ' ¡Vas por excelente camino manteniendo tus finanzas en verde!'}
               </p>
             </div>
           </div>
@@ -275,6 +345,23 @@ export default function Dashboard() {
 
   return (
     <div>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', backgroundColor: 'white', border: '2px solid black', borderRadius: '2rem', overflow: 'hidden', boxShadow: '4px 4px 0px black' }}>
+          <button 
+            onClick={() => setIsRealExpenseMode(true)}
+            style={{ padding: '0.75rem 1.5rem', border: 'none', background: isRealExpenseMode ? 'black' : 'transparent', color: isRealExpenseMode ? 'white' : 'black', fontWeight: 800, fontSize: '1rem', cursor: 'pointer', transition: 'all 0.1s' }}
+          >
+            Gasto Real
+          </button>
+          <button 
+            onClick={() => setIsRealExpenseMode(false)}
+            style={{ padding: '0.75rem 1.5rem', border: 'none', background: !isRealExpenseMode ? 'black' : 'transparent', color: !isRealExpenseMode ? 'white' : 'black', fontWeight: 800, fontSize: '1rem', cursor: 'pointer', transition: 'all 0.1s' }}
+          >
+            Flujo de Caja Total
+          </button>
+        </div>
+      </div>
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1.5rem' }}>
         <h1 style={{ margin: 0, fontSize: '2.5rem' }}>Resumen Financiero</h1>
         
@@ -341,6 +428,8 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {renderUncategorizedAlert()}
 
       {/* Verbalización Inteligente */}
       {generateInsightReport()}

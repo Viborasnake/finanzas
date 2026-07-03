@@ -178,14 +178,26 @@ export default function CSVImport() {
       }
 
       const { error } = await supabase.from('transactions').insert(
-        newTransactions.map(t => ({
-          user_id: user.id,
-          date: t.date,
-          description: t.description,
-          amount: t.amount,
-          type: t.type,
-          raw_data: t.raw_data
-        }))
+        newTransactions.map(t => {
+          const descForCheck = (t.original_description || t.description || '').toLowerCase();
+          const isTransfer = 
+            descForCheck.includes('tef 16424491') || 
+            descForCheck.includes('transferencia personal') || 
+            descForCheck.includes('traspaso fondo') ||
+            descForCheck.includes('abono a l.credito') ||
+            descForCheck.includes('pago tarjeta') ||
+            descForCheck.includes('pago tj');
+
+          return {
+            user_id: user.id,
+            date: t.date,
+            description: t.description,
+            amount: t.amount,
+            type: t.type,
+            raw_data: t.raw_data,
+            is_internal_transfer: isTransfer
+          };
+        })
       );
 
       if (error) throw error;
