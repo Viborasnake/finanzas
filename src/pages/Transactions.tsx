@@ -146,6 +146,8 @@ export default function Transactions() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
   
   const [filterYear, setFilterYear] = useState('all');
   const [filterMonth, setFilterMonth] = useState('all');
@@ -193,7 +195,10 @@ export default function Transactions() {
     const matchesYear = filterYear === 'all' || date.getFullYear().toString() === filterYear;
     const matchesMonth = filterMonth === 'all' || (date.getMonth() + 1).toString() === filterMonth;
 
-    return matchesSearch && matchesYear && matchesMonth;
+    const matchesType = filterType === 'all' || (filterType === 'expense' ? t.amount < 0 : t.amount > 0);
+    const matchesStatus = filterStatus === 'all' || (filterStatus === 'classified' ? !!t.tipo_movimiento : !t.tipo_movimiento);
+
+    return matchesSearch && matchesYear && matchesMonth && matchesType && matchesStatus;
   });
 
   const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
@@ -460,6 +465,18 @@ export default function Transactions() {
             <select className="input" style={{ width: 'auto' }} value={filterMonth} onChange={e => setFilterMonth(e.target.value)}>
               <option value="all">Todos los meses</option>
               {Array.from({length: 12}, (_, i) => <option key={i+1} value={(i+1).toString()}>{new Date(2000, i, 1).toLocaleString('es-CL', { month: 'long' })}</option>)}
+            </select>
+
+            <select className="input" style={{ width: 'auto' }} value={filterType} onChange={e => setFilterType(e.target.value)}>
+              <option value="all">Ingresos y Egresos</option>
+              <option value="expense">Solo Egresos</option>
+              <option value="income">Solo Ingresos</option>
+            </select>
+            
+            <select className="input" style={{ width: 'auto' }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+              <option value="all">Todas las transacciones</option>
+              <option value="classified">Clasificadas</option>
+              <option value="unclassified">Por clasificar</option>
             </select>
           </div>
 
