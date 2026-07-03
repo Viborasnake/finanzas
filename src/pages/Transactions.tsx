@@ -25,7 +25,7 @@ export default function Transactions() {
     try {
       const { data, error } = await supabase
         .from('transactions')
-        .select('*')
+        .select('*, category:categories(id, name, color)')
         .eq('user_id', user?.id)
         .order('date', { ascending: false });
 
@@ -37,6 +37,20 @@ export default function Transactions() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const [categories, setCategories] = useState<any[]>([]);
+  useEffect(() => {
+    if (user) {
+      fetchCategories();
+    }
+  }, [user]);
+
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase.from('categories').select('*').order('name');
+      if (!error && data) setCategories(data);
+    } catch (err) {}
   };
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -132,6 +146,73 @@ export default function Transactions() {
       const { error } = await supabase.from('transactions').update({ description: currentDesc }).eq('id', id);
       if (error) toast.error("Error al actualizar");
       else toast.success("Alias actualizado");
+    }
+  };
+
+  const handleCategoryChange = async (id: string, newCategoryId: string, currentDesc: string) => {
+    const newCategory = categories.find(c => c.id === newCategoryId) || null;
+    
+    // update locally immediately
+    setTransactions(prev => prev.map(t => t.id === id ? { ...t, category_id: newCategoryId || null, category: newCategory } : t));
+
+    const othersCount = transactions.filter(t => t.id !== id && t.description === currentDesc && t.category_id !== newCategoryId).length;
+
+    if (othersCount > 0 && newCategoryId) {
+      toast.custom((t) => (
+        <div className="card" style={{ padding: '1.5rem', border: '2px solid black', boxShadow: '4px 4px 0px black', background: 'white', maxWidth: '400px' }}>
+          <h3 style={{ marginTop: 0, fontSize: '1.125rem' }}>Categorización Múltiple</h3>
+          <p style={{ margin: '0.5rem 0 1.5rem' }}>
+            Hay otras {othersCount} transacciones con el alias "{currentDesc}". ¿Quieres asignarles la categoría "{newCategory?.name}" a todas ellas también?
+          </p>
+          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+            <button 
+              className="btn btn-outline" 
+              style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }} 
+              onClick={async () => {
+                toast.dismiss(t.id);
+                const { error } = await supabase.from('transactions').update({ category_id: newCategoryId || null }).eq('id', id);
+                if (error) toast.error("Error al actualizar");
+                else toast.success("Categoría actualizada");
+              }}
+            >
+              Solo a esta
+            </button>
+            <button 
+              className="btn btn-primary" 
+              style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }} 
+              onClick={async () => {
+                toast.dismiss(t.id);
+                
+                setTransactions(prev => prev.map(tx => {
+                  if (tx.description === currentDesc) {
+                    return { ...tx, category_id: newCategoryId || null, category: newCategory };
+                  }
+                  return tx;
+                }));
+
+                const { error } = await supabase
+                  .from('transactions')
+                  .update({ category_id: newCategoryId || null })
+                  .eq('user_id', user?.id)
+                  .eq('description', currentDesc);
+
+                if (error) {
+                  console.error(error);
+                  toast.error("Error al actualizar masivamente");
+                } else {
+                  toast.success("Categoría aplicada masivamente");
+                }
+              }}
+            >
+              Sí, a todas
+            </button>
+          </div>
+        </div>
+      ), { duration: Infinity });
+    } else {
+      const { error } = await supabase.from('transactions').update({ category_id: newCategoryId || null }).eq('id', id);
+      if (error) toast.error("Error al actualizar");
+      else toast.success("Categoría actualizada");
     }
   };
 
@@ -268,10 +349,28 @@ export default function Transactions() {
                           />
                           <Edit2 size={14} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.3, pointerEvents: 'none' }} />
                         </td>
-                        <td style={{ padding: '1rem', borderRight: '2px solid black' }}>
-                          <span className="badge" style={{ backgroundColor: '#e2e8f0', color: 'black' }}>
-                            Sin Categoría
-                          </span>
+                        <td style={{ padding: '0.5rem 1rem', borderRight: '2px solid black' }}>
+                          <select
+                            className="input-field"
+                            style={{ 
+                              padding: '0.5rem', 
+                              border: '2px solid black', 
+                              borderRadius: 'var(--radius-sm)',
+                              width: '100%', 
+                              maxWidth: '180px', 
+                              backgroundColor: t.category?.color || 'white',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              outline: 'none'
+                            }}
+                            value={t.category_id || ''}
+                            onChange={(e) => handleCategoryChange(t.id, e.target.value, t.description)}
+                          >
+                            <option value="">Sin Categoría</option>
+                            {categories.map(c => (
+                              <option key={c.id} value={c.id} style={{ backgroundColor: 'white' }}>{c.name}</option>
+                            ))}
+                          </select>
                         </td>
                         <td style={{ padding: '1rem', borderRight: '2px solid black' }}>
                           <span className={t.type === 'ingreso' ? 'badge badge-success' : 'badge badge-danger'}>

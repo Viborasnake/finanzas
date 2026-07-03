@@ -11,6 +11,7 @@ export default function Dashboard() {
   
   const [filterYear, setFilterYear] = useState('all');
   const [filterMonth, setFilterMonth] = useState('all');
+  const [groupByCategory, setGroupByCategory] = useState(false);
 
   const { user } = useAuth();
 
@@ -24,7 +25,7 @@ export default function Dashboard() {
     try {
       const { data, error } = await supabase
         .from('transactions')
-        .select('*')
+        .select('*, category:categories(id, name, color)')
         .order('date', { ascending: true });
 
       if (error) throw error;
@@ -46,7 +47,11 @@ export default function Dashboard() {
       const date = new Date(t.date);
       const matchesYear = filterYear === 'all' || date.getFullYear().toString() === filterYear;
       const matchesMonth = filterMonth === 'all' || (date.getMonth() + 1).toString() === filterMonth;
-      return matchesYear && matchesMonth;
+      
+      const catName = t.category?.name?.toLowerCase() || '';
+      const isIgnored = catName.includes('ignorar') || catName.includes('traspaso');
+
+      return matchesYear && matchesMonth && !isIgnored;
     });
   }, [transactions, filterYear, filterMonth]);
 
@@ -84,13 +89,13 @@ export default function Dashboard() {
   };
 
   const getRecurringExpenses = () => {
-    const expenses: { [desc: string]: { count: number, total: number, data: any[] } } = {};
+    const expenses: { [desc: string]: { count: number, total: number, data: any[], color: string } } = {};
     
     filteredTransactions.forEach(t => {
       if (t.type === 'egreso') {
-        const desc = t.description;
+        const desc = groupByCategory ? (t.category?.name || 'Sin Categoría') : t.description;
         if (!expenses[desc]) {
-          expenses[desc] = { count: 0, total: 0, data: [] };
+          expenses[desc] = { count: 0, total: 0, data: [], color: t.category?.color || '#e2e8f0' };
         }
         expenses[desc].count += 1;
         expenses[desc].total += t.amount;
@@ -332,10 +337,44 @@ export default function Dashboard() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', alignItems: 'start' }}>
           {/* Tabla de Top Recurrentes */}
-          <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
-            <div style={{ padding: '1.5rem', borderBottom: '2px solid black', backgroundColor: 'var(--pastel-blue)' }}>
-              <h3 style={{ margin: 0, fontSize: '1.25rem' }}>Top Gastos Recurrentes</h3>
-              <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 500, opacity: 0.8 }}>Haz clic en un ítem para ver su tendencia</p>
+          <div className="card" style={{ gridColumn: '1 / -1', padding: '0', overflow: 'hidden' }}>
+            <div style={{ padding: '2rem', backgroundColor: '#bfdbfe', borderBottom: '2px solid black', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.5rem', marginBottom: '0.5rem' }}>Top Gastos Recurrentes</h3>
+                <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Haz clic en un ítem para ver su tendencia</p>
+              </div>
+              
+              <div style={{ display: 'flex', alignItems: 'center', backgroundColor: 'white', border: '2px solid black', borderRadius: 'var(--radius-sm)', overflow: 'hidden', boxShadow: '2px 2px 0px black' }}>
+                <button 
+                  onClick={() => { setGroupByCategory(false); setSelectedRecurringItem(null); }}
+                  style={{ 
+                    padding: '0.5rem 1rem', 
+                    border: 'none', 
+                    background: !groupByCategory ? 'black' : 'transparent',
+                    color: !groupByCategory ? 'white' : 'black',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    borderRight: '2px solid black',
+                    outline: 'none'
+                  }}
+                >
+                  Por Ítem
+                </button>
+                <button 
+                  onClick={() => { setGroupByCategory(true); setSelectedRecurringItem(null); }}
+                  style={{ 
+                    padding: '0.5rem 1rem', 
+                    border: 'none', 
+                    background: groupByCategory ? 'black' : 'transparent',
+                    color: groupByCategory ? 'white' : 'black',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    outline: 'none'
+                  }}
+                >
+                  Por Categoría
+                </button>
+              </div>
             </div>
             <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
@@ -359,7 +398,16 @@ export default function Dashboard() {
                       }} 
                       className="table-row"
                     >
-                      <td style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 600 }}>{item.name}</td>
+                      <td style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 600 }}>
+                        {groupByCategory ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <div style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: item.color || '#ccc', border: '2px solid black' }}></div>
+                            {item.name}
+                          </div>
+                        ) : (
+                          item.name
+                        )}
+                      </td>
                       <td style={{ padding: '1rem', borderRight: '2px solid black', fontWeight: 500 }}>{item.count}</td>
                       <td style={{ padding: '1rem', fontWeight: 700, color: 'var(--danger)' }}>
                         ${item.total.toLocaleString('es-CL')}
