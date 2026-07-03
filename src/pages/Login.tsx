@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import toast from 'react-hot-toast';
 import { supabase } from '../services/supabase';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -31,7 +32,7 @@ export default function Login() {
           password,
         });
         if (error) throw error;
-        alert('Revisa tu correo para confirmar el registro.');
+        toast.success('Revisa tu correo para confirmar el registro.');
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,

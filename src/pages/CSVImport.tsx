@@ -5,6 +5,7 @@ import { UploadCloud, CheckCircle2, AlertTriangle, Edit2 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 interface Transaction {
   date: string;
@@ -150,7 +151,7 @@ export default function CSVImport() {
 
       if (error) throw error;
       
-      alert("Transacciones guardadas exitosamente!");
+      toast.success("Transacciones guardadas exitosamente!");
       navigate('/transactions');
     } catch (err: any) {
       setError(err.message || "Error al guardar en la base de datos.");
@@ -168,19 +169,43 @@ export default function CSVImport() {
   const handleDescriptionBlur = (index: number) => {
     const row = data[index];
     if (row.description !== row.original_description && row.description.trim() !== '') {
-      // Buscar si hay otras transacciones con la misma descripción original
       const othersCount = data.filter((t, i) => i !== index && t.original_description === row.original_description && t.description === row.original_description).length;
       
       if (othersCount > 0) {
-        if (window.confirm(`Hay otras ${othersCount} transacciones idénticas. ¿Quieres aplicar el nombre "${row.description}" a todas ellas también?`)) {
-          const newData = data.map(t => {
-            if (t.original_description === row.original_description) {
-              return { ...t, description: row.description };
-            }
-            return t;
-          });
-          setData(newData);
-        }
+        toast.custom((t) => (
+          <div className="card" style={{ padding: '1.5rem', border: '2px solid black', boxShadow: '4px 4px 0px black', background: 'white', maxWidth: '400px' }}>
+            <h3 style={{ marginTop: 0, fontSize: '1.125rem' }}>Renombrado Múltiple</h3>
+            <p style={{ margin: '0.5rem 0 1.5rem' }}>
+              Hay otras {othersCount} transacciones idénticas. ¿Quieres aplicar el nombre "{row.description}" a todas ellas también?
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button 
+                className="btn btn-outline" 
+                style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }} 
+                onClick={() => toast.dismiss(t.id)}
+              >
+                Solo a esta
+              </button>
+              <button 
+                className="btn btn-primary" 
+                style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }} 
+                onClick={() => {
+                  toast.dismiss(t.id);
+                  const newData = data.map(t_iter => {
+                    if (t_iter.original_description === row.original_description) {
+                      return { ...t_iter, description: row.description };
+                    }
+                    return t_iter;
+                  });
+                  setData(newData);
+                  toast.success("Nombres actualizados masivamente");
+                }}
+              >
+                Sí, a todas
+              </button>
+            </div>
+          </div>
+        ), { duration: Infinity });
       }
     }
   };
