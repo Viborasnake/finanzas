@@ -3,7 +3,7 @@ import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   ChevronRight, TrendingUp, TrendingDown, 
-  Wallet, CreditCard, AlertTriangle, Sparkles, Activity, Search
+  Wallet, CreditCard, AlertTriangle, Sparkles, Activity, Search, X
 } from 'lucide-react';
 import { 
   AreaChart, Area,
@@ -88,6 +88,7 @@ export default function Dashboard() {
 
   const [categoryLevel, setCategoryLevel] = useState<CategoryLevel>('principal');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [detailsModal, setDetailsModal] = useState<{ isOpen: boolean; title: string; transactions: any[]; } | null>(null);
 
   const toggleCategory = (name: string) => {
     setSelectedCategories(prev =>
@@ -112,6 +113,55 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Error fetching transactions:', error);
     }
+  };
+
+  const openDetailsModal = (conceptName: string, type: 'ingreso' | 'egreso') => {
+    const { start, end } = dateRange;
+    const txs = transactions.filter(t => {
+      const d = new Date(t.date);
+      return d >= start && d <= end && t.type === type;
+    });
+
+    let filtered: any[] = [];
+    if (type === 'ingreso') {
+      filtered = txs.filter(t => {
+        const isInternal = t.tipo_movimiento === 'Movimiento Interno';
+        const catP = t.categoria_principal?.toLowerCase() || '';
+        
+        if (conceptName === 'Aporte Propio') return isInternal;
+        if (isInternal) return false;
+        
+        if (conceptName === 'Sueldo') return catP.includes('sueldo');
+        if (conceptName === 'Honorarios') return catP.includes('honorarios') || catP.includes('profesionales');
+        if (conceptName === 'Otros Ingresos') return !catP.includes('sueldo') && !catP.includes('honorarios') && !catP.includes('profesionales');
+        return false;
+      });
+    } else {
+      filtered = txs.filter(t => {
+        const isInternal = t.tipo_movimiento === 'Movimiento Interno';
+        const isInv = t.tipo_movimiento === 'Ahorro/Inversión';
+        const catP = t.categoria_principal || 'Sin Clasificar';
+        
+        if (conceptName === 'Movimiento Interno') return isInternal;
+        if (isInternal || isInv) return false;
+        
+        if (conceptName === 'Otros Gastos') {
+          const sortedCats = [...stats.current.topCatsPrincipal].filter(x => x.name !== 'Sin Clasificar');
+          const top3Names = sortedCats.slice(0, 3).map(c => c.name);
+          return !top3Names.includes(catP);
+        }
+        
+        return catP === conceptName;
+      });
+    }
+    
+    filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    setDetailsModal({
+      isOpen: true,
+      title: `Detalle: ${conceptName}`,
+      transactions: filtered
+    });
   };
 
   // --- Computations ---
@@ -645,7 +695,13 @@ export default function Dashboard() {
                 </thead>
                 <tbody>
                   {incomeData.map((row, i) => (
-                    <tr key={row.name} style={{ borderBottom: i === incomeData.length - 1 ? 'none' : '2px solid #000', backgroundColor: row.isGray ? '#f8fafc' : '#fff' }}>
+                    <tr 
+                      key={row.name} 
+                      onClick={() => openDetailsModal(row.name, 'ingreso')}
+                      style={{ borderBottom: i === incomeData.length - 1 ? 'none' : '2px solid #000', backgroundColor: row.isGray ? '#f8fafc' : '#fff', cursor: 'pointer' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f1f5f9')}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = row.isGray ? '#f8fafc' : '#fff')}
+                    >
                       <td style={{ padding: '0.75rem', fontWeight: 700, borderRight: '2px solid #000', color: row.isGray ? '#64748b' : '#000' }}>{row.name}</td>
                       <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: row.isGray ? '#64748b' : '#000' }}>${row.value.toLocaleString('es-CL')}</td>
                     </tr>
@@ -694,7 +750,13 @@ export default function Dashboard() {
                 </thead>
                 <tbody>
                   {expenseData.map((row, i) => (
-                    <tr key={row.name} style={{ borderBottom: i === expenseData.length - 1 ? 'none' : '2px solid #000', backgroundColor: row.isGray ? '#f8fafc' : '#fff' }}>
+                    <tr 
+                      key={row.name} 
+                      onClick={() => openDetailsModal(row.name, 'egreso')}
+                      style={{ borderBottom: i === expenseData.length - 1 ? 'none' : '2px solid #000', backgroundColor: row.isGray ? '#f8fafc' : '#fff', cursor: 'pointer' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f1f5f9')}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = row.isGray ? '#f8fafc' : '#fff')}
+                    >
                       <td style={{ padding: '0.75rem', fontWeight: 700, borderRight: '2px solid #000', color: row.isGray ? '#64748b' : '#000' }}>{row.name}</td>
                       <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: row.isGray ? '#64748b' : '#000' }}>${row.value.toLocaleString('es-CL')}</td>
                     </tr>
@@ -1042,6 +1104,48 @@ export default function Dashboard() {
           {renderAnalysisBlock()}
           {renderYearlyChart()}
         </>
+      )}
+
+      {/* Details Modal */}
+      {detailsModal && detailsModal.isOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backdropFilter: 'blur(4px)' }} onClick={() => setDetailsModal(null)}>
+          <div style={{ backgroundColor: '#fff', border: '3px solid #000', borderRadius: '12px', boxShadow: '8px 8px 0px #000', width: '100%', maxWidth: '700px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '3px solid #000', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f1f5f9', borderRadius: '9px 9px 0 0' }}>
+              <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: '"Montserrat", sans-serif' }}>{detailsModal.title}</h2>
+              <button onClick={() => setDetailsModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: 0 }}>
+                <X size={24} strokeWidth={3} />
+              </button>
+            </div>
+            <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1, backgroundColor: '#fff', borderRadius: '0 0 9px 9px' }}>
+              {detailsModal.transactions.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '2rem 0' }}>
+                  <p style={{ margin: 0, fontWeight: 700, fontSize: '1.1rem', color: '#64748b' }}>No hay movimientos para este concepto.</p>
+                </div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', border: '2px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 800, fontSize: '0.9rem', color: '#475569' }}>Fecha</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 800, fontSize: '0.9rem', color: '#475569' }}>Descripción</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, fontSize: '0.9rem', color: '#475569' }}>Monto</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detailsModal.transactions.map((t, i) => (
+                      <tr key={t.id} style={{ borderBottom: i === detailsModal.transactions.length - 1 ? 'none' : '1px solid #e2e8f0', backgroundColor: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                        <td style={{ padding: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap', fontSize: '0.9rem' }}>{t.date}</td>
+                        <td style={{ padding: '0.75rem', fontSize: '0.9rem', fontWeight: 500 }}>{t.description || t.original_description || 'Sin descripción'}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: t.type === 'ingreso' ? '#16a34a' : '#000' }}>
+                          ${Math.abs(t.amount).toLocaleString('es-CL')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
