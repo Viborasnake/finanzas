@@ -472,10 +472,33 @@ export default function Dashboard() {
     const c = stats.current;
     const p = stats.prev;
 
+    // Income Logic
+    const totalEntradas = c.ingresos + c.aportePropio;
+    const incomeData: { name: string; value: number; isGray?: boolean }[] = [
+      { name: 'Sueldo', value: c.sueldo },
+      { name: 'Honorarios', value: c.honorarios },
+      { name: 'Otros Ingresos', value: c.ingresosOtros },
+      { name: 'Aporte Propio', value: c.aportePropio, isGray: true }
+    ];
+
+    // Expense Logic
+    const sorted = [...c.topCatsPrincipal].filter(x => x.name !== 'Sin Clasificar');
+    const top3 = sorted.slice(0, 3);
+    const others = sorted.slice(3).reduce((acc, curr) => acc + curr.amount, 0);
+    const sinClasificarAmount = c.topCatsPrincipal.find(x => x.name === 'Sin Clasificar')?.amount || 0;
+    const totalOtros = others + sinClasificarAmount;
+    const totalSalidas = top3.reduce((a, b) => a + b.amount, 0) + totalOtros + c.movimientoInternoGasto;
+    
+    const expenseData: { name: string; value: number; isGray?: boolean }[] = [
+      ...top3.map(cat => ({ name: cat.name, value: cat.amount })),
+      ...(totalOtros > 0 ? [{ name: 'Otros Gastos', value: totalOtros }] : []),
+      { name: 'Movimiento Interno', value: c.movimientoInternoGasto, isGray: true }
+    ];
+
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
-        {/* Ingresos */}
-        <div style={{ ...neoCard, position: 'relative', overflow: 'hidden', paddingBottom: '6rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
+        {/* Ingresos Card */}
+        <div style={{ ...neoCard, position: 'relative', overflow: 'hidden', paddingBottom: '7rem', marginBottom: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', position: 'relative', zIndex: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div style={{ backgroundColor: '#bbf7d0', padding: '0.5rem', borderRadius: '50%', border: '2px solid #000' }}>
@@ -485,14 +508,41 @@ export default function Dashboard() {
             </div>
             {renderTrendBadge(c.ingresos, p.ingresos, false)}
           </div>
-          <p style={{ margin: 0, fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '-1px' }}>
+          <p style={{ margin: '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '-1px' }}>
             ${c.ingresos.toLocaleString('es-CL')}
           </p>
+          
+          {totalEntradas > 0 && (
+            <div style={{ position: 'relative', zIndex: 10, flex: 1, paddingBottom: '1rem' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', border: '3px solid #000', borderRadius: '8px', overflow: 'hidden', display: 'table', backgroundColor: 'rgba(255,255,255,0.9)' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f1f5f9', borderBottom: '3px solid #000' }}>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 900, borderRight: '2px solid #000' }}>Concepto</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 900 }}>Monto</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {incomeData.map((row, i) => (
+                    <tr key={row.name} style={{ borderBottom: i === incomeData.length - 1 ? 'none' : '2px solid #000', backgroundColor: row.isGray ? '#f8fafc' : '#fff' }}>
+                      <td style={{ padding: '0.75rem', fontWeight: 700, borderRight: '2px solid #000', color: row.isGray ? '#64748b' : '#000' }}>{row.name}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: row.isGray ? '#64748b' : '#000' }}>${row.value.toLocaleString('es-CL')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr style={{ backgroundColor: '#bbf7d0', borderTop: '3px solid #000' }}>
+                    <td style={{ padding: '0.75rem', fontWeight: 900, borderRight: '2px solid #000' }}>Total Entradas</td>
+                    <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 900 }}>${totalEntradas.toLocaleString('es-CL')}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
           {renderSparkline('Ingresos', '#dcfce7')}
         </div>
 
-        {/* Gastos */}
-        <div style={{ ...neoCard, position: 'relative', overflow: 'hidden', paddingBottom: '6rem' }}>
+        {/* Gastos Card */}
+        <div style={{ ...neoCard, position: 'relative', overflow: 'hidden', paddingBottom: '7rem', marginBottom: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', position: 'relative', zIndex: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div style={{ backgroundColor: '#fecaca', padding: '0.5rem', borderRadius: '50%', border: '2px solid #000' }}>
@@ -502,65 +552,43 @@ export default function Dashboard() {
             </div>
             {renderTrendBadge(c.gastos, p.gastos, true)}
           </div>
-          <p style={{ margin: 0, fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '-1px' }}>
+          <p style={{ margin: '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '-1px' }}>
             ${c.gastos.toLocaleString('es-CL')}
           </p>
+          
+          {totalSalidas > 0 && (
+            <div style={{ position: 'relative', zIndex: 10, flex: 1, paddingBottom: '1rem' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', border: '3px solid #000', borderRadius: '8px', overflow: 'hidden', display: 'table', backgroundColor: 'rgba(255,255,255,0.9)' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f1f5f9', borderBottom: '3px solid #000' }}>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 900, borderRight: '2px solid #000' }}>Concepto</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 900 }}>Monto</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {expenseData.map((row, i) => (
+                    <tr key={row.name} style={{ borderBottom: i === expenseData.length - 1 ? 'none' : '2px solid #000', backgroundColor: row.isGray ? '#f8fafc' : '#fff' }}>
+                      <td style={{ padding: '0.75rem', fontWeight: 700, borderRight: '2px solid #000', color: row.isGray ? '#64748b' : '#000' }}>{row.name}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: row.isGray ? '#64748b' : '#000' }}>${row.value.toLocaleString('es-CL')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr style={{ backgroundColor: '#fecaca', borderTop: '3px solid #000' }}>
+                    <td style={{ padding: '0.75rem', fontWeight: 900, borderRight: '2px solid #000' }}>Total Salidas</td>
+                    <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 900 }}>${totalSalidas.toLocaleString('es-CL')}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
           {renderSparkline('Gastos', '#fee2e2')}
         </div>
       </div>
     );
   };
 
-  // BLOCK 4: FUENTES DE INGRESO (TABLE)
-  const renderIncomeSources = () => {
-    const c = stats.current;
-    const totalEntradas = c.ingresos + c.aportePropio;
-    if (totalEntradas === 0) return null;
 
-    const data: { name: string; value: number; isGray?: boolean }[] = [
-      { name: 'Sueldo', value: c.sueldo },
-      { name: 'Honorarios', value: c.honorarios },
-      { name: 'Otros Ingresos', value: c.ingresosOtros },
-      { name: 'Aporte Propio', value: c.aportePropio, isGray: true }
-    ];
-
-    return (
-      <div style={{ ...neoCard, marginBottom: 0, height: '100%' }}>
-        <h2 style={{ fontSize: '1.6rem', margin: '0 0 1.5rem 0', fontFamily: 'serif', fontWeight: 900 }}>
-          Fuentes de Entrada
-        </h2>
-        
-        <table style={{ width: '100%', borderCollapse: 'collapse', border: '3px solid #000', borderRadius: '8px', overflow: 'hidden', display: 'table' }}>
-          <thead>
-            <tr style={{ backgroundColor: '#f1f5f9', borderBottom: '3px solid #000' }}>
-              <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 900, borderRight: '2px solid #000' }}>Concepto</th>
-              <th style={{ padding: '1rem', textAlign: 'right', fontWeight: 900 }}>Monto</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((row, i) => (
-              <tr key={row.name} style={{ borderBottom: i === data.length - 1 ? 'none' : '2px solid #000', backgroundColor: row.isGray ? '#f8fafc' : '#fff' }}>
-                <td style={{ padding: '1rem', fontWeight: 700, borderRight: '2px solid #000', color: row.isGray ? '#64748b' : '#000' }}>
-                  {row.name}
-                </td>
-                <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 800, fontSize: '1.1rem', color: row.isGray ? '#64748b' : '#000' }}>
-                  ${row.value.toLocaleString('es-CL')}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr style={{ backgroundColor: '#bbf7d0', borderTop: '3px solid #000' }}>
-              <td style={{ padding: '1rem', fontWeight: 900, borderRight: '2px solid #000' }}>Total Entradas</td>
-              <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 900, fontSize: '1.2rem' }}>
-                ${totalEntradas.toLocaleString('es-CL')}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-    );
-  };
 
   // BLOCK 5: TOP CATEGORIAS AND TIMELINE (Full width container)
   const renderAnalysisBlock = () => {
@@ -662,64 +690,7 @@ export default function Dashboard() {
     );
   };
 
-  // BLOCK 5: FUENTES DE SALIDA (TABLE)
-  const renderExpenseSources = () => {
-    const c = stats.current;
-    
-    // Calculate Top 3
-    const sorted = [...c.topCatsPrincipal].filter(x => x.name !== 'Sin Clasificar');
-    const top3 = sorted.slice(0, 3);
-    const others = sorted.slice(3).reduce((acc, curr) => acc + curr.amount, 0);
-    
-    const sinClasificarAmount = c.topCatsPrincipal.find(x => x.name === 'Sin Clasificar')?.amount || 0;
-    const totalOtros = others + sinClasificarAmount;
 
-    const totalSalidas = top3.reduce((a, b) => a + b.amount, 0) + totalOtros + c.movimientoInternoGasto;
-    if (totalSalidas === 0) return null;
-
-    const data: { name: string; value: number; isGray?: boolean }[] = [
-      ...top3.map(cat => ({ name: cat.name, value: cat.amount })),
-      ...(totalOtros > 0 ? [{ name: 'Otros Gastos', value: totalOtros }] : []),
-      { name: 'Movimiento Interno', value: c.movimientoInternoGasto, isGray: true }
-    ];
-
-    return (
-      <div style={{ ...neoCard, marginBottom: 0 }}>
-        <h2 style={{ fontSize: '1.6rem', margin: '0 0 1.5rem 0', fontFamily: 'serif', fontWeight: 900 }}>
-          Fuentes de Salida
-        </h2>
-        
-        <table style={{ width: '100%', borderCollapse: 'collapse', border: '3px solid #000', borderRadius: '8px', overflow: 'hidden', display: 'table' }}>
-          <thead>
-            <tr style={{ backgroundColor: '#f1f5f9', borderBottom: '3px solid #000' }}>
-              <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 900, borderRight: '2px solid #000' }}>Concepto</th>
-              <th style={{ padding: '1rem', textAlign: 'right', fontWeight: 900 }}>Monto</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((row, i) => (
-              <tr key={row.name} style={{ borderBottom: i === data.length - 1 ? 'none' : '2px solid #000', backgroundColor: row.isGray ? '#f8fafc' : '#fff' }}>
-                <td style={{ padding: '1rem', fontWeight: 700, borderRight: '2px solid #000', color: row.isGray ? '#64748b' : '#000' }}>
-                  {row.name}
-                </td>
-                <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 800, fontSize: '1.1rem', color: row.isGray ? '#64748b' : '#000' }}>
-                  ${row.value.toLocaleString('es-CL')}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr style={{ backgroundColor: '#fecaca', borderTop: '3px solid #000' }}>
-              <td style={{ padding: '1rem', fontWeight: 900, borderRight: '2px solid #000' }}>Total Salidas</td>
-              <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 900, fontSize: '1.2rem' }}>
-                ${totalSalidas.toLocaleString('es-CL')}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-    );
-  };
 
   // BLOCK 6: UNCLASSIFIED ALERT
   const renderUnclassifiedAlert = () => {
@@ -764,10 +735,7 @@ export default function Dashboard() {
           {renderUnclassifiedAlert()}
           {renderMainNumbers()}
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem', marginBottom: '2rem' }}>
-            {renderIncomeSources()}
-            {renderExpenseSources()}
-          </div>
+
           
           {renderAnalysisBlock()}
         </>
