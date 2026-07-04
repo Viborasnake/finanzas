@@ -99,7 +99,7 @@ function AddTransactionModal({ onClose, onAdd, activeBank, user }: any) {
     <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyItems: 'center' }}>
       <div style={{ background: '#fff', padding: '2rem', borderRadius: '12px', border: '3px solid #000', width: '100%', maxWidth: '400px', margin: 'auto', boxShadow: '8px 8px 0px #000' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900 }}>Agregar Manual</h2>
+          <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900 }}>Ajuste de Inicio</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={24} /></button>
         </div>
 
@@ -617,7 +617,7 @@ export default function Transactions() {
             className="btn btn-primary"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', fontSize: '0.875rem', marginLeft: uncatCount > 0 ? '1rem' : '0', verticalAlign: 'top' }}
           >
-            <Plus size={16} /> Agregar Manual
+            <Plus size={16} /> Ajuste de Inicio
           </button>
         </div>
         
@@ -900,7 +900,7 @@ export default function Transactions() {
         onClick={() => setIsAddModalOpen(true)}
         className="btn btn-primary" 
         style={{ position: 'fixed', bottom: '2rem', right: '2rem', width: '56px', height: '56px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '4px 4px 0px #000', padding: 0, zIndex: 90 }}
-        title="Agregar Transacción Manual"
+        title="Ajuste de Inicio"
       >
         <Plus size={24} />
       </button>
