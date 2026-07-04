@@ -633,14 +633,14 @@ export default function Dashboard() {
             )}
           </div>
         </div>
+        
+        {activeBank === 'Itaú' && transactions.length > 0 && (
+          <div style={{ background: '#f1f5f9', padding: '1rem', border: '2px solid black', borderRadius: '8px', marginBottom: '2rem', overflowX: 'auto' }}>
+            <h3 style={{ margin: '0 0 1rem 0' }}>DEBUG INFO:</h3>
+            <pre style={{ fontSize: '10px' }}>{JSON.stringify(transactions.slice(0, 5), null, 2)}</pre>
+          </div>
+        )}
       </div>
-      
-      {activeBank === 'Itaú' && transactions.length > 0 && (
-        <div style={{ background: '#f1f5f9', padding: '1rem', border: '2px solid black', borderRadius: '8px', marginBottom: '2rem', overflowX: 'auto' }}>
-          <h3 style={{ margin: '0 0 1rem 0' }}>DEBUG INFO:</h3>
-          <pre style={{ fontSize: '10px' }}>{JSON.stringify(transactions.slice(0, 5), null, 2)}</pre>
-        </div>
-      )}
     );
   };
 
