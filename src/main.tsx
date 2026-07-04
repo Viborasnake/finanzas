@@ -9,11 +9,11 @@ import './index.css'
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <AuthProvider>
-      <SettingsProvider>
-        <BankProvider>
+      <BankProvider>
+        <SettingsProvider>
           <App />
-        </BankProvider>
-      </SettingsProvider>
+        </SettingsProvider>
+      </BankProvider>
     </AuthProvider>
   </React.StrictMode>,
 )

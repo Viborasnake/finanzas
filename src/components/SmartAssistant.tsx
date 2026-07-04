@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { getRules, saveRules } from '../utils/classificationRules';
+import { useSettings } from '../contexts/SettingsContext';
 import { Check, X, Bot } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -12,6 +12,7 @@ interface SmartAssistantProps {
 
 export default function SmartAssistant({ transactions, onRefresh }: SmartAssistantProps) {
   const { user } = useAuth();
+  const { classificationRules, saveClassificationRules } = useSettings();
   const [contacts, setContacts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -85,7 +86,7 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
     const txDesc = (duda.transaction.description || '').toUpperCase();
     
     // 1. Crear Regla
-    const rules = getRules();
+    const rules = [...classificationRules];
     const exists = rules.find(r => r.keyword === txDesc);
     if (!exists) {
       rules.push({
@@ -95,7 +96,7 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
         categoria_principal: 'Pago a Familiar',
         categoria_secundaria: 'Pago a Familiar'
       });
-      saveRules(rules);
+      await saveClassificationRules(rules);
     }
 
     // 2. Actualizar en BD todas las txs con esa descripción

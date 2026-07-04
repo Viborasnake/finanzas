@@ -4,10 +4,12 @@ import Papa from 'papaparse';
 import { UploadCloud, CheckCircle2, AlertTriangle, Edit2 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useSettings } from '../contexts/SettingsContext';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { extractAndNormalizeRUT } from '../utils/rutParser';
 import { applyRules } from '../utils/classificationRules';
+import { useBanks } from '../contexts/BankContext';
 
 interface Transaction {
   date: string;
@@ -25,6 +27,8 @@ export default function CSVImport() {
   const [myRut, setMyRut] = useState<string | null>(null);
   const [knownContacts, setKnownContacts] = useState<any[]>([]);
   const { user } = useAuth();
+  const { classificationRules } = useSettings();
+  const { activeBank } = useBanks();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -155,6 +159,10 @@ export default function CSVImport() {
       setError("Debes iniciar sesión para guardar transacciones.");
       return;
     }
+    if (!activeBank) {
+      setError("Debes tener un banco seleccionado antes de importar.");
+      return;
+    }
     
     setLoading(true);
     setError(null);
@@ -229,7 +237,7 @@ export default function CSVImport() {
           }
 
           if (!tipo_movimiento) {
-            const ruleMatch = applyRules(descForCheck);
+            const ruleMatch = applyRules(descForCheck, classificationRules);
             if (ruleMatch) {
               tipo_movimiento = ruleMatch.tipo_movimiento;
               categoria_principal = ruleMatch.categoria_principal;
@@ -238,7 +246,7 @@ export default function CSVImport() {
           }
 
           if (!tipo_movimiento) {
-            const ruleMatch = applyRules(descForCheck);
+            const ruleMatch = applyRules(descForCheck, classificationRules);
             if (ruleMatch) {
               tipo_movimiento = ruleMatch.tipo_movimiento;
               categoria_principal = ruleMatch.categoria_principal;
@@ -248,6 +256,7 @@ export default function CSVImport() {
 
           return {
             user_id: user.id,
+            bank: activeBank,
             date: t.date,
             description: t.description,
             amount: t.amount,

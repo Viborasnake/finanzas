@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useBanks } from '../contexts/BankContext';
 import { Search, Edit2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useActionQueue } from '../hooks/useActionQueue';
@@ -123,13 +124,17 @@ export default function Transactions() {
   const [bulkSearchTerm, setBulkSearchTerm] = useState('');
 
   const { user } = useAuth();
+  const { activeBank } = useBanks();
   const { dispatchAction } = useActionQueue();
 
   useEffect(() => {
-    if (user) {
+    if (user && activeBank) {
       fetchTransactions();
+    } else if (!activeBank) {
+      setTransactions([]);
+      setLoading(false);
     }
-  }, [user]);
+  }, [user, activeBank]);
 
   const fetchTransactions = async () => {
     try {
@@ -137,6 +142,7 @@ export default function Transactions() {
         .from('transactions')
         .select('*')
         .eq('user_id', user?.id)
+        .eq('bank', activeBank)
         .neq('amount', 0)
         .order('date', { ascending: false });
 

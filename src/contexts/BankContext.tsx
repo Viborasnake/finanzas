@@ -5,7 +5,7 @@ import { useAuth } from './AuthContext';
 export type Bank = 'BancoEstado' | 'Scotiabank' | 'Itaú';
 
 export const AVAILABLE_BANKS: { id: Bank; label: string; color: string; emoji: string }[] = [
-  { id: 'BancoEstado', label: 'BancoEstado', color: '#e63946', emoji: '🏦' },
+  // { id: 'BancoEstado', label: 'BancoEstado', color: '#e63946', emoji: '🏦' },
   { id: 'Scotiabank', label: 'Scotiabank', color: '#e63000', emoji: '🔴' },
   { id: 'Itaú',       label: 'Itaú',       color: '#f77f00', emoji: '🟠' },
 ];

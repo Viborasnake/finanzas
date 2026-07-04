@@ -5,7 +5,7 @@ import { Plus, Trash2, Save, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { extractAndNormalizeRUT } from '../utils/rutParser';
 import type { ClassificationRule } from '../utils/classificationRules';
-import { getRules, saveRules, applyRules } from '../utils/classificationRules';
+import { applyRules } from '../utils/classificationRules';
 import { CascadingCategorySelector } from './Transactions';
 import { useSettings } from '../contexts/SettingsContext';
 
@@ -22,22 +22,17 @@ export default function Settings() {
   const [newContactName, setNewContactName] = useState('');
   const [newContactRut, setNewContactRut] = useState('');
 
-  // Rules
-  const [rules, setRules] = useState<ClassificationRule[]>([]);
+  // Custom Categories & Rules
+  const { customCategories, saveCustomCategories, classificationRules, saveClassificationRules } = useSettings();
   const [newRuleKeyword, setNewRuleKeyword] = useState('');
   const [newRuleCategory, setNewRuleCategory] = useState<{ tipo: string | null, principal: string | null, secundaria: string | null }>({ tipo: null, principal: null, secundaria: null });
-
-  // Custom Categories
-  const { customCategories, saveCustomCategories } = useSettings();
   const [newCatTipo, setNewCatTipo] = useState('Gasto Real');
   const [newCatPrincipal, setNewCatPrincipal] = useState('');
   const [newCatSecundaria, setNewCatSecundaria] = useState('');
 
   useEffect(() => {
     if (user) {
-
       fetchSettingsAndContacts();
-      setRules(getRules());
     }
   }, [user]);
 
@@ -101,10 +96,10 @@ export default function Settings() {
     }
   };
 
-  const handleAddRule = (e: React.FormEvent) => {
+  const handleAddRule = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newRuleKeyword.trim() || !newRuleCategory.tipo) {
-      toast.error('Ingresa una palabra clave y selecciona una categoría.');
+    if (!newRuleKeyword.trim() || !newRuleCategory.tipo || !newRuleCategory.principal) {
+      toast.error('Completa los campos de la regla');
       return;
     }
     const newRule: ClassificationRule = {
@@ -114,18 +109,16 @@ export default function Settings() {
       categoria_principal: newRuleCategory.principal!,
       categoria_secundaria: newRuleCategory.secundaria!
     };
-    const updatedRules = [...rules, newRule];
-    setRules(updatedRules);
-    saveRules(updatedRules);
+    const updatedRules = [...classificationRules, newRule];
+    await saveClassificationRules(updatedRules);
     setNewRuleKeyword('');
     setNewRuleCategory({ tipo: null, principal: null, secundaria: null });
     toast.success('Regla agregada');
   };
 
-  const handleDeleteRule = (id: string) => {
-    const updatedRules = rules.filter(r => r.id !== id);
-    setRules(updatedRules);
-    saveRules(updatedRules);
+  const handleDeleteRule = async (id: string) => {
+    const updatedRules = classificationRules.filter(r => r.id !== id);
+    await saveClassificationRules(updatedRules);
     toast.success('Regla eliminada');
   };
 
@@ -260,9 +253,8 @@ export default function Settings() {
                     }
                   }
                   
-                  // Falta applyRules, pero para simplificar (ya que la función aplica todo):
                   if (!tipo) {
-                    const match = applyRules(desc);
+                    const match = applyRules(desc, classificationRules);
                     if (match) {
                       tipo = match.tipo_movimiento;
                       principal = match.categoria_principal;
@@ -431,10 +423,10 @@ export default function Settings() {
           </form>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {rules.length === 0 ? (
+            {classificationRules.length === 0 ? (
               <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>No hay reglas de clasificación configuradas.</p>
             ) : (
-              rules.map(r => (
+              classificationRules.map(r => (
                 <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', border: '2px solid black', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-color)' }}>
                   <div>
                     <span style={{ fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>Si contiene: "{r.keyword}"</span>

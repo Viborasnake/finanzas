@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useBanks } from '../contexts/BankContext';
 import { 
   ChevronRight, TrendingUp, TrendingDown, 
   Wallet, CreditCard, AlertTriangle, Sparkles, Activity, Search, X, Edit2
@@ -12,6 +13,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line, CartesianGrid
 } from 'recharts';
+import NeoDatePicker from '../components/NeoDatePicker';
 
 type CategoryLevel = 'principal' | 'secundaria' | 'detalle';
 
@@ -52,12 +54,13 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [transactions, setTransactions] = useState<any[]>([]);
   const { user } = useAuth();
+  const { activeBank } = useBanks();
 
   // Date Range state
   const [dateRange, setDateRange] = useState<DateRange>(() => PRESETS[2].range()); // This month default
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [customFrom, setCustomFrom] = useState('');
-  const [customTo, setCustomTo] = useState('');
+  const [customFrom, setCustomFrom] = useState<Date | null>(null);
+  const [customTo, setCustomTo] = useState<Date | null>(null);
   const [activePreset, setActivePreset] = useState<string>('month');
   const pickerRef = useRef<HTMLDivElement>(null);
 
@@ -80,8 +83,8 @@ export default function Dashboard() {
 
   const applyCustomRange = () => {
     if (!customFrom || !customTo) return;
-    const start = new Date(customFrom + 'T00:00:00');
-    const end = new Date(customTo + 'T23:59:59');
+    const start = customFrom;
+    const end = new Date(customTo.getFullYear(), customTo.getMonth(), customTo.getDate(), 23, 59, 59);
     if (start > end) return;
     const fmt = (d: Date) => d.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
     setDateRange({ start, end, label: `${fmt(start)} — ${fmt(end)}` });
@@ -100,14 +103,20 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    if (user) fetchTransactions();
-  }, [user]);
+    if (user && activeBank) {
+      fetchTransactions();
+    } else if (!activeBank) {
+      setTransactions([]);
+    }
+  }, [user, activeBank]);
 
   const fetchTransactions = async () => {
     try {
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
+        .eq('user_id', user!.id)
+        .eq('bank', activeBank)
         .neq('amount', 0)
         .order('date', { ascending: true });
 
@@ -539,22 +548,18 @@ export default function Dashboard() {
                 <div style={{ padding: '1rem' }}>
                   <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#94a3b8', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>Rango personalizado</div>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '0.25rem', color: '#64748b' }}>Desde</div>
-                      <input
-                        type="date"
-                        value={customFrom}
-                        onChange={e => setCustomFrom(e.target.value)}
-                        style={{ width: '100%', padding: '0.5rem 0.75rem', border: '2px solid #000', borderRadius: '8px', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.85rem', outline: 'none' }}
+                    <div style={{ flex: 1, minWidth: '130px' }}>
+                      <div style={{ fontSize: '0.65rem', fontWeight: 800, marginBottom: '0.5rem', color: '#64748b' }}>DESDE</div>
+                      <NeoDatePicker 
+                        value={customFrom || dateRange.start}
+                        onChange={(d) => setCustomFrom(d)}
                       />
                     </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '0.25rem', color: '#64748b' }}>Hasta</div>
-                      <input
-                        type="date"
-                        value={customTo}
-                        onChange={e => setCustomTo(e.target.value)}
-                        style={{ width: '100%', padding: '0.5rem 0.75rem', border: '2px solid #000', borderRadius: '8px', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.85rem', outline: 'none' }}
+                    <div style={{ flex: 1, minWidth: '130px' }}>
+                      <div style={{ fontSize: '0.65rem', fontWeight: 800, marginBottom: '0.5rem', color: '#64748b' }}>HASTA</div>
+                      <NeoDatePicker 
+                        value={customTo || dateRange.end}
+                        onChange={(d) => setCustomTo(d)}
                       />
                     </div>
                     <button
@@ -709,7 +714,7 @@ export default function Dashboard() {
                       <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: row.isGray ? '#64748b' : '#000' }}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
                           ${row.value.toLocaleString('es-CL')}
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f1f5f9', padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', color: '#64748b' }}>
+                          <div className="btn-icon" title="Ver detalles">
                             <Search size={14} strokeWidth={3} />
                           </div>
                         </div>
@@ -1159,7 +1164,7 @@ export default function Dashboard() {
                                 setDetailsModal(null);
                                 navigate('/transactions?search=' + encodeURIComponent(t.description || t.original_description || ''));
                               }}
-                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f1f5f9', padding: '4px', borderRadius: '4px', border: '1px solid #cbd5e1', color: '#64748b', cursor: 'pointer' }}
+                              className="btn-icon"
                               title="Corregir categoría"
                             >
                               <Edit2 size={14} strokeWidth={3} />
