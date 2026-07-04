@@ -133,12 +133,13 @@ export default function Dashboard() {
   }, [user, activeBank]);
 
   const fetchTransactions = async () => {
+    if (!user || !activeBank) return;
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
-        .eq('user_id', user!.id)
+        .eq('user_id', user.id)
         .eq('bank', activeBank)
         .order('date', { ascending: true });
 
@@ -547,6 +548,27 @@ export default function Dashboard() {
       <div style={{ marginBottom: '2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
           <h1 style={{ margin: 0, fontFamily: '"Montserrat", sans-serif', fontSize: '2.5rem', fontWeight: 900, color: '#000' }}>Resumen Financiero</h1>
+
+          {activeBank === 'Itaú' && transactions.length === 0 && (
+            <button 
+              onClick={async () => {
+                const { data } = await supabase.from('transactions').select('id, raw_data').eq('user_id', user?.id).eq('bank', 'Scotiabank');
+                if (data) {
+                  const ids = data.filter(t => t.raw_data && Object.keys(t.raw_data).some(k => k.toLowerCase().includes('movimiento'))).map(t => t.id);
+                  if (ids.length > 0) {
+                    await supabase.from('transactions').update({ bank: 'Itaú' }).in('id', ids);
+                    alert(`¡Se corrigieron ${ids.length} transacciones!`);
+                    fetchTransactions();
+                  } else {
+                    alert('No se encontraron transacciones mal asignadas.');
+                  }
+                }
+              }}
+              style={{ ...neoButton, backgroundColor: '#fde047', fontSize: '0.8rem' }}
+            >
+              Corregir Transacciones Itaú
+            </button>
+          )}
 
           {/* Date Range Picker Trigger */}
           <div ref={pickerRef} style={{ position: 'relative' }}>
