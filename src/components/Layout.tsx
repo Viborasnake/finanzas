@@ -38,8 +38,8 @@ function BankIndicator() {
     <div ref={ref} style={{ position: 'relative', padding: '0.75rem 1.5rem', borderBottom: '2px solid black' }}>
       {/* Trigger */}
       <button
-        onClick={() => setOpen(o => !o)}
-        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+        onClick={() => connectedBanks.length > 1 && setOpen(o => !o)}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'none', border: 'none', cursor: connectedBanks.length > 1 ? 'pointer' : 'default', padding: 0 }}
       >
         <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: activeBankInfo ? '#22c55e' : '#94a3b8', border: '1.5px solid #000', flexShrink: 0 }} />
         <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#000', textTransform: 'uppercase', letterSpacing: '0.05em', flex: 1, textAlign: 'left' }}>
@@ -50,7 +50,9 @@ function BankIndicator() {
             {connectedBanks.length}
           </span>
         )}
-        <ChevronDown size={12} style={{ color: '#555', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+        {connectedBanks.length > 1 && (
+          <ChevronDown size={12} style={{ color: '#555', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+        )}
       </button>
 
       {/* Dropdown */}

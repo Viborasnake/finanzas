@@ -75,16 +75,16 @@ function MindMap() {
   };
 
   return (
-    <div style={{ width: '100%', height: '600px', border: '2px solid black', borderRadius: '8px', background: 'white', overflow: 'hidden' }}>
+    <div style={{ width: '100%', height: '400px', border: '2px solid black', borderRadius: '8px', background: 'white', overflow: 'hidden' }}>
       <Tree 
         data={treeData} 
         orientation="horizontal" 
         pathFunc="step" 
-        translate={{ x: 100, y: 300 }} 
-        nodeSize={{ x: 220, y: 30 }}
+        translate={{ x: 100, y: 200 }} 
+        nodeSize={{ x: 220, y: 22 }}
         zoomable={true}
         collapsible={true}
-        separation={{ siblings: 1, nonSiblings: 1.5 }}
+        separation={{ siblings: 0.8, nonSiblings: 1.2 }}
         renderCustomNodeElement={renderCustomNodeElement}
       />
     </div>

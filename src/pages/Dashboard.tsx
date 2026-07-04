@@ -128,6 +128,7 @@ export default function Dashboard() {
       fetchTransactions();
     } else if (!activeBank) {
       setTransactions([]);
+      setLoading(false);
     }
   }, [user, activeBank]);
 
@@ -199,6 +200,20 @@ export default function Dashboard() {
     });
   };
 
+
+  if (!activeBank) {
+    return (
+      <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '80vh', textAlign: 'center' }}>
+        <h1 style={{ fontSize: '2.5rem', marginBottom: '1.5rem', fontWeight: 900 }}>¡Bienvenido a MisFinanzas! 👋</h1>
+        <p style={{ fontSize: '1.1rem', color: '#64748b', maxWidth: '600px', marginBottom: '2rem', fontWeight: 500 }}>
+          Para comenzar a ver tu Dashboard, necesitas configurar un banco. Dirígete a la sección de Configuración para conectar tu primer banco.
+        </p>
+        <button className="btn" style={{ backgroundColor: '#000', color: '#fff', fontSize: '1rem', padding: '0.75rem 1.5rem' }} onClick={() => navigate('/settings')}>
+          Ir a Configuración
+        </button>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
