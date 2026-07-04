@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { Check, X, Bot } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { applyRules } from '../utils/classificationRules';
 
 interface SmartAssistantProps {
   transactions: any[];
@@ -125,6 +126,58 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
     setCurrentIndex(prev => prev + 1);
   };
 
+  const handleRescan = async () => {
+    if (!user) return;
+    toast.loading('Escaneando y aplicando reglas...', { id: 'rescan_assistant' });
+    setLoading(true);
+    try {
+      // Re-fetch pending transactions directly to ensure we have the latest
+      const { data: txs, error: fetchErr } = await supabase.from('transactions').select('id, raw_data, description').eq('user_id', user.id).is('tipo_movimiento', null);
+      if (fetchErr) throw fetchErr;
+      
+      if (txs && txs.length > 0) {
+        let updated = 0;
+        // Need rutParser imported. But actually we just apply the rules here for simplicity or we can just run the full classification.
+        // Let's just run rules for now since we don't have myRut here easily without fetching it.
+        // Wait, we have contacts!
+        for (const tx of txs) {
+          const rawDescKey = tx.raw_data ? Object.keys(tx.raw_data).find(k => k.toLowerCase().includes('descripc')) || '' : '';
+          const rawDesc = tx.raw_data && rawDescKey ? tx.raw_data[rawDescKey] : '';
+          const desc = (rawDesc || tx.description || '').toLowerCase();
+          
+          let tipo = null, principal = null, secundaria = null;
+          
+          // Simple rule match
+          const match = applyRules(desc, classificationRules);
+          if (match) {
+            tipo = match.tipo_movimiento;
+            principal = match.categoria_principal;
+            secundaria = match.categoria_secundaria;
+          }
+
+          if (tipo) {
+            await supabase.from('transactions').update({ tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria }).eq('id', tx.id);
+            updated++;
+          }
+        }
+        if (updated > 0) {
+          toast.success(`Se auto-clasificaron ${updated} transacciones.`, { id: 'rescan_assistant' });
+        } else {
+          toast.success('Escaneo completado. No hubo nuevas coincidencias.', { id: 'rescan_assistant' });
+        }
+      } else {
+        toast.success('No hay transacciones pendientes.', { id: 'rescan_assistant' });
+      }
+    } catch (e: any) {
+      toast.error('Error al escanear: ' + e.message, { id: 'rescan_assistant' });
+    }
+    
+    // Refresh parent state which triggers dudas recalculation
+    onRefresh();
+    setCurrentIndex(0);
+    setLoading(false);
+  };
+
   if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Cargando asistente...</div>;
 
   if (dudas.length === 0 || currentIndex >= dudas.length) {
@@ -136,9 +189,9 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
         <button 
           className="btn btn-outline" 
           style={{ marginTop: '2rem', backgroundColor: 'white' }}
-          onClick={() => setCurrentIndex(0)}
+          onClick={handleRescan}
         >
-          Volver a escanear
+          Volver a escanear y aplicar reglas
         </button>
       </div>
     );
