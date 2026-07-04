@@ -11,13 +11,59 @@ import { useSettings } from '../contexts/SettingsContext';
 import Tree from 'react-d3-tree';
 import { useTaxonomy } from '../hooks/useTaxonomy';
 
+const renderCustomNodeElement = ({ nodeDatum, toggleNode }: any) => {
+  const isRoot = nodeDatum.name === 'Movimientos';
+  const isIngreso = nodeDatum.name === 'Ingreso' || nodeDatum.name === 'Ingreso Real';
+  const isEgreso = nodeDatum.name === 'Egreso' || nodeDatum.name === 'Egreso Real';
+  
+  let fill = '#e2e8f0'; // default gray
+  let stroke = '#94a3b8';
+  if (isRoot) {
+    fill = '#3b82f6'; // blue
+    stroke = '#2563eb';
+  } else if (isIngreso) {
+    fill = '#22c55e'; // green
+    stroke = '#16a34a';
+  } else if (isEgreso) {
+    fill = '#ef4444'; // red
+    stroke = '#dc2626';
+  } else if (nodeDatum.children) {
+    // Principal categories
+    fill = '#f8fafc';
+    stroke = '#cbd5e1';
+  } else {
+    // Secondary categories
+    fill = 'white';
+    stroke = '#e2e8f0';
+  }
+
+  return (
+    <g>
+      <circle r="12" fill={fill} stroke={stroke} strokeWidth="2" onClick={toggleNode} style={{ cursor: 'pointer' }} />
+      <text 
+        fill="black" 
+        strokeWidth="0" 
+        x="18" 
+        dy="4" 
+        style={{ 
+          fontSize: isRoot || isIngreso || isEgreso ? '16px' : '14px', 
+          fontWeight: isRoot || isIngreso || isEgreso ? 800 : 500,
+          fontFamily: '"Inter", sans-serif'
+        }}
+      >
+        {nodeDatum.name}
+      </text>
+    </g>
+  );
+};
+
 function MindMap() {
   const { taxonomy } = useTaxonomy();
   
   const treeData = {
     name: 'Movimientos',
     children: Object.entries(taxonomy)
-      .filter(([tipo]) => tipo === 'Ingreso Real' || tipo === 'Egreso Real')
+      .filter(([tipo]) => tipo === 'Ingreso' || tipo === 'Egreso')
       .map(([tipo, principals]) => ({
       name: tipo,
       children: Object.entries(principals as Record<string, string[]>).map(([principal, secundarias]) => ({
@@ -33,11 +79,12 @@ function MindMap() {
         data={treeData} 
         orientation="horizontal" 
         pathFunc="step" 
-        translate={{ x: 150, y: 300 }} 
-        nodeSize={{ x: 250, y: 40 }}
+        translate={{ x: 100, y: 300 }} 
+        nodeSize={{ x: 220, y: 30 }}
         zoomable={true}
         collapsible={true}
         separation={{ siblings: 1, nonSiblings: 1.5 }}
+        renderCustomNodeElement={renderCustomNodeElement}
       />
     </div>
   );
@@ -91,7 +138,7 @@ export default function Settings() {
   const { customCategories, saveCustomCategories, classificationRules, saveClassificationRules } = useSettings();
   const [newRuleKeyword, setNewRuleKeyword] = useState('');
   const [newRuleCategory, setNewRuleCategory] = useState<{ tipo: string | null, principal: string | null, secundaria: string | null }>({ tipo: null, principal: null, secundaria: null });
-  const [newCatTipo, setNewCatTipo] = useState('Egreso Real');
+  const [newCatTipo, setNewCatTipo] = useState('Egreso');
   const [newCatPrincipal, setNewCatPrincipal] = useState('');
   const [newCatSecundaria, setNewCatSecundaria] = useState('');
 
@@ -267,7 +314,7 @@ export default function Settings() {
         <div className="card">
           <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Detección Automática (Tu RUT)</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
-            Ingresa tu RUT para que el sistema reconozca automáticamente las transferencias entre tus propias cuentas y no las sume como Egreso o Ingreso Real.
+            Ingresa tu RUT para que el sistema reconozca automáticamente las transferencias entre tus propias cuentas y no las sume como Egreso o Ingreso.
           </p>
           
           <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
@@ -322,7 +369,7 @@ export default function Settings() {
                       return false;
                     });
                     if (c) {
-                      tipo = 'Egreso Real'; principal = 'Pago a Familiar'; secundaria = 'Pago a Familiar';
+                      tipo = 'Egreso'; principal = 'Transferencias a Otras Personas'; secundaria = 'Familiares';
                     }
                   }
                   
@@ -361,8 +408,8 @@ export default function Settings() {
             <div>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 700, fontSize: '0.85rem' }}>Tipo de Movimiento</label>
               <select className="input" value={newCatTipo} onChange={(e) => setNewCatTipo(e.target.value)} style={{ width: '100%', padding: '0.5rem' }}>
-                <option value="Egreso Real">Egreso Real</option>
-                <option value="Ingreso Real">Ingreso Real</option>
+                <option value="Egreso">Egreso</option>
+                <option value="Ingreso">Ingreso</option>
                 <option value="Ahorro/Inversión">Ahorro / Inversión</option>
                 <option value="Movimiento Interno">Movimiento Interno</option>
               </select>
@@ -419,7 +466,7 @@ export default function Settings() {
         <div className="card">
           <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Contactos Conocidos</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
-            Agrega RUTs de amigos o familiares. Cuando importes, el sistema clasificará automáticamente los traspasos a ellos como "Pago a Familiar".
+            Agrega RUTs de amigos o familiares. Cuando importes, el sistema clasificará automáticamente los traspasos a ellos como "Transferencias a Otras Personas".
           </p>
           
           <form onSubmit={handleAddContact} style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>

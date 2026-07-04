@@ -356,9 +356,9 @@ export default function CSVImport() {
               return false;
             });
             if (contact) {
-              tipo_movimiento = 'Egreso Real';
-              categoria_principal = 'Pago a Familiar';
-              categoria_secundaria = 'Pago a Familiar';
+              tipo_movimiento = 'Egreso';
+              categoria_principal = 'Transferencias a Otras Personas';
+              categoria_secundaria = 'Familiares';
             }
           }
 

@@ -17,16 +17,18 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   
   useEffect(() => {
     if (user) {
-      // SILENT MIGRATION: Rename 'Gasto Real' to 'Egreso Real'
+      // SILENT MIGRATION v2: Rename 'Egreso'->'Egreso', 'Ingreso'->'Ingreso', 'Benja'->'Hijos'
       const migrate = async () => {
-        const migrationKey = `migrated_egreso_${user.id}`;
+        const migrationKey = `migrated_v2_${user.id}`;
         if (localStorage.getItem(migrationKey)) return;
 
         try {
-          await supabase.from('transactions')
-            .update({ tipo_movimiento: 'Egreso Real' })
-            .eq('user_id', user.id)
-            .eq('tipo_movimiento', 'Gasto Real');
+          // Update Egresos (includes old Gasto Real if it was somehow skipped)
+          await supabase.from('transactions').update({ tipo_movimiento: 'Egreso' }).eq('user_id', user.id).in('tipo_movimiento', ['Gasto Real', 'Egreso']);
+          // Update Ingresos
+          await supabase.from('transactions').update({ tipo_movimiento: 'Ingreso' }).eq('user_id', user.id).eq('tipo_movimiento', 'Ingreso');
+          // Update Benja to Hijos
+          await supabase.from('transactions').update({ categoria_principal: 'Hijos' }).eq('user_id', user.id).eq('categoria_principal', 'Benja');
             
           // Migrate classification rules in user_settings
           const { data: settings } = await supabase.from('user_settings').select('classification_rules').eq('user_id', user.id).single();
@@ -34,11 +36,20 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
             const rules = settings.classification_rules;
             let changed = false;
             const newRules = rules.map((r: any) => {
-              if (r.tipo_movimiento === 'Gasto Real') {
+              let updatedRule = { ...r };
+              if (updatedRule.tipo_movimiento === 'Gasto Real' || updatedRule.tipo_movimiento === 'Egreso') {
+                updatedRule.tipo_movimiento = 'Egreso';
                 changed = true;
-                return { ...r, tipo_movimiento: 'Egreso Real' };
               }
-              return r;
+              if (updatedRule.tipo_movimiento === 'Ingreso') {
+                updatedRule.tipo_movimiento = 'Ingreso';
+                changed = true;
+              }
+              if (updatedRule.categoria_principal === 'Benja') {
+                updatedRule.categoria_principal = 'Hijos';
+                changed = true;
+              }
+              return updatedRule;
             });
             if (changed) {
               await supabase.from('user_settings').update({ classification_rules: newRules }).eq('user_id', user.id);

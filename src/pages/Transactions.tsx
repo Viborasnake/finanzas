@@ -501,7 +501,7 @@ export default function Transactions() {
               <option value="unclassified">Solo Sin Clasificar</option>
               <option value="all">Todas las transacciones</option>
               <option disabled>──────────</option>
-              <option value="Egreso Real">Egreso Real</option>
+              <option value="Egreso">Egreso</option>
               <option value="Ingreso">Ingreso</option>
               <option value="Movimiento Interno">Mov. Interno</option>
               <option value="Ahorro/Inversión">Ahorro/Inversión</option>

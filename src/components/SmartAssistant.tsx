@@ -93,9 +93,9 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
       rules.push({
         id: crypto.randomUUID(),
         keyword: txDesc,
-        tipo_movimiento: 'Egreso Real',
-        categoria_principal: 'Pago a Familiar',
-        categoria_secundaria: 'Pago a Familiar'
+        tipo_movimiento: 'Egreso',
+        categoria_principal: 'Transferencias a Otras Personas',
+        categoria_secundaria: 'Familiares'
       });
       await saveClassificationRules(rules);
     }
@@ -105,9 +105,9 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
       const { error } = await supabase
         .from('transactions')
         .update({
-          tipo_movimiento: 'Egreso Real',
-          categoria_principal: 'Pago a Familiar',
-          categoria_secundaria: 'Pago a Familiar'
+          tipo_movimiento: 'Egreso',
+          categoria_principal: 'Transferencias a Otras Personas',
+          categoria_secundaria: 'Familiares'
         })
         .eq('user_id', user!.id)
         .eq('description', duda.transaction.description)
