@@ -86,7 +86,8 @@ export function CascadingCategorySelector({ initialPrincipal, initialSecundaria,
   const isComplete = ALL_OPTIONS.some(o => o.label === inputValue);
   const selectedOption = ALL_OPTIONS.find(o => o.label === inputValue);
   
-  const filteredOptions = ALL_OPTIONS.filter(o => o.label.toLowerCase().includes(inputValue.toLowerCase()));
+  const normalizeText = (text: string) => text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const filteredOptions = ALL_OPTIONS.filter(o => normalizeText(o.label).includes(normalizeText(inputValue)));
 
   const getBgColor = (tipo: string | undefined | null) => {
     if (tipo === 'Ingreso') return '#dcfce7'; // pastel green
@@ -211,15 +212,16 @@ export default function Transactions() {
   }, [transactions]);
 
   const filteredTransactions = transactions.filter(t => {
-    const searchLower = searchTerm.toLowerCase();
+    const normalizeText = (text: string) => text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const searchLower = normalizeText(searchTerm);
     const desc = t.description || '';
     const origDesc = t.original_description || '';
-    const catSearchStr = `${t.tipo_movimiento || ''} ${t.categoria_principal || ''} ${t.categoria_secundaria || ''}`.toLowerCase();
+    const catSearchStr = `${t.tipo_movimiento || ''} ${t.categoria_principal || ''} ${t.categoria_secundaria || ''}`;
     
     const matchesSearch = 
-      desc.toLowerCase().includes(searchLower) || 
-      origDesc.toLowerCase().includes(searchLower) ||
-      catSearchStr.includes(searchLower);
+      normalizeText(desc).includes(searchLower) || 
+      normalizeText(origDesc).includes(searchLower) ||
+      normalizeText(catSearchStr).includes(searchLower);
     
     const date = new Date(t.date);
     const matchesYear = filterYear === 'all' || date.getFullYear().toString() === filterYear;
