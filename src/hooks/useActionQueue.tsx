@@ -60,6 +60,7 @@ export function useActionQueue() {
 
     timeouts.current[id] = setTimeout(async () => {
       delete timeouts.current[id];
+      toast.dismiss(`toast-${id}`); // Forzar cierre del toast para que no se quede pegado si el usuario pasó el mouse
       try {
         await execute();
       } catch (err) {
