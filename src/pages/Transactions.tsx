@@ -20,6 +20,20 @@ function AddTransactionModal({ onClose, onAdd, activeBank, user }: any) {
 
   useEffect(() => {
     async function fetchSuggestion() {
+      // First, check if a Saldo Inicial already exists
+      const { data: existingInitials } = await supabase
+        .from('transactions')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('bank', activeBank)
+        .ilike('description', '%saldo inicial%')
+        .limit(1);
+
+      if (existingInitials && existingInitials.length > 0) {
+        setSuggestion(null);
+        return;
+      }
+
       const { data } = await supabase
         .from('transactions')
         .select('date, amount, type, raw_data')
@@ -73,7 +87,6 @@ function AddTransactionModal({ onClose, onAdd, activeBank, user }: any) {
       bank: activeBank,
       date,
       description: desc.trim(),
-      original_description: desc.trim(),
       amount: Math.abs(parseFloat(amount)),
       type,
       tipo_movimiento: null,
