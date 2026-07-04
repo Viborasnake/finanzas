@@ -29,7 +29,7 @@ export default function CSVImport() {
   const [knownContacts, setKnownContacts] = useState<any[]>([]);
   const { user } = useAuth();
   const { classificationRules } = useSettings();
-  const { activeBank } = useBanks();
+  const { activeBank, setActiveBank } = useBanks();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -273,12 +273,20 @@ export default function CSVImport() {
       const isExcel = file.name.toLowerCase().endsWith('.xls') || file.name.toLowerCase().endsWith('.xlsx');
       
       if (isExcel) {
+        if (activeBank !== 'Itaú') {
+          setActiveBank('Itaú');
+          toast.success("Cambiado automáticamente a Itaú", { duration: 2000 });
+        }
         parseItauXls(file);
       } else {
+        if (activeBank !== 'Scotiabank') {
+          setActiveBank('Scotiabank');
+          toast.success("Cambiado automáticamente a Scotiabank", { duration: 2000 });
+        }
         parseCsvStandard(file);
       }
     });
-  }, []);
+  }, [activeBank, setActiveBank]);
 
   const handleSave = async () => {
     if (!user) {

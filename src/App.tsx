@@ -93,6 +93,26 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
         }
       };
       migrateV3();
+
+      // SILENT MIGRATION v4: Fix Itaú transactions saved as Scotiabank
+      const migrateV4 = async () => {
+        const migrationKey = `migrated_v4_${user.id}`;
+        if (localStorage.getItem(migrationKey)) return;
+        try {
+          // Obtener transacciones de Scotiabank
+          const { data: txs } = await supabase.from('transactions').select('id, raw_data').eq('user_id', user.id).eq('bank', 'Scotiabank');
+          if (txs && txs.length > 0) {
+            const idsToFix = txs.filter(t => t.raw_data && Object.keys(t.raw_data).some(k => k.toLowerCase().includes('movimiento'))).map(t => t.id);
+            if (idsToFix.length > 0) {
+              await supabase.from('transactions').update({ bank: 'Itaú' }).in('id', idsToFix);
+            }
+          }
+          localStorage.setItem(migrationKey, 'true');
+        } catch (e) {
+          console.error("Migration v4 error:", e);
+        }
+      };
+      migrateV4();
     }
   }, [user]);
 
