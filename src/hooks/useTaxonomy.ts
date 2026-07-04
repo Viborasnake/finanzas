@@ -9,7 +9,8 @@ export const BASE_TAXONOMY: Record<string, Record<string, string[]>> = {
     'Transferencias': ['Transferencias de Otras Personas', 'Transferencias Propias'],
     'Devoluciones': ['Devolución Impuestos', 'Devolución Egresos'],
     'Créditos': ['Línea de Crédito (Crédito)', 'Crédito Consumo'],
-    'Otros Ingresos': ['Regalos', 'Intereses/Dividendos', 'Otros']
+    'Otros Ingresos': ['Regalos', 'Intereses/Dividendos', 'Otros'],
+    'Ajustes': ['Saldo Inicial', 'Ajuste de Saldo']
   },
   'Egreso': {
     'Alimentación': ['Supermercado', 'Feria', 'Abarrotes', 'Panadería', 'Cafetería/Snacks', 'Agua', 'Delivery/Restaurantes'],
@@ -34,7 +35,8 @@ export const BASE_TAXONOMY: Record<string, Record<string, string[]>> = {
     'Pago Tarjeta Crédito': ['Tarjeta Credito'],
     'Servicio de Deuda': ['Interés Línea de Crédito', 'Abono Línea de Crédito', 'Crédito Consumo', 'Línea de Crédito (Crédito)'],
     'Otros': ['Egresos Varios', 'Caja Chica', 'Diferencia de Cambio'],
-    'Sin Especificar': ['Sin Especificar']
+    'Sin Especificar': ['Sin Especificar'],
+    'Ajustes': ['Saldo Inicial', 'Ajuste de Saldo']
   },
   'Movimiento Interno': {
     'Transferencia personal': ['Transferencia personal'],
