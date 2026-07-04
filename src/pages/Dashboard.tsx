@@ -506,11 +506,16 @@ export default function Dashboard() {
               </div>
               <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: 'serif' }}>Ingresos</h3>
             </div>
-            {renderTrendBadge(c.ingresos, p.ingresos, false)}
+            {renderTrendBadge(totalEntradas, p.ingresos + p.aportePropio, false)}
           </div>
-          <p style={{ margin: '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '-1px' }}>
-            ${c.ingresos.toLocaleString('es-CL')}
+          <p style={{ margin: c.aportePropio > 0 ? '0 0 0.25rem 0' : '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '-1px' }}>
+            ${totalEntradas.toLocaleString('es-CL')}
           </p>
+          {c.aportePropio > 0 && (
+            <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 700, marginBottom: '1.5rem', position: 'relative', zIndex: 10 }}>
+              *Incluye ${c.aportePropio.toLocaleString('es-CL')} de aportes propios (Mov. Interno)
+            </div>
+          )}
           
           {totalEntradas > 0 && (
             <div style={{ position: 'relative', zIndex: 10, flex: 1, paddingBottom: '1rem' }}>
@@ -550,11 +555,16 @@ export default function Dashboard() {
               </div>
               <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: 'serif' }}>Gastos</h3>
             </div>
-            {renderTrendBadge(c.gastos, p.gastos, true)}
+            {renderTrendBadge(totalSalidas, p.gastos + p.movimientoInternoGasto, true)}
           </div>
-          <p style={{ margin: '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '-1px' }}>
-            ${c.gastos.toLocaleString('es-CL')}
+          <p style={{ margin: c.movimientoInternoGasto > 0 ? '0 0 0.25rem 0' : '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '-1px' }}>
+            ${totalSalidas.toLocaleString('es-CL')}
           </p>
+          {c.movimientoInternoGasto > 0 && (
+            <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 700, marginBottom: '1.5rem', position: 'relative', zIndex: 10 }}>
+              *Incluye ${c.movimientoInternoGasto.toLocaleString('es-CL')} de movimientos internos
+            </div>
+          )}
           
           {totalSalidas > 0 && (
             <div style={{ position: 'relative', zIndex: 10, flex: 1, paddingBottom: '1rem' }}>
