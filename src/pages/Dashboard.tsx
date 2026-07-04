@@ -1,18 +1,26 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Eye, EyeOff, Calendar } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { 
+  ChevronLeft, ChevronRight, TrendingUp, TrendingDown, 
+  PiggyBank, Wallet, CreditCard, AlertTriangle, 
+  ChevronDown, ChevronUp
+} from 'lucide-react';
+import { 
+  LineChart, Line, Tooltip, ResponsiveContainer, XAxis
+} from 'recharts';
+
+type ViewMode = 'month' | 'quarter' | 'year';
 
 export default function Dashboard() {
   const [transactions, setTransactions] = useState<any[]>([]);
-  
-  type PeriodType = 'month' | 'quarter' | 'semester' | 'year' | 'all';
-  const [periodType, setPeriodType] = useState<PeriodType>('month');
-  const [filterYear, setFilterYear] = useState<string>(new Date().getFullYear().toString());
-  const [filterPeriod, setFilterPeriod] = useState<string>(new Date().getMonth() + 1 + '');
-  const [hiddenPrincipals, setHiddenPrincipals] = useState<string[]>([]);
-
   const { user } = useAuth();
+
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  const [viewMode, setViewMode] = useState<ViewMode>('month');
+
+  const [expandedMetric, setExpandedMetric] = useState<'ingresos' | 'gastos' | 'ahorro' | null>(null);
+  const [expandedExpenseType, setExpandedExpenseType] = useState<'fijo' | 'variable' | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -35,485 +43,527 @@ export default function Dashboard() {
     }
   };
 
-  const availableYears = useMemo(() => {
-    const years = new Set(transactions.map(t => new Date(t.date).getFullYear()));
-    return Array.from(years).sort((a, b) => b - a);
-  }, [transactions]);
+  // --- Date Math Helpers ---
+  const getPeriodRange = (date: Date, mode: ViewMode, offset: number = 0) => {
+    const d = new Date(date);
+    if (mode === 'month') {
+      d.setMonth(d.getMonth() + offset);
+      return {
+        start: new Date(d.getFullYear(), d.getMonth(), 1),
+        end: new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59)
+      };
+    } else if (mode === 'quarter') {
+      const q = Math.floor(d.getMonth() / 3) + offset;
+      return {
+        start: new Date(d.getFullYear(), q * 3, 1),
+        end: new Date(d.getFullYear(), q * 3 + 3, 0, 23, 59, 59)
+      };
+    } else {
+      d.setFullYear(d.getFullYear() + offset);
+      return {
+        start: new Date(d.getFullYear(), 0, 1),
+        end: new Date(d.getFullYear(), 11, 31, 23, 59, 59)
+      };
+    }
+  };
 
+  const shiftPeriod = (dir: number) => {
+    const d = new Date(currentDate);
+    if (viewMode === 'month') d.setMonth(d.getMonth() + dir);
+    else if (viewMode === 'quarter') d.setMonth(d.getMonth() + (dir * 3));
+    else d.setFullYear(d.getFullYear() + dir);
+    setCurrentDate(d);
+  };
 
+  const getPeriodLabel = (date: Date, mode: ViewMode) => {
+    if (mode === 'month') {
+      return date.toLocaleString('es-CL', { month: 'long', year: 'numeric' });
+    } else if (mode === 'quarter') {
+      const q = Math.floor(date.getMonth() / 3) + 1;
+      return `Q${q} ${date.getFullYear()}`;
+    } else {
+      return date.getFullYear().toString();
+    }
+  };
 
-  // Base transactions respecting only time and hidden categories filters
-  const baseTransactions = useMemo(() => {
-    return transactions.filter(t => {
-      const date = new Date(t.date);
-      const m = date.getMonth() + 1;
+  const getShortLabel = (date: Date, mode: ViewMode) => {
+    if (mode === 'month') return date.toLocaleString('es-CL', { month: 'short' });
+    if (mode === 'quarter') return `Q${Math.floor(date.getMonth() / 3) + 1}`;
+    return date.getFullYear().toString();
+  };
+
+  // --- Computations ---
+  const { currentRange, prevRange } = useMemo(() => {
+    return {
+      currentRange: getPeriodRange(currentDate, viewMode, 0),
+      prevRange: getPeriodRange(currentDate, viewMode, -1)
+    };
+  }, [currentDate, viewMode]);
+
+  const stats = useMemo(() => {
+    const calcForRange = (start: Date, end: Date) => {
+      let ingresos = 0;
+      let aportePropio = 0;
+      let ingresosOtros = 0;
+      let gastos = 0;
+      let fixedExpenses = 0;
+      let variableExpenses = 0;
       
-      const matchesYear = filterYear === 'all' || date.getFullYear().toString() === filterYear;
-      
-      let matchesPeriod = filterPeriod === 'all';
-      if (!matchesPeriod) {
-        if (periodType === 'month') matchesPeriod = m.toString() === filterPeriod;
-        else if (periodType === 'quarter') matchesPeriod = `Q${Math.ceil(m / 3)}` === filterPeriod;
-        else if (periodType === 'semester') matchesPeriod = `H${m <= 6 ? 1 : 2}` === filterPeriod;
-      }
-      
-      const catPrincipal = t.categoria_principal || 'Sin Clasificar';
-      const isHidden = hiddenPrincipals.includes(catPrincipal);
+      const cats: Record<string, number> = {};
+      let unclassifiedCount = 0;
 
-      return matchesYear && matchesPeriod && !isHidden;
-    });
-  }, [transactions, filterYear, filterPeriod, periodType, hiddenPrincipals]);
+      const txs = transactions.filter(t => {
+        const d = new Date(t.date);
+        return d >= start && d <= end;
+      });
 
-  const calculateSummary = () => {
-    let ingresosBrutos = 0;
-    let ingresosReales = 0;
-    let egresosReales = 0;
-    let egresosTotales = 0;
-    let ahorro = 0;
-    let movimientosInternosIngreso = 0;
-    let movimientosInternosEgreso = 0;
-    let servicioDeuda = 0;
-    let apoyoFamiliar = 0;
-    
-    baseTransactions.forEach(t => {
-      const isInternal = t.tipo_movimiento === 'Movimiento Interno';
-      const isAhorro = t.tipo_movimiento === 'Ahorro/Inversión';
-      
-      const isApoyoFamiliar = t.categoria_principal === 'Pago a Familiar';
-      const isServicioDeuda = t.categoria_principal === 'Servicio de Deuda';
-      const isGastoReal = t.tipo_movimiento === 'Gasto Real' && !isApoyoFamiliar && !isServicioDeuda;
+      txs.forEach(t => {
+        const isInternal = t.tipo_movimiento === 'Movimiento Interno';
+        const isInvestment = t.tipo_movimiento === 'Ahorro/Inversión';
+        const isUnclassified = !t.categoria_principal || t.categoria_principal === 'Sin Clasificar';
 
-      if (t.type === 'ingreso') {
-        ingresosBrutos += t.amount;
-        if (!isInternal) ingresosReales += t.amount;
-        else movimientosInternosIngreso += t.amount;
-      } else {
-        egresosTotales += t.amount;
-        if (isGastoReal) egresosReales += t.amount;
-        if (isAhorro) ahorro += t.amount;
-        if (isInternal) movimientosInternosEgreso += t.amount;
-        if (isServicioDeuda) servicioDeuda += t.amount;
-        if (isApoyoFamiliar) apoyoFamiliar += t.amount;
-      }
-    });
-
-    const balanceReal = ingresosReales - egresosReales - servicioDeuda - apoyoFamiliar;
-    const balanceFlujoCaja = ingresosBrutos - egresosTotales;
-
-    // --- CÁLCULO DE PERÍODO ANTERIOR ---
-    let prevIngresosReales = 0;
-    let prevEgresosReales = 0;
-    let prevIngresosBrutos = 0;
-    let prevEgresosTotales = 0;
-    let hasPrevData = false;
-    let prevLabel = '';
-    const prevPeriodTransactions: any[] = [];
-
-    if (filterYear !== 'all' && (filterPeriod !== 'all' || periodType === 'year') && periodType !== 'all') {
-      let py = parseInt(filterYear);
-      let pp = filterPeriod;
-      
-      if (periodType === 'year') {
-        py -= 1;
-        prevLabel = 'año anterior';
-      } else if (periodType === 'month') {
-        let pm = parseInt(filterPeriod);
-        if (pm === 1) { pm = 12; py -= 1; } else { pm -= 1; }
-        pp = pm.toString();
-        prevLabel = 'mes anterior';
-      } else if (periodType === 'quarter') {
-        let pq = parseInt(filterPeriod.replace('Q', ''));
-        if (pq === 1) { pq = 4; py -= 1; } else { pq -= 1; }
-        pp = `Q${pq}`;
-        prevLabel = 'trimestre anterior';
-      } else if (periodType === 'semester') {
-        let ph = parseInt(filterPeriod.replace('H', ''));
-        if (ph === 1) { ph = 2; py -= 1; } else { ph -= 1; }
-        pp = `H${ph}`;
-        prevLabel = 'semestre anterior';
-      }
-
-      transactions.forEach(t => {
-        const date = new Date(t.date);
-        const y = date.getFullYear();
-        const m = date.getMonth() + 1;
-        
-        if (y !== py) return;
-        
-        let matchesPrevPeriod = true;
-        if (periodType === 'month') matchesPrevPeriod = m.toString() === pp;
-        else if (periodType === 'quarter') matchesPrevPeriod = `Q${Math.ceil(m / 3)}` === pp;
-        else if (periodType === 'semester') matchesPrevPeriod = `H${m <= 6 ? 1 : 2}` === pp;
-
-        if (matchesPrevPeriod) {
-          const catPrincipal = t.categoria_principal || 'Sin Clasificar';
-          if (!hiddenPrincipals.includes(catPrincipal)) {
-            hasPrevData = true;
+        if (t.type === 'ingreso') {
+          if (isInternal) {
+            aportePropio += t.amount;
+          } else {
+            ingresos += t.amount;
+          }
+        } else {
+          // Gasto
+          if (!isInternal && !isInvestment) {
+            gastos += Math.abs(t.amount);
             
-            const isInternal = t.tipo_movimiento === 'Movimiento Interno';
-            const isApoyoFamiliar = t.categoria_principal === 'Pago a Familiar';
-            const isServicioDeuda = t.categoria_principal === 'Servicio de Deuda';
-            const isGastoReal = t.tipo_movimiento === 'Gasto Real' && !isApoyoFamiliar && !isServicioDeuda;
+            const cat = t.categoria_principal || 'Sin Clasificar';
+            cats[cat] = (cats[cat] || 0) + Math.abs(t.amount);
 
-            if (t.type === 'ingreso') {
-              prevIngresosBrutos += t.amount;
-              if (!isInternal) prevIngresosReales += t.amount;
+            if (cat.toLowerCase().includes('fijo') || cat.toLowerCase().includes('vivienda')) {
+              fixedExpenses += Math.abs(t.amount);
             } else {
-              prevEgresosTotales += t.amount;
-              if (isGastoReal) prevEgresosReales += t.amount;
+              variableExpenses += Math.abs(t.amount);
             }
-            prevPeriodTransactions.push(t);
+
+            if (isUnclassified) unclassifiedCount++;
           }
         }
       });
-    }
+
+      // Income sources breakdown
+      const sueldo = txs.filter(t => t.type === 'ingreso' && !t.tipo_movimiento?.includes('Interno') && (t.categoria_principal === 'Sueldo' || t.categoria_principal === 'Honorarios' || t.categoria_principal === 'Ingresos Profesionales' || t.categoria_principal?.includes('Sueldo'))).reduce((sum, t) => sum + t.amount, 0);
+      ingresosOtros = ingresos - sueldo;
+
+      const topCats = Object.entries(cats)
+        .map(([name, amount]) => ({ name, amount }))
+        .sort((a, b) => b.amount - a.amount);
+
+      return {
+        ingresos,
+        aportePropio,
+        sueldo,
+        ingresosOtros,
+        gastos,
+        ahorro: ingresos - gastos,
+        fixedExpenses,
+        variableExpenses,
+        topCats,
+        unclassifiedCount
+      };
+    };
 
     return { 
-      ingresosBrutos, ingresosReales, egresosReales, egresosTotales, ahorro, movimientosInternosIngreso, movimientosInternosEgreso,
-      servicioDeuda, apoyoFamiliar,
-      balanceReal, balanceFlujoCaja,
-      prevIngresosReales, prevEgresosReales, prevIngresosBrutos, prevEgresosTotales, hasPrevData, prevLabel, prevPeriodTransactions
+      current: calcForRange(currentRange.start, currentRange.end), 
+      prev: calcForRange(prevRange.start, prevRange.end) 
     };
-  };
+  }, [transactions, currentRange, prevRange]);
 
-  const getChartData = () => {
-    let targetTransactions = baseTransactions;
-
-    if (filterYear !== 'all' || (filterPeriod !== 'all' && periodType !== 'year' && periodType !== 'all')) {
-      let endY = filterYear === 'all' ? new Date().getFullYear() : parseInt(filterYear);
-      let pType = periodType;
-      let pVal = filterPeriod;
-      
-      if (filterYear !== 'all' && filterPeriod === 'all' && periodType === 'all') {
-        pType = 'year';
-        pVal = endY.toString();
-      } else if (filterPeriod === 'all') {
-        pType = 'year';
-        pVal = new Date().getFullYear().toString();
-      }
-
-      targetTransactions = baseTransactions.filter(t => {
-        const date = new Date(t.date);
-        const y = date.getFullYear();
-        const m = date.getMonth() + 1;
-        
-        if (filterYear !== 'all' && y !== endY) return false;
-        
-        if (pType === 'year') return true;
-        if (pType === 'month') return m.toString() === pVal;
-        if (pType === 'quarter') return "Q" + Math.ceil(m / 3) === pVal;
-        if (pType === 'semester') return "H" + (m <= 6 ? 1 : 2) === pVal;
-        
-        return true;
+  // Generate 6 periods history for charts
+  const historyData = useMemo(() => {
+    const data = [];
+    for (let i = -5; i <= 0; i++) {
+      const range = getPeriodRange(currentDate, viewMode, i);
+      let ing = 0;
+      let gas = 0;
+      transactions.forEach(t => {
+        const d = new Date(t.date);
+        if (d >= range.start && d <= range.end) {
+          const isInternal = t.tipo_movimiento === 'Movimiento Interno';
+          const isInvestment = t.tipo_movimiento === 'Ahorro/Inversión';
+          if (t.type === 'ingreso' && !isInternal) ing += Math.abs(t.amount);
+          if (t.type === 'egreso' && !isInternal && !isInvestment) gas += Math.abs(t.amount);
+        }
+      });
+      data.push({
+        label: getShortLabel(range.start, viewMode),
+        Ingresos: ing,
+        Gastos: gas,
+        Ahorro: ing - gas
       });
     }
+    return data;
+  }, [transactions, currentDate, viewMode]);
 
-    const currentCats: Record<string, number> = {};
-    let unclassifiedSum = 0;
+  // --- Components ---
 
-    targetTransactions.forEach(t => {
-      const isApoyoFamiliar = t.categoria_principal === 'Pago a Familiar';
-      const isServicioDeuda = t.categoria_principal === 'Servicio de Deuda';
-      
-      if (t.type === 'egreso' && t.tipo_movimiento === 'Gasto Real' && !isApoyoFamiliar && !isServicioDeuda) {
-        const principal = t.categoria_principal || 'Sin Clasificar';
-        if (principal === 'Sin Clasificar') {
-          unclassifiedSum += t.amount;
-        } else {
-          currentCats[principal] = (currentCats[principal] || 0) + t.amount;
-        }
-      }
-    });
-
-    const arr = Object.entries(currentCats).map(([name, total]) => ({ name, total }));
-    arr.sort((a, b) => b.total - a.total);
+  const renderTrendBadge = (curr: number, prev: number, invertGood: boolean = false) => {
+    if (prev === 0) return null;
+    const pct = ((curr - prev) / prev) * 100;
+    const isPositive = pct >= 0;
     
-    if (unclassifiedSum > 0 || arr.length > 0) {
-      arr.unshift({ name: 'Sin Clasificar', total: unclassifiedSum });
-    }
-
-    return arr;
+    // Si invertGood = true (gastos), entonces un aumento es malo (rojo).
+    // Si invertGood = false (ingresos/ahorro), un aumento es bueno (verde).
+    const isGood = invertGood ? !isPositive : isPositive;
+    
+    return (
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.5rem', backgroundColor: isGood ? '#dcfce7' : '#fee2e2', color: isGood ? '#166534' : '#991b1b', borderRadius: '1rem', fontWeight: 700, fontSize: '0.85rem' }}>
+        {isPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+        {Math.abs(pct).toFixed(1)}%
+      </div>
+    );
   };
 
-  const renderCuadro1 = () => {
+  const renderMiniChart = (dataKey: 'Ingresos' | 'Gastos' | 'Ahorro', color: string) => {
     return (
-      <div className="card" style={{ marginBottom: '2rem', border: '2px solid black', backgroundColor: 'var(--bg-color)', boxShadow: '4px 4px 0px 0px rgba(0,0,0,1)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-          <div>
-            <h2 style={{ fontSize: '1.5rem', margin: 0 }}>CUADRO 1 — RESUMEN REAL</h2>
-            <p style={{ color: 'var(--text-secondary)', margin: '0.25rem 0 0 0', fontWeight: 600 }}>Balance = Ingreso Real − Gasto Real − Deuda − Apoyo Familiar</p>
+      <div style={{ height: '120px', width: '100%', marginTop: '1.5rem', borderTop: '1px solid #e5e7eb', paddingTop: '1rem' }}>
+        <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Tendencia últimos 6 períodos</p>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={historyData}>
+            <Line type="monotone" dataKey={dataKey} stroke={color} strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+            <Tooltip formatter={(value: any) => '$' + Number(value).toLocaleString('es-CL')} labelStyle={{ color: 'black' }} />
+            <XAxis dataKey="label" hide />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  };
+
+  // BLOCK 1: PERIOD SELECTOR
+  const renderPeriodSelector = () => {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', backgroundColor: 'white', padding: '0.5rem 1rem', borderRadius: '2rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', border: '1px solid #e5e7eb' }}>
+          <button onClick={() => shiftPeriod(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <ChevronLeft size={24} />
+          </button>
+          
+          <div style={{ minWidth: '150px', textAlign: 'center', fontWeight: 800, fontSize: '1.2rem', textTransform: 'capitalize' }}>
+            {getPeriodLabel(currentDate, viewMode)}
           </div>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#f0f0f0', padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-sm)', border: '2px solid black' }}>
-            <Calendar size={20} />
-            <select 
-              style={{ padding: '0.25rem', border: 'none', backgroundColor: 'transparent', outline: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '1rem' }}
-              value={filterYear}
-              onChange={(e) => setFilterYear(e.target.value)}
-            >
-              <option value="all">Todos los años</option>
-              {availableYears.map(year => (
-                <option key={year} value={year.toString()}>{year}</option>
-              ))}
-            </select>
-            <span style={{ fontWeight: 800 }}>/</span>
-            <select 
-              style={{ padding: '0.25rem', border: 'none', backgroundColor: 'transparent', outline: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '1rem' }}
-              value={periodType}
-              onChange={(e) => {
-                setPeriodType(e.target.value as PeriodType);
-                setFilterPeriod('all');
-              }}
-            >
-              <option value="month">Mensual</option>
-              <option value="quarter">Trimestral</option>
-              <option value="semester">Semestral</option>
-              <option value="year">Anual</option>
-              <option value="all">Histórico</option>
-            </select>
-            
-            {periodType !== 'year' && periodType !== 'all' && (
-              <>
-                <span style={{ fontWeight: 800 }}>/</span>
-                <select 
-                  style={{ padding: '0.25rem', border: 'none', backgroundColor: 'transparent', outline: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '1rem' }}
-                  value={filterPeriod}
-                  onChange={(e) => setFilterPeriod(e.target.value)}
-                >
-                  <option value="all">Todos</option>
-                  {periodType === 'month' && Array.from({length: 12}, (_, i) => (
-                    <option key={"m" + (i+1)} value={(i+1).toString()}>{new Date(2000, i, 1).toLocaleString('es-CL', { month: 'short' })}</option>
-                  ))}
-                  {periodType === 'quarter' && [1, 2, 3, 4].map(q => <option key={"q" + q} value={"Q" + q}>Q{q}</option>)}
-                  {periodType === 'semester' && [1, 2].map(h => <option key={"h" + h} value={"H" + h}>H{h}</option>)}
-                </select>
-              </>
-            )}
+          <button onClick={() => shiftPeriod(1)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <ChevronRight size={24} />
+          </button>
+
+          <div style={{ width: '1px', height: '24px', backgroundColor: '#e5e7eb', margin: '0 0.5rem' }}></div>
+          
+          <select 
+            value={viewMode} 
+            onChange={(e) => setViewMode(e.target.value as ViewMode)}
+            style={{ padding: '0.5rem', border: 'none', backgroundColor: 'transparent', outline: 'none', cursor: 'pointer', fontWeight: 600 }}
+          >
+            <option value="month">Mensual</option>
+            <option value="quarter">Trimestral</option>
+            <option value="year">Anual</option>
+          </select>
+        </div>
+      </div>
+    );
+  };
+
+  // BLOCK 2: THREE MAIN NUMBERS
+  const renderMainNumbers = () => {
+    const c = stats.current;
+    const p = stats.prev;
+
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+        {/* Ingresos */}
+        <div 
+          onClick={() => setExpandedMetric(expandedMetric === 'ingresos' ? null : 'ingresos')}
+          style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', border: '1px solid #e5e7eb', cursor: 'pointer', transition: 'all 0.2s' }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#16a34a' }}>
+              <Wallet size={20} />
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Ingresos</h3>
+            </div>
+            {renderTrendBadge(c.ingresos, p.ingresos, false)}
+          </div>
+          <p style={{ margin: 0, fontSize: '2.5rem', fontWeight: 900, color: 'var(--text-color)' }}>
+            ${c.ingresos.toLocaleString('es-CL')}
+          </p>
+          {expandedMetric === 'ingresos' && renderMiniChart('Ingresos', '#16a34a')}
+        </div>
+
+        {/* Gastos */}
+        <div 
+          onClick={() => setExpandedMetric(expandedMetric === 'gastos' ? null : 'gastos')}
+          style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', border: '1px solid #e5e7eb', cursor: 'pointer', transition: 'all 0.2s' }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#dc2626' }}>
+              <CreditCard size={20} />
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Gastos</h3>
+            </div>
+            {renderTrendBadge(c.gastos, p.gastos, true)}
+          </div>
+          <p style={{ margin: 0, fontSize: '2.5rem', fontWeight: 900, color: 'var(--text-color)' }}>
+            ${c.gastos.toLocaleString('es-CL')}
+          </p>
+          {expandedMetric === 'gastos' && renderMiniChart('Gastos', '#dc2626')}
+        </div>
+
+        {/* Ahorro */}
+        <div 
+          onClick={() => setExpandedMetric(expandedMetric === 'ahorro' ? null : 'ahorro')}
+          style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', border: '1px solid #e5e7eb', cursor: 'pointer', transition: 'all 0.2s' }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#2563eb' }}>
+              <PiggyBank size={20} />
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Ahorro</h3>
+            </div>
+            {renderTrendBadge(c.ahorro, p.ahorro, false)}
+          </div>
+          <p style={{ margin: 0, fontSize: '2.5rem', fontWeight: 900, color: 'var(--text-color)' }}>
+            ${c.ahorro.toLocaleString('es-CL')}
+          </p>
+          {expandedMetric === 'ahorro' && renderMiniChart('Ahorro', '#2563eb')}
+        </div>
+      </div>
+    );
+  };
+
+  // BLOCK 3: FUENTES DE INGRESO
+  const renderIncomeSources = () => {
+    const c = stats.current;
+    const totalEntradas = c.ingresos + c.aportePropio;
+    if (totalEntradas === 0) return null;
+
+    const sueldoPct = (c.sueldo / totalEntradas) * 100;
+    const otrosPct = (c.ingresosOtros / totalEntradas) * 100;
+    const aportePct = (c.aportePropio / totalEntradas) * 100;
+
+    return (
+      <div className="card" style={{ marginBottom: '2rem', backgroundColor: 'white', padding: '2rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', border: '1px solid #e5e7eb' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <h2 style={{ fontSize: '1.3rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            Fuentes de Entrada
+          </h2>
+        </div>
+        
+        {/* Proportional Bar */}
+        <div style={{ height: '32px', display: 'flex', width: '100%', borderRadius: '16px', overflow: 'hidden', marginBottom: '2rem' }}>
+          {sueldoPct > 0 && <div style={{ width: `${sueldoPct}%`, backgroundColor: '#16a34a', transition: 'width 0.5s' }} title="Sueldo/Honorarios"></div>}
+          {otrosPct > 0 && <div style={{ width: `${otrosPct}%`, backgroundColor: '#4ade80', transition: 'width 0.5s' }} title="Otros Ingresos"></div>}
+          {aportePct > 0 && <div style={{ width: `${aportePct}%`, backgroundColor: '#cbd5e1', transition: 'width 0.5s' }} title="Aporte Propio"></div>}
+        </div>
+
+        {/* Legend */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ width: '16px', height: '16px', backgroundColor: '#16a34a', borderRadius: '4px' }}></div>
+            <div>
+              <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem' }}>Sueldo/Hon.</p>
+              <p style={{ margin: 0, fontWeight: 800, fontSize: '1.1rem' }}>${c.sueldo.toLocaleString('es-CL')}</p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ width: '16px', height: '16px', backgroundColor: '#4ade80', borderRadius: '4px' }}></div>
+            <div>
+              <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem' }}>Otros</p>
+              <p style={{ margin: 0, fontWeight: 800, fontSize: '1.1rem' }}>${c.ingresosOtros.toLocaleString('es-CL')}</p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ width: '16px', height: '16px', backgroundColor: '#cbd5e1', borderRadius: '4px' }}></div>
+            <div>
+              <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Aporte propio</p>
+              <p style={{ margin: 0, fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-secondary)' }}>${c.aportePropio.toLocaleString('es-CL')}</p>
+            </div>
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-          <div>
-            <p style={{ margin: 0, color: 'var(--text-secondary)', fontWeight: 600 }}>Ingreso Real</p>
-            <p style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, color: 'var(--success)' }}>${ingresosReales.toLocaleString('es-CL')}</p>
-          </div>
-          <div>
-            <p style={{ margin: 0, color: 'var(--text-secondary)', fontWeight: 600 }}>(−) Gasto Real</p>
-            <p style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, color: 'var(--danger)' }}>${egresosReales.toLocaleString('es-CL')}</p>
-          </div>
-          <div>
-            <p style={{ margin: 0, color: 'var(--text-secondary)', fontWeight: 600 }}>(−) Servicio de Deuda</p>
-            <p style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, color: 'var(--warning)' }}>${servicioDeuda.toLocaleString('es-CL')}</p>
-          </div>
-          <div>
-            <p style={{ margin: 0, color: 'var(--text-secondary)', fontWeight: 600 }}>(−) Apoyo Familiar</p>
-            <p style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, color: '#f97316' }}>${apoyoFamiliar.toLocaleString('es-CL')}</p>
-          </div>
-        </div>
-
-        <div style={{ borderTop: '2px dashed black', paddingTop: '1.5rem' }}>
-          <p style={{ margin: 0, color: 'var(--text-secondary)', fontWeight: 600, fontSize: '1.2rem' }}>BALANCE REAL</p>
-          <p style={{ fontSize: '3.5rem', fontWeight: 900, margin: 0, color: balanceReal >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-            ${balanceReal.toLocaleString('es-CL')}
+        {/* Context Text */}
+        <div style={{ padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '0.5rem', borderLeft: '4px solid #3b82f6' }}>
+          <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 500, lineHeight: '1.5' }}>
+            De tus <strong>${totalEntradas.toLocaleString('es-CL')}</strong> en entradas este período, 
+            <strong style={{ color: '#16a34a' }}> ${c.ingresos.toLocaleString('es-CL')}</strong> es ingreso nuevo y 
+            <strong style={{ color: '#64748b' }}> ${c.aportePropio.toLocaleString('es-CL')}</strong> es Aporte propio desde otra cuenta tuya.
           </p>
         </div>
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem', marginTop: '2rem', padding: '1rem', backgroundColor: '#f0f0f0', borderRadius: 'var(--radius-sm)' }}>
-          <div>
-            <p style={{ margin: 0, color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.9rem' }}>Ahorro/Inversión (Informativo)</p>
-            <p style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#3b82f6' }}>${ahorro.toLocaleString('es-CL')}</p>
-          </div>
-          <div>
-            <p style={{ margin: 0, color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.9rem' }}>Movimiento Interno (Informativo)</p>
-            <p style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#8b5cf6' }}>${movimientosInternosEgreso.toLocaleString('es-CL')}</p>
-          </div>
-        </div>
       </div>
     );
   };
 
-  const renderCuadro2 = () => {
-    const list = chartData;
-    const totalGastoReal = egresosReales; 
-
-    return (
-      <div className="card" style={{ border: '2px solid black', backgroundColor: 'var(--bg-color)', boxShadow: '4px 4px 0px 0px rgba(0,0,0,1)', marginBottom: '2rem' }}>
-        <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem', marginTop: 0 }}>CUADRO 2 — GASTO REAL POR CATEGORÍA</h2>
-        
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead style={{ backgroundColor: 'var(--primary-light)', borderBottom: '2px solid black' }}>
-              <tr>
-                <th style={{ padding: '0.75rem 1rem', borderRight: '2px solid black', fontWeight: 700 }}>Categoría</th>
-                <th style={{ padding: '0.75rem 1rem', borderRight: '2px solid black', fontWeight: 700 }}>Monto</th>
-                <th style={{ padding: '0.75rem 1rem', borderRight: '2px solid black', fontWeight: 700 }}>% sobre total</th>
-                <th style={{ padding: '0.75rem 1rem', fontWeight: 700, textAlign: 'center' }}>Ocultar</th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.map((item: any, i: number) => {
-                const isHidden = hiddenPrincipals.includes(item.name);
-                const isUnclassified = item.name === 'Sin Clasificar';
-                const pct = totalGastoReal > 0 ? ((item.total / totalGastoReal) * 100).toFixed(1) : "0.0";
-                
-                return (
-                  <tr 
-                    key={item.name} 
-                    style={{ 
-                      borderBottom: i < list.length - 1 ? '1px solid #e5e7eb' : 'none',
-                      backgroundColor: isUnclassified ? '#fee2e2' : 'transparent',
-                      border: isUnclassified ? '2px solid var(--danger)' : undefined,
-                      opacity: isHidden ? 0.5 : 1,
-                      transition: 'opacity 0.2s'
-                    }} 
-                  >
-                    <td style={{ padding: '1rem', borderRight: '1px solid #e5e7eb', fontWeight: isUnclassified ? 800 : 600, color: isUnclassified ? 'var(--danger)' : 'inherit', textDecoration: isHidden ? 'line-through' : 'none' }}>
-                      {item.name}
-                    </td>
-                    <td style={{ padding: '1rem', borderRight: '1px solid #e5e7eb', fontWeight: 700, textDecoration: isHidden ? 'line-through' : 'none' }}>
-                      ${item.total.toLocaleString('es-CL')}
-                    </td>
-                    <td style={{ padding: '1rem', borderRight: '1px solid #e5e7eb', fontWeight: 600 }}>
-                      <span style={{ 
-                        backgroundColor: isUnclassified ? 'var(--danger)' : 'var(--text-color)', 
-                        color: isUnclassified ? 'white' : 'var(--bg-color)', 
-                        padding: '0.2rem 0.5rem', 
-                        borderRadius: '12px', 
-                        fontSize: '0.75rem', 
-                        fontWeight: 800
-                      }}>
-                        {pct}%
-                      </span>
-                    </td>
-                    <td style={{ padding: '1rem', textAlign: 'center' }}>
-                      {!isUnclassified && (
-                        <button
-                          onClick={() => setHiddenPrincipals(prev => 
-                            prev.includes(item.name) ? prev.filter(c => c !== item.name) : [...prev, item.name]
-                          )}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            color: isHidden ? 'var(--text-secondary)' : 'var(--text-color)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '100%'
-                          }}
-                          title={isHidden ? "Mostrar en total" : "Ocultar del total"}
-                        >
-                          {isHidden ? <EyeOff size={20} /> : <Eye size={20} />}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  };
-
-  const renderCuadro3 = () => {
-    const interes = baseTransactions.filter(t => t.categoria_secundaria === 'Interés Línea de Crédito').reduce((sum, t) => sum + t.amount, 0);
-    const abono = baseTransactions.filter(t => t.categoria_secundaria === 'Abono Línea de Crédito').reduce((sum, t) => sum + t.amount, 0);
-    const otros = baseTransactions.filter(t => t.categoria_principal === 'Servicio de Deuda' && t.categoria_secundaria !== 'Interés Línea de Crédito' && t.categoria_secundaria !== 'Abono Línea de Crédito').reduce((sum, t) => sum + t.amount, 0);
+  // BLOCK 4: FIJOS VS VARIABLES
+  const renderFixedVsVariable = () => {
+    const c = stats.current;
+    if (c.gastos === 0) return null;
     
+    const fixedPct = (c.fixedExpenses / c.gastos) * 100;
+    const varPct = (c.variableExpenses / c.gastos) * 100;
+
     return (
-      <div className="card" style={{ border: '2px solid black', backgroundColor: 'var(--bg-color)', boxShadow: '4px 4px 0px 0px rgba(0,0,0,1)', height: '100%' }}>
-        <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>CUADRO 3 — SERVICIO DE DEUDA</h2>
+      <div className="card" style={{ marginBottom: '2rem', backgroundColor: 'white', padding: '2rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', border: '1px solid #e5e7eb' }}>
+        <h2 style={{ fontSize: '1.3rem', margin: '0 0 1.5rem 0' }}>Estructura de Gasto</h2>
         
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', backgroundColor: '#f0f0f0', borderRadius: '4px' }}>
-            <span style={{ fontWeight: 600 }}>Interés Línea de Crédito</span>
-            <span style={{ fontWeight: 700 }}>${interes.toLocaleString('es-CL')}</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', backgroundColor: '#f0f0f0', borderRadius: '4px' }}>
-            <span style={{ fontWeight: 600 }}>Abono Línea de Crédito</span>
-            <span style={{ fontWeight: 700 }}>${abono.toLocaleString('es-CL')}</span>
-          </div>
-          {otros > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', backgroundColor: '#f0f0f0', borderRadius: '4px' }}>
-              <span style={{ fontWeight: 600 }}>Otros (Créditos)</span>
-              <span style={{ fontWeight: 700 }}>${otros.toLocaleString('es-CL')}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', marginBottom: '1rem' }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontWeight: 700, fontSize: '0.9rem' }}>
+              <span style={{ color: '#0ea5e9' }}>Fijos ({fixedPct.toFixed(0)}%)</span>
+              <span style={{ color: '#f59e0b' }}>Variables ({varPct.toFixed(0)}%)</span>
             </div>
-          )}
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem 0.5rem', marginTop: '0.5rem', borderTop: '2px solid black' }}>
-            <span style={{ fontWeight: 800 }}>Total Deuda</span>
-            <span style={{ fontWeight: 900, fontSize: '1.2rem', color: 'var(--warning)' }}>${(interes + abono + otros).toLocaleString('es-CL')}</span>
+            <div style={{ height: '24px', display: 'flex', width: '100%', borderRadius: '12px', overflow: 'hidden' }}>
+              <div 
+                onClick={() => setExpandedExpenseType(expandedExpenseType === 'fijo' ? null : 'fijo')}
+                style={{ width: `${fixedPct}%`, backgroundColor: '#0ea5e9', cursor: 'pointer', transition: 'opacity 0.2s' }}
+                title="Ver Fijos"
+              ></div>
+              <div 
+                onClick={() => setExpandedExpenseType(expandedExpenseType === 'variable' ? null : 'variable')}
+                style={{ width: `${varPct}%`, backgroundColor: '#f59e0b', cursor: 'pointer', transition: 'opacity 0.2s' }}
+                title="Ver Variables"
+              ></div>
+            </div>
           </div>
         </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div 
+            onClick={() => setExpandedExpenseType(expandedExpenseType === 'fijo' ? null : 'fijo')}
+            style={{ cursor: 'pointer', padding: '0.5rem', borderRadius: '0.5rem', backgroundColor: expandedExpenseType === 'fijo' ? '#f0f9ff' : 'transparent' }}
+          >
+            <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Total Fijos</p>
+            <p style={{ margin: 0, fontWeight: 900, fontSize: '1.2rem', color: '#0ea5e9' }}>${c.fixedExpenses.toLocaleString('es-CL')}</p>
+          </div>
+          <div 
+            onClick={() => setExpandedExpenseType(expandedExpenseType === 'variable' ? null : 'variable')}
+            style={{ cursor: 'pointer', padding: '0.5rem', borderRadius: '0.5rem', backgroundColor: expandedExpenseType === 'variable' ? '#fffbeb' : 'transparent', textAlign: 'right' }}
+          >
+            <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Total Variables</p>
+            <p style={{ margin: 0, fontWeight: 900, fontSize: '1.2rem', color: '#f59e0b' }}>${c.variableExpenses.toLocaleString('es-CL')}</p>
+          </div>
+        </div>
+
+        {/* Expanded Category Breakdown */}
+        {expandedExpenseType && (
+          <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb' }}>
+            <h4 style={{ margin: '0 0 1rem 0', fontWeight: 700 }}>
+              Detalle de Gastos {expandedExpenseType === 'fijo' ? 'Fijos' : 'Variables'}
+            </h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {c.topCats.filter(cat => {
+                const isFijo = cat.name.toLowerCase().includes('fijo') || cat.name.toLowerCase().includes('vivienda');
+                return expandedExpenseType === 'fijo' ? isFijo : !isFijo;
+              }).map(cat => (
+                <div key={cat.name} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', backgroundColor: '#f8fafc', borderRadius: '4px' }}>
+                  <span style={{ fontWeight: 600 }}>{cat.name}</span>
+                  <span style={{ fontWeight: 700 }}>${cat.amount.toLocaleString('es-CL')}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   };
 
-  const renderCuadro4 = () => {
-    const list = baseTransactions.filter(t => t.tipo_movimiento === 'Movimiento Interno' || t.categoria_principal === 'Pago a Familiar');
+  // BLOCK 5: TOP CATEGORIAS
+  const [showAllCategories, setShowAllCategories] = useState(false);
+  const renderTopCategories = () => {
+    const c = stats.current;
+    if (c.gastos === 0) return null;
+
+    const list = showAllCategories ? c.topCats : c.topCats.slice(0, 5);
+
     return (
-      <div className="card" style={{ border: '2px solid black', backgroundColor: 'var(--bg-color)', boxShadow: '4px 4px 0px 0px rgba(0,0,0,1)', height: '100%' }}>
-        <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>CUADRO 4 — NO ES GASTO</h2>
+      <div className="card" style={{ marginBottom: '2rem', backgroundColor: 'white', padding: '2rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', border: '1px solid #e5e7eb' }}>
+        <h2 style={{ fontSize: '1.3rem', margin: '0 0 1.5rem 0' }}>Top Categorías de Gasto</h2>
         
-        <div style={{ maxHeight: '300px', overflowY: 'auto', paddingRight: '0.5rem' }}>
-          {list.length === 0 ? (
-            <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>No hay movimientos en este período.</p>
-          ) : (
-            list.map(t => (
-              <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', borderBottom: '1px solid #e5e7eb' }}>
-                <div style={{ flex: 1, minWidth: 0, marginRight: '1rem' }}>
-                  <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.description}</div>
-                  <div style={{ fontSize: '0.8rem', color: t.tipo_movimiento === 'Movimiento Interno' ? '#8b5cf6' : '#f97316', fontWeight: 700 }}>
-                    {t.tipo_movimiento === 'Movimiento Interno' ? 'Mov. Interno' : 'Apoyo Familiar'}
-                  </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {list.map((cat, i) => {
+            const pct = (cat.amount / c.gastos) * 100;
+            const isUnclassified = cat.name === 'Sin Clasificar';
+            const color = isUnclassified ? '#ef4444' : `hsl(${(i * 137) % 360}, 70%, 50%)`;
+            
+            return (
+              <div key={cat.name} style={{ cursor: 'pointer', padding: '0.5rem', borderRadius: '8px', transition: 'background-color 0.2s' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                  <span style={{ fontWeight: 700, color: isUnclassified ? '#dc2626' : 'inherit' }}>{cat.name}</span>
+                  <span style={{ fontWeight: 800 }}>${cat.amount.toLocaleString('es-CL')}</span>
                 </div>
-                <div style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
-                  ${t.amount.toLocaleString('es-CL')}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div style={{ flex: 1, height: '8px', backgroundColor: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ width: `${pct}%`, height: '100%', backgroundColor: color, borderRadius: '4px' }}></div>
+                  </div>
+                  <span style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--text-secondary)', width: '40px', textAlign: 'right' }}>{pct.toFixed(1)}%</span>
                 </div>
               </div>
-            ))
-          )}
+            );
+          })}
         </div>
+
+        {c.topCats.length > 5 && (
+          <button 
+            onClick={() => setShowAllCategories(!showAllCategories)}
+            style={{ width: '100%', padding: '0.75rem', marginTop: '1rem', backgroundColor: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: '0.5rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}
+          >
+            {showAllCategories ? <>Ver menos <ChevronUp size={16} /></> : <>Ver todas ({c.topCats.length}) <ChevronDown size={16} /></>}
+          </button>
+        )}
       </div>
     );
   };
 
-  const { 
-    ingresosReales, egresosReales, ahorro, movimientosInternosEgreso,
-    servicioDeuda, apoyoFamiliar,
-    balanceReal
-  } = calculateSummary();
-  
-  const chartData = getChartData();
+  // BLOCK 6: UNCLASSIFIED ALERT
+  const renderUnclassifiedAlert = () => {
+    const count = stats.current.unclassifiedCount;
+    if (count === 0) return null;
+
+    return (
+      <div style={{ backgroundColor: '#fef2f2', border: '2px solid #ef4444', borderRadius: '1rem', padding: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '2rem', boxShadow: '0 4px 6px -1px rgba(239, 68, 68, 0.2)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ backgroundColor: '#fee2e2', padding: '0.75rem', borderRadius: '50%' }}>
+            <AlertTriangle color="#ef4444" size={24} />
+          </div>
+          <div>
+            <h4 style={{ margin: '0 0 0.25rem 0', color: '#b91c1c', fontSize: '1.1rem' }}>Tienes {count} {count === 1 ? 'movimiento' : 'movimientos'} sin clasificar</h4>
+            <p style={{ margin: 0, color: '#991b1b', fontWeight: 500, fontSize: '0.9rem' }}>
+              Clasifícalos para mejorar la precisión de tus gastos.
+            </p>
+          </div>
+        </div>
+        <a href="/transactions" style={{ backgroundColor: '#ef4444', color: 'white', padding: '0.5rem 1rem', borderRadius: '0.5rem', fontWeight: 700, textDecoration: 'none' }}>
+          Clasificar Ahora
+        </a>
+      </div>
+    );
+  };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem', paddingBottom: '4rem', maxWidth: '1200px', margin: '0 auto' }}>
+    <div style={{ maxWidth: '1000px', margin: '0 auto', paddingBottom: '4rem' }}>
+      {renderPeriodSelector()}
       
       {transactions.length === 0 ? (
-        <div className="card" style={{ backgroundColor: 'white', textAlign: 'center', padding: '6rem 2rem', border: '3px dashed black' }}>
-          <h2 style={{ fontSize: '2rem', margin: '0 0 1rem 0' }}>Aún no tienes movimientos cargados</h2>
+        <div className="card" style={{ backgroundColor: 'white', textAlign: 'center', padding: '6rem 2rem', border: '3px dashed #cbd5e1', borderRadius: '1rem' }}>
+          <h2 style={{ fontSize: '1.8rem', margin: '0 0 1rem 0' }}>Aún no tienes movimientos cargados</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: '1.1rem', fontWeight: 500 }}>
-            Para ver tu balance y análisis financiero, necesitas importar tus cartolas bancarias.
+            Importa tus cartolas bancarias para comenzar.
           </p>
           <a href="/import" className="btn btn-primary" style={{ textDecoration: 'none', display: 'inline-block' }}>Importar Transacciones</a>
         </div>
-      ) : baseTransactions.length === 0 ? (
-        <>
-          {renderCuadro1()}
-          <div className="card" style={{ backgroundColor: 'white', textAlign: 'center', padding: '4rem 2rem' }}>
-            <h2 style={{ fontSize: '1.5rem', margin: '0 0 1rem 0' }}>No hay movimientos registrados en este período</h2>
-            <p style={{ color: 'var(--text-secondary)', margin: 0, fontWeight: 500 }}>Prueba seleccionando otro rango de fechas en los filtros superiores.</p>
-          </div>
-        </>
       ) : (
         <>
-          {renderCuadro1()}
-          {renderCuadro2()}
+          {renderUnclassifiedAlert()}
+          {renderMainNumbers()}
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem', marginBottom: '2rem' }}>
-            {renderCuadro3()}
-            {renderCuadro4()}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
+            <div>
+              {renderIncomeSources()}
+              {renderFixedVsVariable()}
+            </div>
+            <div>
+              {renderTopCategories()}
+            </div>
           </div>
         </>
       )}
