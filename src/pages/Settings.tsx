@@ -5,7 +5,7 @@ import { Plus, Trash2, Edit2, Check, X, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { extractAndNormalizeRUT } from '../utils/rutParser';
 import type { ClassificationRule } from '../utils/classificationRules';
-import { getRules, saveRules } from '../utils/classificationRules';
+import { getRules, saveRules, applyRules } from '../utils/classificationRules';
 import { CascadingCategorySelector } from './Transactions';
 
 export default function Settings() {
@@ -229,6 +229,66 @@ export default function Settings() {
             <button className="btn btn-primary" onClick={handleSaveRut} disabled={isSavingRut}>
               <Save size={20} />
               Guardar RUT
+            </button>
+          </div>
+
+          <div style={{ borderTop: '2px solid #e2e8f0', margin: '1.5rem 0', paddingTop: '1.5rem' }}>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', fontWeight: 800 }}>¿Tienes transacciones antiguas sin clasificar?</h3>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem', fontWeight: 500 }}>
+              Si importaste datos antes de guardar tu RUT o tus reglas, puedes aplicar la auto-clasificación a todo tu historial pendiente.
+            </p>
+            <button className="btn btn-outline" onClick={async () => {
+              if (!user) return;
+              toast.loading('Escaneando transacciones...', { id: 'rescan' });
+              try {
+                // 1. Obtener pendientes
+                const { data: txs, error: fetchErr } = await supabase.from('transactions').select('id, original_description, description').eq('user_id', user.id).is('tipo_movimiento', null);
+                if (fetchErr) throw fetchErr;
+                if (!txs || txs.length === 0) {
+                  toast.success('No hay transacciones pendientes.', { id: 'rescan' });
+                  return;
+                }
+
+                let updated = 0;
+                for (const tx of txs) {
+                  const desc = (tx.original_description || tx.description || '').toLowerCase();
+                  let tipo = null, principal = null, secundaria = null;
+                  
+                  const rutEx = extractAndNormalizeRUT(desc);
+                  const my = myRut ? extractAndNormalizeRUT(myRut) : null;
+                  
+                  if (rutEx && my && rutEx === my) {
+                    tipo = 'Movimiento Interno';
+                    principal = desc.includes('fondo') ? 'Traspaso fondo' : 'Transferencia personal';
+                    secundaria = principal;
+                  } else if (rutEx) {
+                    const c = contacts.find(c => c.rut && extractAndNormalizeRUT(c.rut) === rutEx);
+                    if (c) {
+                      tipo = 'Gasto Real'; principal = 'Pago a Familiar'; secundaria = 'Pago a Familiar';
+                    }
+                  }
+                  
+                  // Falta applyRules, pero para simplificar (ya que la función aplica todo):
+                  if (!tipo) {
+                    const match = applyRules(desc);
+                    if (match) {
+                      tipo = match.tipo_movimiento;
+                      principal = match.categoria_principal;
+                      secundaria = match.categoria_secundaria;
+                    }
+                  }
+
+                  if (tipo) {
+                    await supabase.from('transactions').update({ tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria }).eq('id', tx.id);
+                    updated++;
+                  }
+                }
+                toast.success(`Se auto-clasificaron ${updated} transacciones.`, { id: 'rescan' });
+              } catch (e: any) {
+                toast.error('Error al escanear: ' + e.message, { id: 'rescan' });
+              }
+            }}>
+              Re-escanear transacciones pendientes
             </button>
           </div>
         </div>
