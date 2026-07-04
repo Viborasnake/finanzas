@@ -271,7 +271,7 @@ export default function Dashboard() {
         unclassifiedCount,
         availableCats: Array.from(availableCats).sort(),
         insights: {
-          balance: ingresos - gastosTotales,
+          balance: (ingresos + aportePropio) - gastosTotales,
           maxIncomeDesc,
           maxIncomeAmount,
           maxRecurringDesc,
@@ -546,6 +546,11 @@ export default function Dashboard() {
                 {isDeficit ? 'Déficit de ' : 'Superávit de '}
                 <span style={{ fontWeight: 900 }}>${Math.abs(balance).toLocaleString('es-CL')}</span>
               </div>
+              {stats.current.aportePropio > 0 && (
+                <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700, marginTop: '0.2rem' }}>
+                  *Incluye aportes propios
+                </div>
+              )}
             </div>
           </div>
 
@@ -852,28 +857,33 @@ export default function Dashboard() {
   // BLOCK 7: YEARLY CHART (rich version)
   const renderYearlyChart = () => {
     const year = dateRange.start.getFullYear();
-    const monthlyData: { mes: string; mesIdx: number; Ingresos: number; Gastos: number; Balance: number; tasaAhorro: number }[] = [];
+    const monthlyData: { mes: string; mesIdx: number; Ingresos: number; AportePropio: number; Gastos: number; Balance: number; tasaAhorro: number }[] = [];
 
     for (let m = 0; m < 12; m++) {
       const start = new Date(year, m, 1);
       const end = new Date(year, m + 1, 0, 23, 59, 59);
-      let ing = 0, gas = 0;
+      let ing = 0, aporte = 0, gas = 0;
       transactions.forEach(t => {
         const d = new Date(t.date);
         if (d >= start && d <= end) {
           const isInternal = t.tipo_movimiento === 'Movimiento Interno';
           const isInv = t.tipo_movimiento === 'Ahorro/Inversión';
-          if (t.type === 'ingreso' && !isInternal) ing += Math.abs(t.amount);
+          if (t.type === 'ingreso') {
+            if (isInternal) aporte += Math.abs(t.amount);
+            else ing += Math.abs(t.amount);
+          }
           if (t.type === 'egreso' && !isInternal && !isInv) gas += Math.abs(t.amount);
         }
       });
+      const totalIng = ing + aporte;
       monthlyData.push({
         mes: new Date(year, m, 1).toLocaleString('es-CL', { month: 'short' }),
         mesIdx: m,
-        Ingresos: ing,
+        Ingresos: totalIng,
+        AportePropio: aporte,
         Gastos: gas,
-        Balance: ing - gas,
-        tasaAhorro: ing > 0 ? Math.round(((ing - gas) / ing) * 100) : 0
+        Balance: totalIng - gas,
+        tasaAhorro: totalIng > 0 ? Math.round(((totalIng - gas) / totalIng) * 100) : 0
       });
     }
 
@@ -905,6 +915,11 @@ export default function Dashboard() {
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', color: '#22c55e' }}>
             <span>↑ Ingresos</span><span>${d.Ingresos.toLocaleString('es-CL')}</span>
           </div>
+          {d.AportePropio > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', color: '#16a34a', fontSize: '0.75rem' }}>
+              <span>└ Aportes Propios</span><span>${d.AportePropio.toLocaleString('es-CL')}</span>
+            </div>
+          )}
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', color: '#f43f5e' }}>
             <span>↓ Gastos</span><span>${d.Gastos.toLocaleString('es-CL')}</span>
           </div>
