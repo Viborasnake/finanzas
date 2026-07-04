@@ -208,7 +208,7 @@ export default function Transactions() {
     const matchesYear = filterYear === 'all' || date.getFullYear().toString() === filterYear;
     const matchesMonth = filterMonth === 'all' || (date.getMonth() + 1).toString() === filterMonth;
 
-    const matchesType = filterType === 'all' || (filterType === 'expense' ? t.amount < 0 : t.amount > 0);
+    const matchesType = filterType === 'all' || (filterType === 'expense' ? t.type === 'egreso' : t.type === 'ingreso');
     const matchesStatus = filterStatus === 'all' || (filterStatus === 'classified' ? !!t.tipo_movimiento : !t.tipo_movimiento);
 
     return matchesSearch && matchesYear && matchesMonth && matchesType && matchesStatus;
