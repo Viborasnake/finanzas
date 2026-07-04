@@ -17,8 +17,7 @@ export function TransactionTypeBadge({ type }: TransactionTypeBadgeProps) {
         fontWeight: 800, fontSize: '0.75rem', border: '2px solid #16a34a',
         boxShadow: '2px 2px 0px #16a34a'
       }}>
-        <ArrowUpCircle size={14} strokeWidth={3} />
-        <span>INGRESO</span>
+        <ArrowUpCircle size={16} strokeWidth={3} />
       </div>
     );
   }
@@ -32,8 +31,7 @@ export function TransactionTypeBadge({ type }: TransactionTypeBadgeProps) {
         fontWeight: 800, fontSize: '0.75rem', border: '2px solid #dc2626',
         boxShadow: '2px 2px 0px #dc2626'
       }}>
-        <ArrowDownCircle size={14} strokeWidth={3} />
-        <span>EGRESO</span>
+        <ArrowDownCircle size={16} strokeWidth={3} />
       </div>
     );
   }
@@ -47,8 +45,7 @@ export function TransactionTypeBadge({ type }: TransactionTypeBadgeProps) {
         fontWeight: 800, fontSize: '0.75rem', border: '2px solid #94a3b8',
         boxShadow: '2px 2px 0px #94a3b8'
       }}>
-        <RefreshCw size={14} strokeWidth={3} />
-        <span>INTERNO</span>
+        <RefreshCw size={16} strokeWidth={3} />
       </div>
     );
   }
@@ -62,8 +59,7 @@ export function TransactionTypeBadge({ type }: TransactionTypeBadgeProps) {
         fontWeight: 800, fontSize: '0.75rem', border: '2px solid #9333ea',
         boxShadow: '2px 2px 0px #9333ea'
       }}>
-        <ArrowUpCircle size={14} strokeWidth={3} />
-        <span>AHORRO</span>
+        <ArrowUpCircle size={16} strokeWidth={3} />
       </div>
     );
   }
