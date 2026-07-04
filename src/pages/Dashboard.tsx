@@ -8,6 +8,7 @@ import {
   Wallet, CreditCard, AlertTriangle, Sparkles, Activity, Search, X, Edit2,
   ArrowUpRight, ArrowDownRight, Scale, PiggyBank
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { 
   AreaChart, Area,
@@ -552,21 +553,24 @@ export default function Dashboard() {
           {activeBank === 'Itaú' && (
             <button 
               onClick={async () => {
-                const { data } = await supabase.from('transactions').select('id, raw_data').eq('user_id', user?.id).eq('bank', 'Scotiabank');
+                const toastId = toast.loading('Buscando fechas corruptas...');
+                const { data } = await supabase.from('transactions').select('id, date').eq('user_id', user?.id).eq('bank', 'Itaú');
                 if (data) {
-                  const ids = data.filter(t => t.raw_data && Object.keys(t.raw_data).some(k => k.toLowerCase().includes('movimiento'))).map(t => t.id);
-                  if (ids.length > 0) {
-                    await supabase.from('transactions').update({ bank: 'Itaú' }).in('id', ids);
-                    alert(`¡Se corrigieron ${ids.length} transacciones!`);
+                  const toFix = data.filter(t => t.date && t.date.startsWith('2223-'));
+                  if (toFix.length > 0) {
+                    for (const tx of toFix) {
+                      await supabase.from('transactions').update({ date: tx.date.replace('2223-', '2026-') }).eq('id', tx.id);
+                    }
+                    toast.success(`¡Se corrigieron las fechas de ${toFix.length} transacciones!`, { id: toastId });
                     fetchTransactions();
                   } else {
-                    alert('No se encontraron transacciones mal asignadas.');
+                    toast.error('No se encontraron fechas corruptas.', { id: toastId });
                   }
                 }
               }}
               style={{ ...neoButton, backgroundColor: '#fde047', fontSize: '0.8rem' }}
             >
-              Corregir Transacciones Itaú
+              Corregir Fechas Itaú
             </button>
           )}
 

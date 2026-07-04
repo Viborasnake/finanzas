@@ -86,9 +86,9 @@ export default function CSVImport() {
           
           if (rowStr.includes('desde hasta')) {
             const valRow = rows[i + 1]?.join(' ') || '';
-            const match = valRow.match(/\d{4}/);
+            const match = valRow.match(/\b(20\d{2})\b/);
             if (match) {
-              baseYear = parseInt(match[0], 10);
+              baseYear = parseInt(match[1], 10);
             }
           }
           if (rowStr.includes('fecha') && rowStr.includes('movimiento')) {
