@@ -8,7 +8,6 @@ import {
   Wallet, CreditCard, AlertTriangle, Sparkles, Activity, Search, X, Edit2,
   ArrowUpRight, ArrowDownRight, Scale, PiggyBank
 } from 'lucide-react';
-import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { 
   AreaChart, Area,
@@ -548,31 +547,7 @@ export default function Dashboard() {
     return (
       <div style={{ marginBottom: '2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-          <h1 style={{ margin: 0, fontFamily: '"Montserrat", sans-serif', fontSize: '2.5rem', fontWeight: 900, color: '#000' }}>Resumen Financiero (Txs: {transactions.length})</h1>
-
-          {activeBank === 'Itaú' && (
-            <button 
-              onClick={async () => {
-                const toastId = toast.loading('Buscando fechas corruptas...');
-                const { data } = await supabase.from('transactions').select('id, date').eq('user_id', user?.id).eq('bank', 'Itaú');
-                if (data) {
-                  const toFix = data.filter(t => t.date && t.date.startsWith('2223-'));
-                  if (toFix.length > 0) {
-                    for (const tx of toFix) {
-                      await supabase.from('transactions').update({ date: tx.date.replace('2223-', '2026-') }).eq('id', tx.id);
-                    }
-                    toast.success(`¡Se corrigieron las fechas de ${toFix.length} transacciones!`, { id: toastId });
-                    fetchTransactions();
-                  } else {
-                    toast.error('No se encontraron fechas corruptas.', { id: toastId });
-                  }
-                }
-              }}
-              style={{ ...neoButton, backgroundColor: '#fde047', fontSize: '0.8rem' }}
-            >
-              Corregir Fechas Itaú
-            </button>
-          )}
+          <h1 style={{ margin: 0, fontFamily: '"Montserrat", sans-serif', fontSize: '2.5rem', fontWeight: 900, color: '#000' }}>Resumen Financiero</h1>
 
           {/* Date Range Picker Trigger */}
           <div ref={pickerRef} style={{ position: 'relative' }}>
@@ -637,13 +612,6 @@ export default function Dashboard() {
             )}
           </div>
         </div>
-        
-        {activeBank === 'Itaú' && transactions.length > 0 && (
-          <div style={{ background: '#f1f5f9', padding: '1rem', border: '2px solid black', borderRadius: '8px', marginBottom: '2rem', overflowX: 'auto' }}>
-            <h3 style={{ margin: '0 0 1rem 0' }}>DEBUG INFO:</h3>
-            <pre style={{ fontSize: '10px' }}>{JSON.stringify(transactions.slice(0, 5), null, 2)}</pre>
-          </div>
-        )}
       </div>
     );
   };
