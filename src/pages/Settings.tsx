@@ -4,6 +4,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { Plus, Trash2, Edit2, Check, X, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { extractAndNormalizeRUT } from '../utils/rutParser';
+import type { ClassificationRule } from '../utils/classificationRules';
+import { getRules, saveRules } from '../utils/classificationRules';
+import { CascadingCategorySelector } from './Transactions';
 
 export default function Settings() {
   const [categories, setCategories] = useState<any[]>([]);
@@ -24,10 +27,16 @@ export default function Settings() {
   const [newContactName, setNewContactName] = useState('');
   const [newContactRut, setNewContactRut] = useState('');
 
+  // Rules
+  const [rules, setRules] = useState<ClassificationRule[]>([]);
+  const [newRuleKeyword, setNewRuleKeyword] = useState('');
+  const [newRuleCategory, setNewRuleCategory] = useState<{ tipo: string | null, principal: string | null, secundaria: string | null }>({ tipo: null, principal: null, secundaria: null });
+
   useEffect(() => {
     if (user) {
       fetchCategories();
       fetchSettingsAndContacts();
+      setRules(getRules());
     }
   }, [user]);
 
@@ -87,8 +96,36 @@ export default function Settings() {
       toast.success('Contacto agregado');
     } catch (error) {
       console.error('Error adding contact:', error);
-      toast.error('Error guardando contacto');
+      toast.error('Error al eliminar contacto');
     }
+  };
+
+  const handleAddRule = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newRuleKeyword.trim() || !newRuleCategory.tipo) {
+      toast.error('Ingresa una palabra clave y selecciona una categoría.');
+      return;
+    }
+    const newRule: ClassificationRule = {
+      id: crypto.randomUUID(),
+      keyword: newRuleKeyword.trim(),
+      tipo_movimiento: newRuleCategory.tipo,
+      categoria_principal: newRuleCategory.principal!,
+      categoria_secundaria: newRuleCategory.secundaria!
+    };
+    const updatedRules = [...rules, newRule];
+    setRules(updatedRules);
+    saveRules(updatedRules);
+    setNewRuleKeyword('');
+    setNewRuleCategory({ tipo: null, principal: null, secundaria: null });
+    toast.success('Regla agregada');
+  };
+
+  const handleDeleteRule = (id: string) => {
+    const updatedRules = rules.filter(r => r.id !== id);
+    setRules(updatedRules);
+    saveRules(updatedRules);
+    toast.success('Regla eliminada');
   };
 
   const handleDeleteContact = async (id: string) => {
@@ -239,6 +276,59 @@ export default function Settings() {
                     className="btn" 
                     style={{ padding: '0.5rem', color: 'var(--danger)', border: 'none', boxShadow: 'none' }}
                     onClick={() => handleDeleteContact(c.id)}
+                  >
+                    <Trash2 size={20} />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Classification Rules */}
+        <div className="card">
+          <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Reglas de Auto-Clasificación (Mapeo)</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
+            Define qué texto debe estar en la glosa (descripción) de una transacción para asignarle automáticamente una categoría. Las reglas se aplican al importar.
+          </p>
+          
+          <form onSubmit={handleAddRule} style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <input 
+              type="text" 
+              className="input" 
+              placeholder="Palabra clave (ej. SODIMAC)" 
+              value={newRuleKeyword}
+              onChange={(e) => setNewRuleKeyword(e.target.value)}
+              required
+              style={{ flex: 1, minWidth: '200px' }}
+            />
+            <CascadingCategorySelector 
+              initialPrincipal={null} 
+              initialSecundaria={null} 
+              onSave={(t: any, p: any, s: any) => setNewRuleCategory({ tipo: t, principal: p, secundaria: s })} 
+            />
+            <button type="submit" className="btn btn-primary" style={{ padding: '0.5rem 1rem' }}>
+              <Plus size={20} />
+              Crear Regla
+            </button>
+          </form>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {rules.length === 0 ? (
+              <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>No hay reglas de clasificación configuradas.</p>
+            ) : (
+              rules.map(r => (
+                <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', border: '2px solid black', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-color)' }}>
+                  <div>
+                    <span style={{ fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>Si contiene: "{r.keyword}"</span>
+                    <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                      Clasificar como: {r.tipo_movimiento} &gt; {r.categoria_principal} &gt; {r.categoria_secundaria}
+                    </span>
+                  </div>
+                  <button 
+                    className="btn" 
+                    style={{ padding: '0.5rem', color: 'var(--danger)', border: 'none', boxShadow: 'none' }}
+                    onClick={() => handleDeleteRule(r.id)}
                   >
                     <Trash2 size={20} />
                   </button>

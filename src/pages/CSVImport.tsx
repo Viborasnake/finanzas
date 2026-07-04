@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { extractAndNormalizeRUT } from '../utils/rutParser';
+import { applyRules } from '../utils/classificationRules';
 
 interface Transaction {
   date: string;
@@ -219,6 +220,24 @@ export default function CSVImport() {
               tipo_movimiento = 'Gasto Real';
               categoria_principal = 'Pago a Familiar';
               categoria_secundaria = 'Pago a Familiar';
+            }
+          }
+
+          if (!tipo_movimiento) {
+            const ruleMatch = applyRules(descForCheck);
+            if (ruleMatch) {
+              tipo_movimiento = ruleMatch.tipo_movimiento;
+              categoria_principal = ruleMatch.categoria_principal;
+              categoria_secundaria = ruleMatch.categoria_secundaria;
+            }
+          }
+
+          if (!tipo_movimiento) {
+            const ruleMatch = applyRules(descForCheck);
+            if (ruleMatch) {
+              tipo_movimiento = ruleMatch.tipo_movimiento;
+              categoria_principal = ruleMatch.categoria_principal;
+              categoria_secundaria = ruleMatch.categoria_secundaria;
             }
           }
 
