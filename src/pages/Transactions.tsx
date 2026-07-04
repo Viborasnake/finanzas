@@ -16,6 +16,53 @@ function AddTransactionModal({ onClose, onAdd, activeBank, user }: any) {
   const [desc, setDesc] = useState('');
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<'ingreso'|'egreso'>('egreso');
+  const [suggestion, setSuggestion] = useState<{ amount: number, type: 'ingreso'|'egreso', refDate: string } | null>(null);
+
+  useEffect(() => {
+    async function fetchSuggestion() {
+      const { data } = await supabase
+        .from('transactions')
+        .select('date, amount, type, raw_data')
+        .eq('user_id', user.id)
+        .eq('bank', activeBank)
+        .not('raw_data', 'is', null)
+        .order('date', { ascending: true })
+        .limit(1);
+
+      if (data && data.length > 0) {
+        const tx = data[0];
+        if (tx.raw_data) {
+          const saldoKey = Object.keys(tx.raw_data).find(k => k.toLowerCase() === 'saldo' || k.toLowerCase().includes('saldo'));
+          if (saldoKey) {
+            let currentSaldo = parseFloat(String(tx.raw_data[saldoKey]).replace(/[^0-9.-]/g, ''));
+            if (!isNaN(currentSaldo)) {
+              const saldoAnterior = tx.type === 'ingreso' ? currentSaldo - tx.amount : currentSaldo + tx.amount;
+              setSuggestion({ 
+                amount: Math.abs(saldoAnterior), 
+                type: saldoAnterior >= 0 ? 'ingreso' : 'egreso', 
+                refDate: tx.date 
+              });
+            }
+          }
+        }
+      }
+    }
+    if (activeBank) {
+      fetchSuggestion();
+    }
+  }, [activeBank, user.id]);
+
+  const applySuggestion = () => {
+    if (!suggestion) return;
+    setAmount(suggestion.amount.toString());
+    setType(suggestion.type);
+    setDesc(`Saldo Inicial (Calculado de Cartola)`);
+    
+    // Set date to 1 day before the oldest transaction
+    const d = new Date(suggestion.refDate);
+    d.setDate(d.getDate() - 1);
+    setDate(d.toISOString().split('T')[0]);
+  };
 
   const handleSubmit = (e: any) => {
     e.preventDefault();
@@ -42,6 +89,23 @@ function AddTransactionModal({ onClose, onAdd, activeBank, user }: any) {
           <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900 }}>Agregar Manual</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={24} /></button>
         </div>
+
+        {suggestion && (
+          <div style={{ backgroundColor: '#f0fdf4', border: '2px dashed #166534', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
+            <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: '#166534', fontWeight: 800 }}>💡 Sugerencia del Sistema</p>
+            <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: '#166534' }}>
+              Basado en tu primera transacción importada, tu saldo inicial debió ser de <strong>${suggestion.amount.toLocaleString('es-CL')}</strong> ({suggestion.type}).
+            </p>
+            <button 
+              type="button"
+              onClick={applySuggestion} 
+              style={{ backgroundColor: '#166534', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 800, cursor: 'pointer' }}
+            >
+              Autocompletar Formulario
+            </button>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div>
             <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>FECHA</label>
