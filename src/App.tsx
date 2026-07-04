@@ -61,6 +61,38 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
         }
       };
       migrate();
+      
+      // SILENT MIGRATION v3: Rename 'Transferencias de Otras Personas' -> 'Transferencias'
+      const migrateV3 = async () => {
+        const migrationKey = `migrated_v3_${user.id}`;
+        if (localStorage.getItem(migrationKey)) return;
+        try {
+          await supabase.from('transactions').update({ 
+            categoria_principal: 'Transferencias',
+            categoria_secundaria: 'Transferencias de Otras Personas'
+          }).eq('user_id', user.id).eq('categoria_principal', 'Transferencias de Otras Personas');
+          
+          const { data: settings } = await supabase.from('user_settings').select('classification_rules').eq('user_id', user.id).single();
+          if (settings && settings.classification_rules) {
+            let changed = false;
+            const newRules = settings.classification_rules.map((r: any) => {
+              if (r.categoria_principal === 'Transferencias de Otras Personas') {
+                r.categoria_principal = 'Transferencias';
+                r.categoria_secundaria = 'Transferencias de Otras Personas';
+                changed = true;
+              }
+              return r;
+            });
+            if (changed) {
+              await supabase.from('user_settings').update({ classification_rules: newRules }).eq('user_id', user.id);
+            }
+          }
+          localStorage.setItem(migrationKey, 'true');
+        } catch (e) {
+          console.error("Migration v3 error:", e);
+        }
+      };
+      migrateV3();
     }
   }, [user]);
 

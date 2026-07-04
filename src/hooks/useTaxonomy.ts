@@ -6,7 +6,7 @@ export const BASE_TAXONOMY: Record<string, Record<string, string[]>> = {
     'Sueldo': ['Sueldo', 'Bono', 'Aguinaldo'],
     'Honorarios': ['Boleta', 'Servicios'],
     'Ventas/Negocio': ['Venta', 'Servicios'],
-    'Transferencias de Otras Personas': ['Transferencia Recibida'],
+    'Transferencias': ['Transferencias de Otras Personas', 'Transferencias Propias'],
     'Devoluciones': ['Devolución Impuestos', 'Devolución Egresos'],
     'Otros Ingresos': ['Regalos', 'Intereses/Dividendos', 'Otros']
   },
