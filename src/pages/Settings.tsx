@@ -8,6 +8,40 @@ import type { ClassificationRule } from '../utils/classificationRules';
 import { applyRules } from '../utils/classificationRules';
 import { CascadingCategorySelector } from './Transactions';
 import { useSettings } from '../contexts/SettingsContext';
+import Tree from 'react-d3-tree';
+import { useTaxonomy } from '../hooks/useTaxonomy';
+
+function MindMap() {
+  const { taxonomy } = useTaxonomy();
+  
+  const treeData = {
+    name: 'Movimientos',
+    children: Object.entries(taxonomy)
+      .filter(([tipo]) => tipo === 'Ingreso Real' || tipo === 'Egreso Real')
+      .map(([tipo, principals]) => ({
+      name: tipo,
+      children: Object.entries(principals as Record<string, string[]>).map(([principal, secundarias]) => ({
+        name: principal,
+        children: secundarias.map(sec => ({ name: sec }))
+      }))
+    }))
+  };
+
+  return (
+    <div style={{ width: '100%', height: '600px', border: '2px solid black', borderRadius: '8px', background: 'white', overflow: 'hidden' }}>
+      <Tree 
+        data={treeData} 
+        orientation="horizontal" 
+        pathFunc="step" 
+        translate={{ x: 150, y: 300 }} 
+        nodeSize={{ x: 250, y: 40 }}
+        zoomable={true}
+        collapsible={true}
+        separation={{ siblings: 1, nonSiblings: 1.5 }}
+      />
+    </div>
+  );
+}
 
 export default function Settings() {
   
@@ -57,7 +91,7 @@ export default function Settings() {
   const { customCategories, saveCustomCategories, classificationRules, saveClassificationRules } = useSettings();
   const [newRuleKeyword, setNewRuleKeyword] = useState('');
   const [newRuleCategory, setNewRuleCategory] = useState<{ tipo: string | null, principal: string | null, secundaria: string | null }>({ tipo: null, principal: null, secundaria: null });
-  const [newCatTipo, setNewCatTipo] = useState('Gasto Real');
+  const [newCatTipo, setNewCatTipo] = useState('Egreso Real');
   const [newCatPrincipal, setNewCatPrincipal] = useState('');
   const [newCatSecundaria, setNewCatSecundaria] = useState('');
 
@@ -219,13 +253,21 @@ export default function Settings() {
     <div>
       <h1 style={{ fontSize: '2.5rem', marginBottom: '2rem' }}>Configuración</h1>
       
+      <div className="card" style={{ marginBottom: '2rem', maxWidth: '800px' }}>
+        <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Mapa Mental de Categorías</h2>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
+          Visualiza cómo están interconectadas tus categorías de Ingresos y Egresos. Puedes arrastrar para moverte y hacer clic en los nodos para expandir/colapsar.
+        </p>
+        <MindMap />
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', maxWidth: '800px' }}>
         
         {/* Identificación (RUT) */}
         <div className="card">
           <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Detección Automática (Tu RUT)</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
-            Ingresa tu RUT para que el sistema reconozca automáticamente las transferencias entre tus propias cuentas y no las sume como Gasto o Ingreso Real.
+            Ingresa tu RUT para que el sistema reconozca automáticamente las transferencias entre tus propias cuentas y no las sume como Egreso o Ingreso Real.
           </p>
           
           <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
@@ -280,7 +322,7 @@ export default function Settings() {
                       return false;
                     });
                     if (c) {
-                      tipo = 'Gasto Real'; principal = 'Pago a Familiar'; secundaria = 'Pago a Familiar';
+                      tipo = 'Egreso Real'; principal = 'Pago a Familiar'; secundaria = 'Pago a Familiar';
                     }
                   }
                   
@@ -319,7 +361,7 @@ export default function Settings() {
             <div>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 700, fontSize: '0.85rem' }}>Tipo de Movimiento</label>
               <select className="input" value={newCatTipo} onChange={(e) => setNewCatTipo(e.target.value)} style={{ width: '100%', padding: '0.5rem' }}>
-                <option value="Gasto Real">Gasto Real</option>
+                <option value="Egreso Real">Egreso Real</option>
                 <option value="Ingreso Real">Ingreso Real</option>
                 <option value="Ahorro/Inversión">Ahorro / Inversión</option>
                 <option value="Movimiento Interno">Movimiento Interno</option>

@@ -6,10 +6,10 @@ export const BASE_TAXONOMY: Record<string, Record<string, string[]>> = {
     'Sueldo': ['Sueldo', 'Bono', 'Aguinaldo'],
     'Honorarios': ['Boleta', 'Servicios'],
     'Ventas/Negocio': ['Giro', 'Venta', 'Servicios'],
-    'Devoluciones': ['Devolución Impuestos', 'Devolución Gastos'],
+    'Devoluciones': ['Devolución Impuestos', 'Devolución Egresos'],
     'Otros Ingresos': ['Regalos', 'Intereses/Dividendos', 'Otros']
   },
-  'Gasto Real': {
+  'Egreso Real': {
     'Alimentación': ['Supermercado', 'Feria', 'Abarrotes', 'Panadería', 'Cafetería/Snacks', 'Agua', 'Delivery/Restaurantes'],
     'Transporte': ['Bencina', 'Autopista', 'Estacionamiento', 'Transporte Público', 'Uber/Taxi', 'Seguro Auto', 'Mantención/Taller', 'Lavado Auto', 'Permisos', 'Municipalidad', 'Revisión Técnica'],
     'Vivienda': ['Dividendo', 'Contribuciones', 'Fijo', 'Seguro Hogar'],
@@ -30,7 +30,7 @@ export const BASE_TAXONOMY: Record<string, Record<string, string[]>> = {
     'Intereses y Comisiones': ['Mantención Cuenta', 'Comisiones', 'Seguro Desgravamen/Fraude', 'Intereses'],
     'Pago Tarjeta Crédito': ['Tarjeta Credito'],
     'Servicio de Deuda': ['Interés Línea de Crédito', 'Abono Línea de Crédito', 'Crédito Consumo'],
-    'Otros': ['Gastos Varios', 'Caja Chica', 'Diferencia de Cambio'],
+    'Otros': ['Egresos Varios', 'Caja Chica', 'Diferencia de Cambio'],
     'Sin Especificar': ['Sin Especificar']
   },
   'Movimiento Interno': {

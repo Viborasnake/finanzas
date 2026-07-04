@@ -177,7 +177,7 @@ export default function Dashboard() {
         if (conceptName === 'Movimiento Interno') return isInternal;
         if (isInternal || isInv) return false;
         
-        if (conceptName === 'Otros Gastos') {
+        if (conceptName === 'Otros Egresos') {
           const sortedCats = [...stats.current.topCatsPrincipal].filter(x => x.name !== 'Sin Clasificar');
           const top3Names = sortedCats.slice(0, 3).map(c => c.name);
           return !top3Names.includes(catP);
@@ -221,7 +221,7 @@ export default function Dashboard() {
       
       let gastos = 0; // Filtered gastos
       let gastosTotales = 0; // Absolute all gastos (for balance)
-      let movimientoInternoGasto = 0;
+      let movimientoInternoEgreso = 0;
       
       const catsPrincipal: Record<string, number> = {};
       const catsSecundaria: Record<string, number> = {};
@@ -268,7 +268,7 @@ export default function Dashboard() {
           // Gasto
           const absAmt = Math.abs(t.amount);
           if (isInternal) {
-            movimientoInternoGasto += absAmt;
+            movimientoInternoEgreso += absAmt;
           } else if (!isInvestment) {
             gastosTotales += absAmt;
             
@@ -283,7 +283,7 @@ export default function Dashboard() {
             recurringExpenses[desc].total += absAmt;
             recurringExpenses[desc].count += 1;
 
-            // Accumulate All Gastos
+            // Accumulate All Egresos
             gastos += absAmt;
             catsPrincipal[catP] = (catsPrincipal[catP] || 0) + absAmt;
             catsSecundaria[catS] = (catsSecundaria[catS] || 0) + absAmt;
@@ -346,14 +346,14 @@ export default function Dashboard() {
         ingresosOtros,
         gastos, // Filtered
         gastosTotales, // Unfiltered
-        movimientoInternoGasto,
+        movimientoInternoEgreso,
         topCatsPrincipal,
         topCatsSecundaria,
         topCatsDetalle,
         unclassifiedCount,
         availableCats: Array.from(availableCats).sort(),
         insights: {
-          balance: (ingresos + aportePropio) - (gastosTotales + movimientoInternoGasto),
+          balance: (ingresos + aportePropio) - (gastosTotales + movimientoInternoEgreso),
           maxIncomeDesc,
           maxIncomeAmount,
           maxRecurringDesc,
@@ -387,13 +387,13 @@ export default function Dashboard() {
           if (t.type === 'egreso' && !isInternal && !isInvestment) gas += Math.abs(t.amount);
         }
       });
-      data.push({ label: `P${i+6}`, Ingresos: ing, Gastos: gas });
+      data.push({ label: `P${i+6}`, Ingresos: ing, Egresos: gas });
     }
     return data;
   }, [transactions, dateRange]);
 
   // Generate Timeline Data — bucket by day or month depending on range span
-  // If categories are selected, generates dynamic per-category lines instead of Ingresos/Gastos
+  // If categories are selected, generates dynamic per-category lines instead of Ingresos/Egresos
   const timelineData = useMemo(() => {
     const { start, end: rawEnd } = dateRange;
     const today = new Date();
@@ -429,7 +429,7 @@ export default function Dashboard() {
 
     if (selectedCategories.length === 0) {
       const data: Record<string, any> = {};
-      keys.forEach(k => { data[k] = { label: labels[k], Ingresos: 0, Gastos: 0 }; });
+      keys.forEach(k => { data[k] = { label: labels[k], Ingresos: 0, Egresos: 0 }; });
       transactions.forEach(t => {
         const d = new Date(t.date);
         if (d >= start && d <= end) {
@@ -438,7 +438,7 @@ export default function Dashboard() {
           const key = getKey(d);
           if (data[key]) {
             if (t.type === 'ingreso' && !isInternal) data[key].Ingresos += Math.abs(t.amount);
-            if (t.type === 'egreso' && !isInternal && !isInvestment) data[key].Gastos += Math.abs(t.amount);
+            if (t.type === 'egreso' && !isInternal && !isInvestment) data[key].Egresos += Math.abs(t.amount);
           }
         }
       });
@@ -513,7 +513,7 @@ export default function Dashboard() {
     );
   };
 
-  const renderSparkline = (dataKey: 'Ingresos' | 'Gastos', fill: string) => {
+  const renderSparkline = (dataKey: 'Ingresos' | 'Egresos', fill: string) => {
     return (
       <div style={{ height: '100px', width: '100%', marginTop: '1rem', position: 'absolute', bottom: 0, left: 0, borderBottomLeftRadius: '9px', borderBottomRightRadius: '9px', overflow: 'hidden', zIndex: 0 }}>
         <ResponsiveContainer width="100%" height="100%">
@@ -694,12 +694,12 @@ export default function Dashboard() {
     const others = sorted.slice(3).reduce((acc, curr) => acc + curr.amount, 0);
     const sinClasificarAmount = c.topCatsPrincipal.find(x => x.name === 'Sin Clasificar')?.amount || 0;
     const totalOtros = others + sinClasificarAmount;
-    const totalSalidas = top3.reduce((a, b) => a + b.amount, 0) + totalOtros + c.movimientoInternoGasto;
+    const totalSalidas = top3.reduce((a, b) => a + b.amount, 0) + totalOtros + c.movimientoInternoEgreso;
     
     const expenseData: { name: string; value: number; isGray?: boolean }[] = [
       ...top3.map(cat => ({ name: cat.name, value: cat.amount })),
-      ...(totalOtros > 0 ? [{ name: 'Otros Gastos', value: totalOtros }] : []),
-      { name: 'Movimiento Interno', value: c.movimientoInternoGasto, isGray: true }
+      ...(totalOtros > 0 ? [{ name: 'Otros Egresos', value: totalOtros }] : []),
+      { name: 'Movimiento Interno', value: c.movimientoInternoEgreso, isGray: true }
     ];
 
     return (
@@ -769,7 +769,7 @@ export default function Dashboard() {
           {renderSparkline('Ingresos', '#dcfce7')}
         </div>
 
-        {/* Gastos Card */}
+        {/* Egresos Card */}
         <div style={{ ...neoCard, position: 'relative', overflow: 'hidden', paddingBottom: '7rem', marginBottom: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', position: 'relative', zIndex: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -777,18 +777,18 @@ export default function Dashboard() {
                 <CreditCard size={24} strokeWidth={2.5} />
               </div>
               <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: '"Montserrat", sans-serif', display: 'flex', alignItems: 'center' }}>
-                Gastos
+                Egresos
                 <InfoTooltip content="Dinero que ha salido de tus cuentas. Los traspasos entre tus cuentas y aportes a inversiones (Mov. Interno / Ahorro) no se consideran gastos reales." />
               </h3>
             </div>
-            {renderTrendBadge(totalSalidas, p.gastos + p.movimientoInternoGasto, true)}
+            {renderTrendBadge(totalSalidas, p.gastos + p.movimientoInternoEgreso, true)}
           </div>
-          <p style={{ margin: c.movimientoInternoGasto > 0 ? '0 0 0.25rem 0' : '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '-1px' }}>
+          <p style={{ margin: c.movimientoInternoEgreso > 0 ? '0 0 0.25rem 0' : '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '-1px' }}>
             ${totalSalidas.toLocaleString('es-CL')}
           </p>
-          {c.movimientoInternoGasto > 0 && (
+          {c.movimientoInternoEgreso > 0 && (
             <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 700, marginBottom: '1.5rem', position: 'relative', zIndex: 10 }}>
-              *Incluye ${c.movimientoInternoGasto.toLocaleString('es-CL')} de movimientos internos
+              *Incluye ${c.movimientoInternoEgreso.toLocaleString('es-CL')} de movimientos internos
             </div>
           )}
           
@@ -831,7 +831,7 @@ export default function Dashboard() {
               </table>
             </div>
           )}
-          {renderSparkline('Gastos', '#fee2e2')}
+          {renderSparkline('Egresos', '#fee2e2')}
         </div>
       </div>
     );
@@ -853,7 +853,7 @@ export default function Dashboard() {
     const barData = sourceData.slice(0, 20).map(cat => ({ name: cat.name, amount: cat.amount }));
     const chartTitle = selectedCategories.length > 0
       ? `Línea de Tiempo — ${selectedCategories.join(', ')}`
-      : 'Línea de Tiempo (Ingresos vs Gastos)';
+      : 'Línea de Tiempo (Ingresos vs Egresos)';
 
     return (
       <div style={{ ...neoCard, marginBottom: '2rem' }}>
@@ -906,7 +906,7 @@ export default function Dashboard() {
                   {selectedCategories.length === 0 ? (
                     <>
                       <Line type="monotone" name="Ingresos" dataKey="Ingresos" stroke="#22c55e" strokeWidth={4} dot={{ r: 3, fill: '#bbf7d0', stroke: '#000', strokeWidth: 2 }} activeDot={{ r: 6, stroke: '#000', strokeWidth: 3 }} />
-                      <Line type="monotone" name="Gastos" dataKey="Gastos" stroke="#f43f5e" strokeWidth={4} dot={{ r: 3, fill: '#fecaca', stroke: '#000', strokeWidth: 2 }} activeDot={{ r: 6, stroke: '#000', strokeWidth: 3 }} />
+                      <Line type="monotone" name="Egresos" dataKey="Egresos" stroke="#f43f5e" strokeWidth={4} dot={{ r: 3, fill: '#fecaca', stroke: '#000', strokeWidth: 2 }} activeDot={{ r: 6, stroke: '#000', strokeWidth: 3 }} />
                     </>
                   ) : (
                     selectedCategories.map((cat, i) => (
@@ -922,7 +922,7 @@ export default function Dashboard() {
           {barData.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <h4 style={{ margin: '0 0 1rem 0', fontWeight: 800, display: 'flex', alignItems: 'center' }}>
-                Ranking de Gastos 
+                Ranking de Egresos 
                 <InfoTooltip content="Las categorías en las que más has gastado o ingresado. Haz clic en cualquiera para graficarla en la línea de tiempo." />
                 <span style={{ fontWeight: 600, fontSize: '0.8rem', color: '#64748b', marginLeft: '0.5rem' }}>— clic para comparar</span>
               </h4>
@@ -986,7 +986,7 @@ export default function Dashboard() {
   // BLOCK 7: YEARLY CHART (rich version)
   const renderYearlyChart = () => {
     const year = dateRange.start.getFullYear();
-    const monthlyData: { mes: string; mesIdx: number; Ingresos: number; AportePropio: number; Gastos: number; Balance: number; tasaAhorro: number }[] = [];
+    const monthlyData: { mes: string; mesIdx: number; Ingresos: number; AportePropio: number; Egresos: number; Balance: number; tasaAhorro: number }[] = [];
 
     const today = new Date();
     const maxMonth = year === today.getFullYear() ? today.getMonth() : 11;
@@ -1013,21 +1013,21 @@ export default function Dashboard() {
         mesIdx: m,
         Ingresos: totalIng,
         AportePropio: aporte,
-        Gastos: gas,
+        Egresos: gas,
         Balance: totalIng - gas,
         tasaAhorro: totalIng > 0 ? Math.round(((totalIng - gas) / totalIng) * 100) : 0
       });
     }
 
-    const hasData = monthlyData.some(d => d.Ingresos > 0 || d.Gastos > 0);
+    const hasData = monthlyData.some(d => d.Ingresos > 0 || d.Egresos > 0);
     if (!hasData) return null;
 
     const totalIng = monthlyData.reduce((a, d) => a + d.Ingresos, 0);
-    const totalGas = monthlyData.reduce((a, d) => a + d.Gastos, 0);
+    const totalGas = monthlyData.reduce((a, d) => a + d.Egresos, 0);
     const totalBal = totalIng - totalGas;
     const tasaAnual = totalIng > 0 ? Math.round(((totalIng - totalGas) / totalIng) * 100) : 0;
 
-    const monthsWithData = monthlyData.filter(d => d.Ingresos > 0 || d.Gastos > 0);
+    const monthsWithData = monthlyData.filter(d => d.Ingresos > 0 || d.Egresos > 0);
     const bestMonth = monthsWithData.reduce((best, d) => d.Balance > best.Balance ? d : best, monthsWithData[0]);
     const worstMonth = monthsWithData.reduce((worst, d) => d.Balance < worst.Balance ? d : worst, monthsWithData[0]);
 
@@ -1053,7 +1053,7 @@ export default function Dashboard() {
             </div>
           )}
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', color: '#e11d48', fontWeight: 800, marginTop: '0.25rem' }}>
-            <span>Gastos</span><span>${d.Gastos.toLocaleString('es-CL')}</span>
+            <span>Egresos</span><span>${d.Egresos.toLocaleString('es-CL')}</span>
           </div>
           <div style={{ borderTop: '2px dashed #94a3b8', marginTop: '0.5rem', paddingTop: '0.5rem', display: 'flex', justifyContent: 'space-between', gap: '1rem', color: d.Balance >= 0 ? '#16a34a' : '#e11d48', fontWeight: 900, fontSize: '1.1rem' }}>
             <span>Balance</span><span>{d.Balance >= 0 ? '+' : ''}{d.Balance.toLocaleString('es-CL')}</span>
@@ -1099,7 +1099,7 @@ export default function Dashboard() {
           
           <div style={{ ...kpiStyle, backgroundColor: '#fef2f2' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', color: '#e11d48', letterSpacing: '0.05em' }}>Gastos Totales</span>
+              <span style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', color: '#e11d48', letterSpacing: '0.05em' }}>Egresos Totales</span>
               <ArrowDownRight size={20} color="#e11d48" />
             </div>
             <span style={{ fontSize: '1.5rem', fontWeight: 900, color: '#be123c' }}>${totalGas.toLocaleString('es-CL')}</span>
@@ -1144,7 +1144,7 @@ export default function Dashboard() {
                   <stop offset="5%" stopColor="#4ade80" stopOpacity={1}/>
                   <stop offset="95%" stopColor="#16a34a" stopOpacity={1}/>
                 </linearGradient>
-                <linearGradient id="colorGastos" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id="colorEgresos" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#fb7185" stopOpacity={1}/>
                   <stop offset="95%" stopColor="#e11d48" stopOpacity={1}/>
                 </linearGradient>
@@ -1164,7 +1164,7 @@ export default function Dashboard() {
               <YAxis hide />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.04)', radius: 8 }} />
               <Bar dataKey="Ingresos" fill="url(#colorIngresos)" stroke="#000" strokeWidth={2} radius={[6, 6, 0, 0]} maxBarSize={45} isAnimationActive={true} />
-              <Bar dataKey="Gastos" fill="url(#colorGastos)" stroke="#000" strokeWidth={2} radius={[6, 6, 0, 0]} maxBarSize={45} isAnimationActive={true} />
+              <Bar dataKey="Egresos" fill="url(#colorEgresos)" stroke="#000" strokeWidth={2} radius={[6, 6, 0, 0]} maxBarSize={45} isAnimationActive={true} />
               <Area type="monotone" dataKey="Balance" stroke="#2563eb" strokeWidth={4} fill="url(#colorBalance)" dot={{ r: 5, fill: '#fff', stroke: '#2563eb', strokeWidth: 3 }} activeDot={{ r: 8, fill: '#2563eb', stroke: '#fff', strokeWidth: 3 }} isAnimationActive={true} />
             </ComposedChart>
           </ResponsiveContainer>

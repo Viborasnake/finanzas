@@ -356,7 +356,7 @@ export default function CSVImport() {
               return false;
             });
             if (contact) {
-              tipo_movimiento = 'Gasto Real';
+              tipo_movimiento = 'Egreso Real';
               categoria_principal = 'Pago a Familiar';
               categoria_secundaria = 'Pago a Familiar';
             }
