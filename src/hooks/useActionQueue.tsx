@@ -1,5 +1,6 @@
 import { useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
+import { X } from 'lucide-react';
 
 type ActionPayload = {
   id: string; // ID único para la acción o entidad (ej. transaction id)
@@ -54,6 +55,26 @@ export function useActionQueue() {
           onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
         >
           Deshacer
+        </button>
+        <button
+          onClick={() => toast.dismiss(t.id)}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '0.25rem',
+            color: '#64748b',
+            borderRadius: '50%',
+            transition: 'all 0.1s'
+          }}
+          onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#f1f5f9'; e.currentTarget.style.color = '#0f172a'; }}
+          onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#64748b'; }}
+          title="Cerrar"
+        >
+          <X size={18} strokeWidth={2.5} />
         </button>
       </div>
     ), { duration: 6000, id: `toast-${id}` }); // Usamos el ID para asegurar un toast único por entidad
