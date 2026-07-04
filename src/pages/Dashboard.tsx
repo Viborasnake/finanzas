@@ -1,8 +1,8 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { 
-  ChevronLeft, ChevronRight, TrendingUp, TrendingDown, 
+  ChevronRight, TrendingUp, TrendingDown, 
   Wallet, CreditCard, AlertTriangle, Sparkles, Activity, Search
 } from 'lucide-react';
 import { 
@@ -11,15 +11,80 @@ import {
   LineChart, Line, CartesianGrid
 } from 'recharts';
 
-type ViewMode = 'month' | 'quarter' | 'year';
 type CategoryLevel = 'principal' | 'secundaria' | 'detalle';
+
+type DateRange = { start: Date; end: Date; label: string };
+
+const today = new Date();
+const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
+const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+
+const PRESETS: { id: string; label: string; range: () => DateRange }[] = [
+  { id: 'today', label: 'Hoy', range: () => ({ start: startOfToday, end: endOfToday, label: 'Hoy' }) },
+  { id: 'week', label: 'Esta semana', range: () => {
+    const d = new Date(); const day = d.getDay();
+    const mon = new Date(d); mon.setDate(d.getDate() - (day === 0 ? 6 : day - 1)); mon.setHours(0,0,0,0);
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 6); sun.setHours(23,59,59,999);
+    return { start: mon, end: sun, label: 'Esta semana' };
+  }},
+  { id: 'month', label: 'Este mes', range: () => {
+    const d = new Date();
+    return { start: new Date(d.getFullYear(), d.getMonth(), 1), end: new Date(d.getFullYear(), d.getMonth()+1, 0, 23, 59, 59), label: d.toLocaleString('es-CL', { month: 'long', year: 'numeric' }) };
+  }},
+  { id: 'prev_month', label: 'Mes pasado', range: () => {
+    const d = new Date(); d.setMonth(d.getMonth()-1);
+    return { start: new Date(d.getFullYear(), d.getMonth(), 1), end: new Date(d.getFullYear(), d.getMonth()+1, 0, 23, 59, 59), label: d.toLocaleString('es-CL', { month: 'long', year: 'numeric' }) };
+  }},
+  { id: 'year', label: 'Este año', range: () => {
+    const y = new Date().getFullYear();
+    return { start: new Date(y, 0, 1), end: new Date(y, 11, 31, 23, 59, 59), label: y.toString() };
+  }},
+  { id: 'all', label: 'Todo', range: () => ({ start: new Date(2000, 0, 1), end: new Date(2100, 11, 31, 23, 59, 59), label: 'Todo el tiempo' }) },
+];
+
+function toInputDate(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
 
 export default function Dashboard() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const { user } = useAuth();
 
-  const [currentDate, setCurrentDate] = useState<Date>(new Date());
-  const [viewMode, setViewMode] = useState<ViewMode>('month');
+  // Date Range state
+  const [dateRange, setDateRange] = useState<DateRange>(() => PRESETS[2].range()); // This month default
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
+  const [activePreset, setActivePreset] = useState<string>('month');
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) setPickerOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const applyPreset = (id: string) => {
+    const preset = PRESETS.find(p => p.id === id);
+    if (!preset) return;
+    const r = preset.range();
+    setDateRange(r);
+    setActivePreset(id);
+    setPickerOpen(false);
+  };
+
+  const applyCustomRange = () => {
+    if (!customFrom || !customTo) return;
+    const start = new Date(customFrom + 'T00:00:00');
+    const end = new Date(customTo + 'T23:59:59');
+    if (start > end) return;
+    const fmt = (d: Date) => d.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
+    setDateRange({ start, end, label: `${fmt(start)} — ${fmt(end)}` });
+    setActivePreset('custom');
+    setPickerOpen(false);
+  };
 
   const [categoryLevel, setCategoryLevel] = useState<CategoryLevel>('principal');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -31,9 +96,7 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    if (user) {
-      fetchTransactions();
-    }
+    if (user) fetchTransactions();
   }, [user]);
 
   const fetchTransactions = async () => {
@@ -51,64 +114,20 @@ export default function Dashboard() {
     }
   };
 
-  // --- Date Math Helpers ---
-  const getPeriodRange = (date: Date, mode: ViewMode, offset: number = 0) => {
-    const d = new Date(date);
-    if (mode === 'month') {
-      d.setMonth(d.getMonth() + offset);
-      return {
-        start: new Date(d.getFullYear(), d.getMonth(), 1),
-        end: new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59)
-      };
-    } else if (mode === 'quarter') {
-      const q = Math.floor(d.getMonth() / 3) + offset;
-      return {
-        start: new Date(d.getFullYear(), q * 3, 1),
-        end: new Date(d.getFullYear(), q * 3 + 3, 0, 23, 59, 59)
-      };
-    } else {
-      d.setFullYear(d.getFullYear() + offset);
-      return {
-        start: new Date(d.getFullYear(), 0, 1),
-        end: new Date(d.getFullYear(), 11, 31, 23, 59, 59)
-      };
-    }
-  };
-
-  const shiftPeriod = (dir: number) => {
-    const d = new Date(currentDate);
-    if (viewMode === 'month') d.setMonth(d.getMonth() + dir);
-    else if (viewMode === 'quarter') d.setMonth(d.getMonth() + (dir * 3));
-    else d.setFullYear(d.getFullYear() + dir);
-    setCurrentDate(d);
-  };
-
-  const getPeriodLabel = (date: Date, mode: ViewMode) => {
-    if (mode === 'month') {
-      return date.toLocaleString('es-CL', { month: 'long', year: 'numeric' });
-    } else if (mode === 'quarter') {
-      const q = Math.floor(date.getMonth() / 3) + 1;
-      return `Q${q} ${date.getFullYear()}`;
-    } else {
-      return date.getFullYear().toString();
-    }
-  };
-
-  const getShortLabel = (date: Date, mode: ViewMode) => {
-    if (mode === 'month') return date.toLocaleString('es-CL', { month: 'short' });
-    if (mode === 'quarter') return `Q${Math.floor(date.getMonth() / 3) + 1}`;
-    return date.getFullYear().toString();
-  };
-
-
-
   // --- Computations ---
+  // Current range comes from dateRange state.
+  // Previous range = same duration, shifted backwards.
   const { currentRange, prevRange } = useMemo(() => {
+    const { start, end } = dateRange;
+    const durationMs = end.getTime() - start.getTime();
     return {
-      currentRange: getPeriodRange(currentDate, viewMode, 0),
-      prevRange: getPeriodRange(currentDate, viewMode, -1)
+      currentRange: { start, end },
+      prevRange: {
+        start: new Date(start.getTime() - durationMs - 1000),
+        end: new Date(start.getTime() - 1000)
+      }
     };
-  }, [currentDate, viewMode]);
+  }, [dateRange]);
 
   const stats = useMemo(() => {
     const calcForRange = (start: Date, end: Date) => {
@@ -268,61 +287,62 @@ export default function Dashboard() {
     };
   }, [transactions, currentRange, prevRange]);
 
-  // Generate 6 periods history for sparklines
+  // Generate 6 buckets history for sparklines (based on dateRange duration)
   const historyData = useMemo(() => {
+    const { start, end } = dateRange;
+    const durationMs = end.getTime() - start.getTime();
     const data = [];
     for (let i = -5; i <= 0; i++) {
-      const range = getPeriodRange(currentDate, viewMode, i);
-      let ing = 0;
-      let gas = 0;
+      const bStart = new Date(start.getTime() + i * durationMs);
+      const bEnd = new Date(start.getTime() + (i + 1) * durationMs - 1000);
+      let ing = 0, gas = 0;
       transactions.forEach(t => {
         const d = new Date(t.date);
-        if (d >= range.start && d <= range.end) {
+        if (d >= bStart && d <= bEnd) {
           const isInternal = t.tipo_movimiento === 'Movimiento Interno';
           const isInvestment = t.tipo_movimiento === 'Ahorro/Inversión';
           if (t.type === 'ingreso' && !isInternal) ing += Math.abs(t.amount);
-          
-          if (t.type === 'egreso' && !isInternal && !isInvestment) {
-             gas += Math.abs(t.amount);
-          }
+          if (t.type === 'egreso' && !isInternal && !isInvestment) gas += Math.abs(t.amount);
         }
       });
-      data.push({
-        label: getShortLabel(range.start, viewMode),
-        Ingresos: ing,
-        Gastos: gas
-      });
+      data.push({ label: `P${i+6}`, Ingresos: ing, Gastos: gas });
     }
     return data;
-  }, [transactions, currentDate, viewMode]);
+  }, [transactions, dateRange]);
 
-  // Generate Timeline Data based on current range for the Line Chart
+  // Generate Timeline Data — bucket by day or month depending on range span
   // If categories are selected, generates dynamic per-category lines instead of Ingresos/Gastos
   const timelineData = useMemo(() => {
-    const { start, end } = currentRange;
+    const { start, end } = dateRange;
+    const daysSpan = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    const byMonth = daysSpan > 60;
+
     const keys: string[] = [];
     const labels: Record<string, string> = {};
 
-    if (viewMode === 'month') {
-      const days = end.getDate();
-      for (let i = 1; i <= days; i++) {
-        const key = i.toString().padStart(2, '0');
+    if (byMonth) {
+      const cur = new Date(start.getFullYear(), start.getMonth(), 1);
+      while (cur <= end) {
+        const key = `${cur.getFullYear()}-${String(cur.getMonth()).padStart(2,'0')}`;
         keys.push(key);
-        labels[key] = `${i} ${start.toLocaleString('es-CL', { month: 'short' })}`;
+        labels[key] = cur.toLocaleString('es-CL', { month: 'short', year: '2-digit' });
+        cur.setMonth(cur.getMonth() + 1);
       }
     } else {
-      for (let i = 0; i <= (viewMode === 'quarter' ? 2 : 11); i++) {
-        const m = start.getMonth() + i;
-        if (m > 11) break;
-        const d = new Date(start.getFullYear(), m, 1);
-        const key = m.toString().padStart(2, '0');
+      const cur = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+      while (cur <= end) {
+        const key = toInputDate(cur);
         keys.push(key);
-        labels[key] = d.toLocaleString('es-CL', { month: 'short' });
+        labels[key] = `${cur.getDate()} ${cur.toLocaleString('es-CL', { month: 'short' })}`;
+        cur.setDate(cur.getDate() + 1);
       }
     }
 
+    const getKey = (d: Date) => byMonth
+      ? `${d.getFullYear()}-${String(d.getMonth()).padStart(2,'0')}`
+      : toInputDate(d);
+
     if (selectedCategories.length === 0) {
-      // Default: Ingresos vs Gastos
       const data: Record<string, any> = {};
       keys.forEach(k => { data[k] = { label: labels[k], Ingresos: 0, Gastos: 0 }; });
       transactions.forEach(t => {
@@ -330,7 +350,7 @@ export default function Dashboard() {
         if (d >= start && d <= end) {
           const isInternal = t.tipo_movimiento === 'Movimiento Interno';
           const isInvestment = t.tipo_movimiento === 'Ahorro/Inversión';
-          const key = viewMode === 'month' ? d.getDate().toString().padStart(2, '0') : d.getMonth().toString().padStart(2, '0');
+          const key = getKey(d);
           if (data[key]) {
             if (t.type === 'ingreso' && !isInternal) data[key].Ingresos += Math.abs(t.amount);
             if (t.type === 'egreso' && !isInternal && !isInvestment) data[key].Gastos += Math.abs(t.amount);
@@ -339,11 +359,10 @@ export default function Dashboard() {
       });
       return Object.values(data);
     } else {
-      // Category mode: one line per selected category
       const data: Record<string, any> = {};
       keys.forEach(k => {
         data[k] = { label: labels[k] };
-        selectedCategories.forEach(cat => { data[k][cat] = 0; });
+        selectedCategories.forEach((cat: string) => { data[k][cat] = 0; });
       });
       transactions.forEach(t => {
         const d = new Date(t.date);
@@ -357,7 +376,7 @@ export default function Dashboard() {
                 ? (t.categoria_principal || 'Sin Clasificar')
                 : (t.categoria_secundaria || 'Sin Clasificar');
             if (selectedCategories.includes(catField)) {
-              const key = viewMode === 'month' ? d.getDate().toString().padStart(2, '0') : d.getMonth().toString().padStart(2, '0');
+              const key = getKey(d);
               if (data[key]) data[key][catField] += Math.abs(t.amount);
             }
           }
@@ -365,7 +384,7 @@ export default function Dashboard() {
       });
       return Object.values(data);
     }
-  }, [transactions, currentRange, viewMode, selectedCategories, categoryLevel]);
+  }, [transactions, dateRange, selectedCategories, categoryLevel]);
 
   // --- Styles ---
   const neoCard = {
@@ -421,37 +440,83 @@ export default function Dashboard() {
     );
   };
 
-  // BLOCK 1: PERIOD SELECTOR & FILTERS
+  // BLOCK 1: DATE RANGE PICKER
   const renderHeader = () => {
+    const fmt = (d: Date) => d.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
+    const displayLabel = dateRange.label.length > 30
+      ? `${fmt(dateRange.start)} — ${fmt(dateRange.end)}`
+      : dateRange.label;
 
     return (
       <div style={{ marginBottom: '2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
           <h1 style={{ margin: 0, fontFamily: '"Montserrat", sans-serif', fontSize: '2.5rem', fontWeight: 900, color: '#000' }}>Resumen Financiero</h1>
-          
-          <div style={{ ...neoButton, display: 'flex', alignItems: 'center', padding: '0.25rem', backgroundColor: '#fff' }}>
-            <button onClick={() => shiftPeriod(-1)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <ChevronLeft size={20} strokeWidth={3} />
-            </button>
-            <div style={{ minWidth: '150px', textAlign: 'center', fontWeight: 800, fontSize: '1.1rem', textTransform: 'capitalize', margin: '0 1rem' }}>
-              {getPeriodLabel(currentDate, viewMode)}
-            </div>
-            <button onClick={() => shiftPeriod(1)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <ChevronRight size={20} strokeWidth={3} />
-            </button>
-            <div style={{ width: '2px', height: '24px', backgroundColor: '#000', margin: '0 0.5rem' }}></div>
-            <select 
-              value={viewMode} 
-              onChange={(e) => setViewMode(e.target.value as ViewMode)}
-              style={{ padding: '0.5rem', border: 'none', backgroundColor: 'transparent', outline: 'none', cursor: 'pointer', fontWeight: 800, appearance: 'none', paddingRight: '1rem' }}
+
+          {/* Date Range Picker Trigger */}
+          <div ref={pickerRef} style={{ position: 'relative' }}>
+            <button
+              onClick={() => setPickerOpen(o => !o)}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 1.25rem', backgroundColor: '#fff', border: '3px solid #000', borderRadius: '2rem', fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer', boxShadow: '4px 4px 0px #000', transition: 'all 0.1s' }}
             >
-              <option value="month">Mensual</option>
-              <option value="quarter">Trimestral</option>
-              <option value="year">Anual</option>
-            </select>
+              <span style={{ fontSize: '1.1rem' }}>📅</span>
+              <span style={{ textTransform: 'capitalize' }}>{displayLabel}</span>
+              <ChevronRight size={16} strokeWidth={3} style={{ transform: pickerOpen ? 'rotate(90deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
+            </button>
+
+            {/* Dropdown */}
+            {pickerOpen && (
+              <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', backgroundColor: '#fff', border: '3px solid #000', borderRadius: '16px', boxShadow: '6px 6px 0px #000', zIndex: 200, minWidth: '300px', overflow: 'hidden' }}>
+                {/* Preset pills */}
+                <div style={{ padding: '1rem', borderBottom: '2px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#94a3b8', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>Accesos rápidos</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                    {PRESETS.map(p => (
+                      <button
+                        key={p.id}
+                        onClick={() => applyPreset(p.id)}
+                        style={{ padding: '0.35rem 0.85rem', border: '2px solid #000', borderRadius: '2rem', fontWeight: 800, fontSize: '0.78rem', cursor: 'pointer', backgroundColor: activePreset === p.id ? '#fde047' : '#f1f5f9', transition: 'all 0.1s' }}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Custom range */}
+                <div style={{ padding: '1rem' }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#94a3b8', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>Rango personalizado</div>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '0.25rem', color: '#64748b' }}>Desde</div>
+                      <input
+                        type="date"
+                        value={customFrom}
+                        onChange={e => setCustomFrom(e.target.value)}
+                        style={{ width: '100%', padding: '0.5rem 0.75rem', border: '2px solid #000', borderRadius: '8px', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.85rem', outline: 'none' }}
+                      />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '0.25rem', color: '#64748b' }}>Hasta</div>
+                      <input
+                        type="date"
+                        value={customTo}
+                        onChange={e => setCustomTo(e.target.value)}
+                        style={{ width: '100%', padding: '0.5rem 0.75rem', border: '2px solid #000', borderRadius: '8px', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.85rem', outline: 'none' }}
+                      />
+                    </div>
+                    <button
+                      onClick={applyCustomRange}
+                      disabled={!customFrom || !customTo}
+                      style={{ padding: '0.5rem 1rem', backgroundColor: customFrom && customTo ? '#000' : '#e2e8f0', color: customFrom && customTo ? '#fff' : '#94a3b8', border: '2px solid #000', borderRadius: '8px', fontWeight: 800, fontSize: '0.85rem', cursor: customFrom && customTo ? 'pointer' : 'not-allowed' }}
+                    >
+                      Aplicar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-
       </div>
     );
   };
@@ -784,10 +849,11 @@ export default function Dashboard() {
     );
   };
 
-  // BLOCK 7: YEARLY CHART
+  // BLOCK 7: YEARLY CHART (rich version)
   const renderYearlyChart = () => {
-    const year = currentDate.getFullYear();
-    const monthlyData = [];
+    const year = dateRange.start.getFullYear();
+    const monthlyData: { mes: string; mesIdx: number; Ingresos: number; Gastos: number; Balance: number; tasaAhorro: number }[] = [];
+
     for (let m = 0; m < 12; m++) {
       const start = new Date(year, m, 1);
       const end = new Date(year, m + 1, 0, 23, 59, 59);
@@ -801,36 +867,141 @@ export default function Dashboard() {
           if (t.type === 'egreso' && !isInternal && !isInv) gas += Math.abs(t.amount);
         }
       });
-      monthlyData.push({ mes: new Date(year, m, 1).toLocaleString('es-CL', { month: 'short' }), Ingresos: ing, Gastos: gas, Balance: ing - gas });
+      monthlyData.push({
+        mes: new Date(year, m, 1).toLocaleString('es-CL', { month: 'short' }),
+        mesIdx: m,
+        Ingresos: ing,
+        Gastos: gas,
+        Balance: ing - gas,
+        tasaAhorro: ing > 0 ? Math.round(((ing - gas) / ing) * 100) : 0
+      });
     }
+
     const hasData = monthlyData.some(d => d.Ingresos > 0 || d.Gastos > 0);
     if (!hasData) return null;
 
+    const totalIng = monthlyData.reduce((a, d) => a + d.Ingresos, 0);
+    const totalGas = monthlyData.reduce((a, d) => a + d.Gastos, 0);
+    const totalBal = totalIng - totalGas;
+    const tasaAnual = totalIng > 0 ? Math.round(((totalIng - totalGas) / totalIng) * 100) : 0;
+
+    const monthsWithData = monthlyData.filter(d => d.Ingresos > 0 || d.Gastos > 0);
+    const bestMonth = monthsWithData.reduce((best, d) => d.Balance > best.Balance ? d : best, monthsWithData[0]);
+    const worstMonth = monthsWithData.reduce((worst, d) => d.Balance < worst.Balance ? d : worst, monthsWithData[0]);
+
+    const kpiStyle: React.CSSProperties = {
+      flex: 1, padding: '1rem 1.25rem', border: '2px solid #000', borderRadius: '12px',
+      display: 'flex', flexDirection: 'column', gap: '0.25rem', minWidth: '120px'
+    };
+
+    // Custom bar tooltip
+    const CustomTooltip = ({ active, payload, label }: any) => {
+      if (!active || !payload?.length) return null;
+      const d = monthlyData.find(m => m.mes === label);
+      if (!d) return null;
+      return (
+        <div style={{ backgroundColor: '#fff', border: '3px solid #000', borderRadius: '10px', boxShadow: '4px 4px 0px #000', padding: '0.75rem 1rem', fontWeight: 700, fontSize: '0.85rem', minWidth: '160px' }}>
+          <div style={{ fontWeight: 900, fontSize: '1rem', marginBottom: '0.5rem', textTransform: 'capitalize' }}>{label}. {year}</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', color: '#22c55e' }}>
+            <span>↑ Ingresos</span><span>${d.Ingresos.toLocaleString('es-CL')}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', color: '#f43f5e' }}>
+            <span>↓ Gastos</span><span>${d.Gastos.toLocaleString('es-CL')}</span>
+          </div>
+          <div style={{ borderTop: '2px solid #000', marginTop: '0.4rem', paddingTop: '0.4rem', display: 'flex', justifyContent: 'space-between', gap: '1rem', color: d.Balance >= 0 ? '#22c55e' : '#f43f5e', fontWeight: 900 }}>
+            <span>Balance</span><span>{d.Balance >= 0 ? '+' : ''}{d.Balance.toLocaleString('es-CL')}</span>
+          </div>
+          {d.Ingresos > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', color: '#6366f1', marginTop: '0.2rem' }}>
+              <span>Tasa ahorro</span><span>{d.tasaAhorro}%</span>
+            </div>
+          )}
+        </div>
+      );
+    };
+
     return (
       <div style={{ ...neoCard, marginBottom: '2rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <h2 style={{ fontSize: '1.6rem', margin: 0, fontFamily: '"Montserrat", sans-serif', fontWeight: 900 }}>Resumen Anual {year}</h2>
-          <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.85rem', fontWeight: 800 }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><span style={{ display: 'inline-block', width: '12px', height: '12px', backgroundColor: '#22c55e', border: '2px solid #000', borderRadius: '2px' }}></span>Ingresos</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><span style={{ display: 'inline-block', width: '12px', height: '12px', backgroundColor: '#f43f5e', border: '2px solid #000', borderRadius: '2px' }}></span>Gastos</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><span style={{ display: 'inline-block', width: '12px', height: '3px', backgroundColor: '#6366f1', borderRadius: '2px' }}></span>Balance</span>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div>
+            <h2 style={{ fontSize: '1.6rem', margin: '0 0 0.2rem 0', fontFamily: '"Montserrat", sans-serif', fontWeight: 900 }}>Resumen Anual {year}</h2>
+            <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 600, color: '#64748b' }}>Visión completa mes a mes · haz hover para más detalle</p>
+          </div>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            {bestMonth && (
+              <div style={{ padding: '0.35rem 0.85rem', backgroundColor: '#dcfce7', border: '2px solid #000', borderRadius: '2rem', fontSize: '0.78rem', fontWeight: 800 }}>
+                🏆 Mejor: {bestMonth.mes} (+${bestMonth.Balance.toLocaleString('es-CL')})
+              </div>
+            )}
+            {worstMonth && worstMonth.Balance < 0 && (
+              <div style={{ padding: '0.35rem 0.85rem', backgroundColor: '#fecaca', border: '2px solid #000', borderRadius: '2rem', fontSize: '0.78rem', fontWeight: 800 }}>
+                📉 Peor: {worstMonth.mes} ({worstMonth.Balance.toLocaleString('es-CL')})
+              </div>
+            )}
           </div>
         </div>
-        <div style={{ height: '280px' }}>
+
+        {/* KPI Row */}
+        <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+          <div style={{ ...kpiStyle, backgroundColor: '#f0fdf4' }}>
+            <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.04em' }}>Total Ingresos</span>
+            <span style={{ fontSize: '1.2rem', fontWeight: 900, color: '#15803d' }}>${totalIng.toLocaleString('es-CL')}</span>
+          </div>
+          <div style={{ ...kpiStyle, backgroundColor: '#fef2f2' }}>
+            <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.04em' }}>Total Gastos</span>
+            <span style={{ fontSize: '1.2rem', fontWeight: 900, color: '#dc2626' }}>${totalGas.toLocaleString('es-CL')}</span>
+          </div>
+          <div style={{ ...kpiStyle, backgroundColor: totalBal >= 0 ? '#eff6ff' : '#fef2f2' }}>
+            <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.04em' }}>Balance Neto</span>
+            <span style={{ fontSize: '1.2rem', fontWeight: 900, color: totalBal >= 0 ? '#1d4ed8' : '#dc2626' }}>{totalBal >= 0 ? '+' : ''}${totalBal.toLocaleString('es-CL')}</span>
+          </div>
+          <div style={{ ...kpiStyle, backgroundColor: '#faf5ff' }}>
+            <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.04em' }}>Tasa de Ahorro</span>
+            <span style={{ fontSize: '1.2rem', fontWeight: 900, color: tasaAnual >= 20 ? '#7c3aed' : tasaAnual >= 0 ? '#6366f1' : '#dc2626' }}>{tasaAnual}%</span>
+            <span style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 700 }}>{tasaAnual >= 20 ? 'Excelente 🎯' : tasaAnual >= 10 ? 'Bien 👍' : tasaAnual >= 0 ? 'Ajustado ⚠️' : 'Déficit 🔴'}</span>
+          </div>
+        </div>
+
+        {/* Chart */}
+        <div style={{ height: '260px' }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={monthlyData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-              <XAxis dataKey="mes" tick={{ fill: '#000', fontSize: 13, fontWeight: 800 }} axisLine={{ stroke: '#000', strokeWidth: 2 }} tickLine={false} />
-              <YAxis hide />
-              <Tooltip
-                contentStyle={{ borderRadius: '8px', border: '3px solid #000', boxShadow: '4px 4px 0px #000', fontWeight: 800 }}
-                formatter={(value: any, name: any) => ['$' + Number(value).toLocaleString('es-CL'), name]}
+            <BarChart data={monthlyData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }} barCategoryGap="25%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+              <XAxis
+                dataKey="mes"
+                tick={{ fill: '#000', fontSize: 12, fontWeight: 800, fontFamily: 'Montserrat' }}
+                axisLine={{ stroke: '#000', strokeWidth: 2 }}
+                tickLine={false}
               />
-              <Bar dataKey="Ingresos" fill="#22c55e" stroke="#000" strokeWidth={2} radius={[4,4,0,0]} />
-              <Bar dataKey="Gastos" fill="#f43f5e" stroke="#000" strokeWidth={2} radius={[4,4,0,0]} />
-              <Line type="monotone" dataKey="Balance" stroke="#6366f1" strokeWidth={3} dot={{ r: 4, fill: '#fff', stroke: '#6366f1', strokeWidth: 2 }} />
+              <YAxis hide />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.04)', radius: 4 }} />
+              <Bar dataKey="Ingresos" fill="#22c55e" stroke="#000" strokeWidth={1.5} radius={[6, 6, 0, 0]} maxBarSize={40} />
+              <Bar dataKey="Gastos" fill="#f43f5e" stroke="#000" strokeWidth={1.5} radius={[6, 6, 0, 0]} maxBarSize={40} />
             </BarChart>
           </ResponsiveContainer>
+        </div>
+
+        {/* Balance mini bars */}
+        <div style={{ marginTop: '1rem', borderTop: '2px solid #f1f5f9', paddingTop: '1rem' }}>
+          <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#94a3b8', marginBottom: '0.5rem', letterSpacing: '0.04em' }}>Balance mensual</div>
+          <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-end', height: '40px' }}>
+            {monthlyData.map((d) => {
+              const maxAbs = Math.max(...monthlyData.map(m => Math.abs(m.Balance)), 1);
+              const pct = Math.abs(d.Balance) / maxAbs;
+              const h = Math.max(4, Math.round(pct * 36));
+              return (
+                <div key={d.mes} title={`${d.mes}: ${d.Balance >= 0 ? '+' : ''}${d.Balance.toLocaleString('es-CL')}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '40px', cursor: 'default' }}>
+                  <div style={{ width: '100%', height: `${h}px`, backgroundColor: d.Balance >= 0 ? '#22c55e' : '#f43f5e', border: '1.5px solid #000', borderRadius: '3px 3px 0 0', transition: 'height 0.3s' }} />
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
+            {monthlyData.map(d => (
+              <div key={d.mes} style={{ flex: 1, textAlign: 'center', fontSize: '0.6rem', fontWeight: 700, color: '#94a3b8' }}>{d.mes.charAt(0).toUpperCase()}</div>
+            ))}
+          </div>
         </div>
       </div>
     );
