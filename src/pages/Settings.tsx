@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, Trash2, Save } from 'lucide-react';
+import { Plus, Trash2, Save, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { extractAndNormalizeRUT } from '../utils/rutParser';
 import type { ClassificationRule } from '../utils/classificationRules';
 import { getRules, saveRules, applyRules } from '../utils/classificationRules';
 import { CascadingCategorySelector } from './Transactions';
+import { useSettings } from '../contexts/SettingsContext';
 
 export default function Settings() {
   
@@ -25,6 +26,12 @@ export default function Settings() {
   const [rules, setRules] = useState<ClassificationRule[]>([]);
   const [newRuleKeyword, setNewRuleKeyword] = useState('');
   const [newRuleCategory, setNewRuleCategory] = useState<{ tipo: string | null, principal: string | null, secundaria: string | null }>({ tipo: null, principal: null, secundaria: null });
+
+  // Custom Categories
+  const { customCategories, saveCustomCategories } = useSettings();
+  const [newCatTipo, setNewCatTipo] = useState('Gasto Real');
+  const [newCatPrincipal, setNewCatPrincipal] = useState('');
+  const [newCatSecundaria, setNewCatSecundaria] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -137,6 +144,52 @@ export default function Settings() {
     }
   };
 
+  const handleAddCustomCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCatPrincipal.trim() || !newCatSecundaria.trim()) {
+      toast.error('Completa los nombres de la categoría principal y secundaria.');
+      return;
+    }
+    
+    const catsCopy = [...customCategories];
+    const principalStr = newCatPrincipal.trim();
+    const secStr = newCatSecundaria.trim();
+    
+    const existingIdx = catsCopy.findIndex(c => c.tipo === newCatTipo && c.principal === principalStr);
+    
+    if (existingIdx >= 0) {
+      if (!catsCopy[existingIdx].secundarias.includes(secStr)) {
+        catsCopy[existingIdx].secundarias.push(secStr);
+      } else {
+        toast.error('Esa categoría secundaria ya existe bajo esa principal.');
+        return;
+      }
+    } else {
+      catsCopy.push({
+        tipo: newCatTipo,
+        principal: principalStr,
+        secundarias: [secStr]
+      });
+    }
+
+    await saveCustomCategories(catsCopy);
+    setNewCatSecundaria('');
+    toast.success('Categoría agregada');
+  };
+
+  const handleDeleteCustomSecundaria = async (tipo: string, principal: string, secIndex: number) => {
+    const catsCopy = [...customCategories];
+    const existingIdx = catsCopy.findIndex(c => c.tipo === tipo && c.principal === principal);
+    if (existingIdx >= 0) {
+      catsCopy[existingIdx].secundarias.splice(secIndex, 1);
+      if (catsCopy[existingIdx].secundarias.length === 0) {
+        catsCopy.splice(existingIdx, 1);
+      }
+      await saveCustomCategories(catsCopy);
+      toast.success('Categoría eliminada');
+    }
+  };
+
 
   return (
     <div>
@@ -227,9 +280,74 @@ export default function Settings() {
                 toast.error('Error al escanear: ' + e.message, { id: 'rescan' });
               }
             }}>
-              Re-escanear transacciones pendientes
+              Auto-clasificar pendientes
             </button>
           </div>
+        </div>
+
+        {/* Categorías Personalizadas */}
+        <div className="card">
+          <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Mis Categorías (Personalizadas)</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
+            Agrega nuevas categorías para organizar tus movimientos. Estas se sumarán a la lista base que ya trae la aplicación.
+          </p>
+
+          <form onSubmit={handleAddCustomCategory} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '1rem', alignItems: 'end', marginBottom: '2rem' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 700, fontSize: '0.85rem' }}>Tipo de Movimiento</label>
+              <select className="input" value={newCatTipo} onChange={(e) => setNewCatTipo(e.target.value)} style={{ width: '100%', padding: '0.5rem' }}>
+                <option value="Gasto Real">Gasto Real</option>
+                <option value="Ingreso Real">Ingreso Real</option>
+                <option value="Ahorro/Inversión">Ahorro / Inversión</option>
+                <option value="Movimiento Interno">Movimiento Interno</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 700, fontSize: '0.85rem' }}>Categoría Principal</label>
+              <input type="text" className="input" placeholder="Ej: Mis Mascotas" value={newCatPrincipal} onChange={(e) => setNewCatPrincipal(e.target.value)} style={{ width: '100%' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 700, fontSize: '0.85rem' }}>Subcategoría (Detalle)</label>
+              <input type="text" className="input" placeholder="Ej: Juguetes" value={newCatSecundaria} onChange={(e) => setNewCatSecundaria(e.target.value)} style={{ width: '100%' }} />
+            </div>
+            <button type="submit" className="btn btn-primary" style={{ padding: '0.75rem' }}>
+              <Plus size={20} />
+              Añadir
+            </button>
+          </form>
+
+          {customCategories.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {customCategories.map((cat, i) => (
+                <div key={i} style={{ padding: '1rem', border: '2px solid #e2e8f0', borderRadius: '8px', backgroundColor: '#f8fafc' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                    <span style={{ backgroundColor: '#000', color: '#fff', fontSize: '0.7rem', fontWeight: 800, padding: '0.25rem 0.5rem', borderRadius: '4px', textTransform: 'uppercase' }}>
+                      {cat.tipo}
+                    </span>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>{cat.principal}</h3>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    {cat.secundarias.map((sec, secIdx) => (
+                      <div key={secIdx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#fff', border: '1.5px solid #cbd5e1', padding: '0.35rem 0.75rem', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 600 }}>
+                        {sec}
+                        <button 
+                          onClick={() => handleDeleteCustomSecundaria(cat.tipo, cat.principal, secIdx)} 
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', color: '#ef4444', padding: 0 }}
+                          title="Eliminar subcategoría"
+                        >
+                          <X size={14} strokeWidth={3} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ padding: '2rem', textAlign: 'center', border: '2px dashed #cbd5e1', borderRadius: '8px' }}>
+              <p style={{ margin: 0, color: '#64748b', fontWeight: 600 }}>No has creado categorías personalizadas aún.</p>
+            </div>
+          )}
         </div>
 
         {/* Contactos Frecuentes */}

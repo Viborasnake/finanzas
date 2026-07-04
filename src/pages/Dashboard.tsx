@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { 
@@ -703,7 +704,14 @@ export default function Dashboard() {
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = row.isGray ? '#f8fafc' : '#fff')}
                     >
                       <td style={{ padding: '0.75rem', fontWeight: 700, borderRight: '2px solid #000', color: row.isGray ? '#64748b' : '#000' }}>{row.name}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: row.isGray ? '#64748b' : '#000' }}>${row.value.toLocaleString('es-CL')}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: row.isGray ? '#64748b' : '#000' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
+                          ${row.value.toLocaleString('es-CL')}
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f1f5f9', padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', color: '#64748b' }}>
+                            <Search size={14} strokeWidth={3} />
+                          </div>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -1107,12 +1115,17 @@ export default function Dashboard() {
       )}
 
       {/* Details Modal */}
-      {detailsModal && detailsModal.isOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backdropFilter: 'blur(4px)' }} onClick={() => setDetailsModal(null)}>
+      {detailsModal && detailsModal.isOpen && createPortal(
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backdropFilter: 'blur(4px)' }} onClick={() => setDetailsModal(null)}>
           <div style={{ backgroundColor: '#fff', border: '3px solid #000', borderRadius: '12px', boxShadow: '8px 8px 0px #000', width: '100%', maxWidth: '700px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
             <div style={{ padding: '1.25rem 1.5rem', borderBottom: '3px solid #000', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f1f5f9', borderRadius: '9px 9px 0 0' }}>
-              <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: '"Montserrat", sans-serif' }}>{detailsModal.title}</h2>
-              <button onClick={() => setDetailsModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: 0 }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: '"Montserrat", sans-serif' }}>{detailsModal.title}</h2>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 700, marginTop: '0.25rem', textTransform: 'capitalize' }}>
+                  {dateRange.start.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' })} — {dateRange.end.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </div>
+              </div>
+              <button onClick={() => setDetailsModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: '0.5rem' }}>
                 <X size={24} strokeWidth={3} />
               </button>
             </div>
@@ -1141,11 +1154,20 @@ export default function Dashboard() {
                       </tr>
                     ))}
                   </tbody>
+                  <tfoot>
+                    <tr style={{ backgroundColor: '#f1f5f9', borderTop: '2px solid #000' }}>
+                      <td colSpan={2} style={{ padding: '1rem 0.75rem', fontWeight: 900, fontSize: '1rem', color: '#000' }}>Total</td>
+                      <td style={{ padding: '1rem 0.75rem', textAlign: 'right', fontWeight: 900, fontSize: '1rem', color: '#000' }}>
+                        ${(detailsModal.transactions.reduce((acc, t) => acc + Math.abs(t.amount), 0)).toLocaleString('es-CL')}
+                      </td>
+                    </tr>
+                  </tfoot>
                 </table>
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

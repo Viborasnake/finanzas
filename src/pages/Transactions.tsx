@@ -5,63 +5,11 @@ import { Search, Edit2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useActionQueue } from '../hooks/useActionQueue';
 import SmartAssistant from '../components/SmartAssistant';
-
-export const TAXONOMY: Record<string, Record<string, string[]>> = {
-  'Ingreso Real': {
-    'Sueldo': ['Sueldo', 'Bono', 'Aguinaldo'],
-    'Honorarios': ['Boleta', 'Servicios'],
-    'Ventas/Negocio': ['Giro', 'Venta', 'Servicios'],
-    'Devoluciones': ['Devolución Impuestos', 'Devolución Gastos'],
-    'Otros Ingresos': ['Regalos', 'Intereses/Dividendos', 'Otros']
-  },
-  'Gasto Real': {
-    'Alimentación': ['Supermercado', 'Feria', 'Abarrotes', 'Panadería', 'Cafetería/Snacks', 'Agua', 'Delivery/Restaurantes'],
-    'Transporte': ['Bencina', 'Autopista', 'Estacionamiento', 'Transporte Público', 'Uber/Taxi', 'Seguro Auto', 'Mantención/Taller', 'Lavado Auto', 'Permisos', 'Municipalidad', 'Revisión Técnica'],
-    'Vivienda': ['Dividendo', 'Contribuciones', 'Fijo', 'Seguro Hogar'],
-    'Cuentas Básicas': ['Luz', 'Agua', 'Gas', 'GGCC', 'Internet Hogar', 'Internet Móvil', 'TV Cable', 'Telefonía'],
-    'Hogar/Materiales': ['Bazar-Chinos', 'Ferretería', 'Mantenimiento/Mejoras', 'Muebles', 'Aseo'],
-    'Salud': ['Farmacia', 'Consultas Médicas', 'Exámenes', 'Dentista', 'Seguro Salud/Isapre/Fonasa', 'Salud'],
-    'Personal': ['Cuidado Personal', 'Peluquería', 'Ropa', 'Otros'],
-    'Educación': ['Universidad/Instituto', 'Cursos/Diplomados', 'Materiales/Libros', 'Educación'],
-    'Benja': ['Colegio', 'Salud/Pediatra', 'Ropa/Zapatos', 'Útiles/Materiales', 'Juguetes/Entretención', 'Mesada', 'Benja'],
-    'Suscripciones': ['HBO MAX', 'Claude', 'Chat GPT', 'Google', 'Netflix', 'Spotify', 'Amazon Prime', 'Otras'],
-    'Entretención/Ocio': ['Cine/Espectáculos', 'Paseos/Vacaciones', 'Deporte/Gimnasio', 'Regalos'],
-    'Actividad Extra': ['Actividad Extra'],
-    'Retro Gaming/Hobbies': ['Retro Gaming/Hobbies'],
-    'Mascotas': ['Alimento', 'Veterinario', 'Accesorios/Peluquería'],
-    'Herramientas/Software': ['Herramientas/Software'],
-    'Pago a Familiar': ['Pago a Familiar'],
-    'Impuestos': ['Impuestos'],
-    'Intereses y Comisiones': ['Mantención Cuenta', 'Comisiones', 'Seguro Desgravamen/Fraude', 'Intereses'],
-    'Pago Tarjeta Crédito': ['Tarjeta Credito'],
-    'Servicio de Deuda': ['Interés Línea de Crédito', 'Abono Línea de Crédito', 'Crédito Consumo'],
-    'Otros': ['Gastos Varios', 'Caja Chica', 'Diferencia de Cambio'],
-    'Sin Especificar': ['Sin Especificar']
-  },
-  'Movimiento Interno': {
-    'Transferencia personal': ['Transferencia personal'],
-    'Traspaso fondo': ['Traspaso fondo']
-  },
-  'Ahorro/Inversión': {
-    'Ahorro': ['Ahorro'],
-    'Inversión': ['Inversión']
-  }
-};
-
-
-
-const ALL_OPTIONS = Object.entries(TAXONOMY).flatMap(([tipo, principals]) => 
-  Object.entries(principals).flatMap(([principal, secundarias]) => 
-    secundarias.map(secundaria => ({
-      label: secundaria === principal ? principal : `${secundaria} (${principal})`,
-      tipo,
-      principal,
-      secundaria
-    }))
-  )
-);
+import { useTaxonomy } from '../hooks/useTaxonomy';
 
 export function CascadingCategorySelector({ initialPrincipal, initialSecundaria, onSave }: any) {
+  const { allOptions: ALL_OPTIONS } = useTaxonomy();
+
   const [inputValue, setInputValue] = useState(() => {
     if (initialSecundaria && initialPrincipal) {
       return initialSecundaria === initialPrincipal ? initialPrincipal : `${initialSecundaria} (${initialPrincipal})`;
