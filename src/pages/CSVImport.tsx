@@ -214,8 +214,13 @@ export default function CSVImport() {
             tipo_movimiento = 'Movimiento Interno';
             categoria_principal = descForCheck.includes('fondo') ? 'Traspaso fondo' : 'Transferencia personal';
             categoria_secundaria = categoria_principal;
-          } else if (rutExtracted) {
-            const contact = knownContacts.find(c => c.rut && extractAndNormalizeRUT(c.rut) === rutExtracted);
+          } else {
+            // Buscar por RUT si existe, sino por nombre
+            const contact = knownContacts.find(c => {
+              if (rutExtracted && c.rut && extractAndNormalizeRUT(c.rut) === rutExtracted) return true;
+              if (c.name && descForCheck.includes(c.name.toLowerCase())) return true;
+              return false;
+            });
             if (contact) {
               tipo_movimiento = 'Gasto Real';
               categoria_principal = 'Pago a Familiar';

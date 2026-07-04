@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, Trash2, Edit2, Check, X, Save } from 'lucide-react';
+import { Plus, Trash2, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { extractAndNormalizeRUT } from '../utils/rutParser';
 import type { ClassificationRule } from '../utils/classificationRules';
@@ -9,12 +9,6 @@ import { getRules, saveRules, applyRules } from '../utils/classificationRules';
 import { CascadingCategorySelector } from './Transactions';
 
 export default function Settings() {
-  const [categories, setCategories] = useState<any[]>([]);
-  const [newCategory, setNewCategory] = useState('');
-  const [loading, setLoading] = useState(true);
-  
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
   
   const { user } = useAuth();
 
@@ -34,7 +28,7 @@ export default function Settings() {
 
   useEffect(() => {
     if (user) {
-      fetchCategories();
+
       fetchSettingsAndContacts();
       setRules(getRules());
     }
@@ -143,67 +137,6 @@ export default function Settings() {
     }
   };
 
-  const fetchCategories = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('*')
-        .order('name');
-      if (error) throw error;
-      setCategories(data || []);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAddCategory = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newCategory.trim() || !user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('categories')
-        .insert([{ name: newCategory.trim(), user_id: user.id }])
-        .select();
-        
-      if (error) throw error;
-      setCategories([...categories, data[0]]);
-      setNewCategory('');
-    } catch (error) {
-      console.error('Error adding category:', error);
-    }
-  };
-
-  const handleDeleteCategory = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('categories')
-        .delete()
-        .eq('id', id);
-        
-      if (error) throw error;
-      setCategories(categories.filter(c => c.id !== id));
-    } catch (error) {
-      console.error('Error deleting category:', error);
-    }
-  };
-
-  const handleUpdateCategory = async (id: string) => {
-    if (!editName.trim()) return;
-    try {
-      const { error } = await supabase
-        .from('categories')
-        .update({ name: editName.trim() })
-        .eq('id', id);
-      if (error) throw error;
-      setCategories(categories.map(c => c.id === id ? { ...c, name: editName.trim() } : c));
-      setEditingId(null);
-    } catch (error) {
-      console.error('Error updating category:', error);
-    }
-  };
 
   return (
     <div>
@@ -263,8 +196,12 @@ export default function Settings() {
                     tipo = 'Movimiento Interno';
                     principal = desc.includes('fondo') ? 'Traspaso fondo' : 'Transferencia personal';
                     secundaria = principal;
-                  } else if (rutEx) {
-                    const c = contacts.find(c => c.rut && extractAndNormalizeRUT(c.rut) === rutEx);
+                  } else {
+                    const c = contacts.find(c => {
+                      if (rutEx && c.rut && extractAndNormalizeRUT(c.rut) === rutEx) return true;
+                      if (c.name && desc.includes(c.name.toLowerCase())) return true;
+                      return false;
+                    });
                     if (c) {
                       tipo = 'Gasto Real'; principal = 'Pago a Familiar'; secundaria = 'Pago a Familiar';
                     }
@@ -400,83 +337,7 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* Categorías Antiguas */}
-        <div className="card" style={{ opacity: 0.7 }}>
-          <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Categorías Antiguas (Deprecated)</h2>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
-            Estas son las categorías de tu sistema antiguo. Se mantendrán por compatibilidad, pero el nuevo sistema usa la taxonomía de 3 niveles.
-          </p>
-          
-          <form onSubmit={handleAddCategory} style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
-            <input 
-              type="text" 
-              className="input" 
-              placeholder="Nueva categoría..." 
-              value={newCategory}
-              onChange={(e) => setNewCategory(e.target.value)}
-            />
-            <button type="submit" className="btn btn-primary">
-              <Plus size={20} />
-              Agregar
-            </button>
-          </form>
 
-          {loading ? (
-            <p>Cargando categorías...</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {categories.map(cat => (
-                <div key={cat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', border: '2px solid black', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-color)' }}>
-                  {editingId === cat.id ? (
-                    <div style={{ display: 'flex', gap: '0.5rem', flex: 1, marginRight: '1rem' }}>
-                      <input
-                        type="text"
-                        className="input"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        autoFocus
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleUpdateCategory(cat.id);
-                          if (e.key === 'Escape') setEditingId(null);
-                        }}
-                        style={{ padding: '0.5rem', flex: 1 }}
-                      />
-                      <button className="btn" style={{ padding: '0.5rem', backgroundColor: '#bbf7d0' }} onClick={() => handleUpdateCategory(cat.id)}>
-                        <Check size={20} />
-                      </button>
-                      <button className="btn" style={{ padding: '0.5rem', backgroundColor: '#fecaca' }} onClick={() => setEditingId(null)}>
-                        <X size={20} />
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <span style={{ fontWeight: 600 }}>{cat.name}</span>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button 
-                          className="btn" 
-                          style={{ padding: '0.5rem', color: 'black', border: 'none', boxShadow: 'none' }}
-                          onClick={() => {
-                            setEditingId(cat.id);
-                            setEditName(cat.name);
-                          }}
-                        >
-                          <Edit2 size={20} />
-                        </button>
-                        <button 
-                          className="btn" 
-                          style={{ padding: '0.5rem', color: 'var(--danger)', border: 'none', boxShadow: 'none' }}
-                          onClick={() => handleDeleteCategory(cat.id)}
-                        >
-                          <Trash2 size={20} />
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
 
       </div>
     </div>
