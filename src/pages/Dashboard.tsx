@@ -3,7 +3,7 @@ import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   ChevronLeft, ChevronRight, TrendingUp, TrendingDown, 
-  Wallet, CreditCard, AlertTriangle
+  Wallet, CreditCard, AlertTriangle, Sparkles, Activity, Search
 } from 'lucide-react';
 import { 
   AreaChart, Area,
@@ -21,6 +21,7 @@ export default function Dashboard() {
   const [viewMode, setViewMode] = useState<ViewMode>('month');
 
   const [categoryLevel, setCategoryLevel] = useState<CategoryLevel>('principal');
+  const [activeFilters, setActiveFilters] = useState<string[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -73,6 +74,8 @@ export default function Dashboard() {
     else if (viewMode === 'quarter') d.setMonth(d.getMonth() + (dir * 3));
     else d.setFullYear(d.getFullYear() + dir);
     setCurrentDate(d);
+    // Clear filters on period change
+    setActiveFilters([]);
   };
 
   const getPeriodLabel = (date: Date, mode: ViewMode) => {
@@ -92,6 +95,12 @@ export default function Dashboard() {
     return date.getFullYear().toString();
   };
 
+  const toggleFilter = (cat: string) => {
+    setActiveFilters(prev => 
+      prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
+    );
+  };
+
   // --- Computations ---
   const { currentRange, prevRange } = useMemo(() => {
     return {
@@ -101,17 +110,25 @@ export default function Dashboard() {
   }, [currentDate, viewMode]);
 
   const stats = useMemo(() => {
-    const calcForRange = (start: Date, end: Date) => {
+    const calcForRange = (start: Date, end: Date, filters: string[]) => {
       let ingresos = 0;
       let aportePropio = 0;
       let sueldo = 0;
       let honorarios = 0;
       let ingresosOtros = 0;
-      let gastos = 0;
+      
+      let gastos = 0; // Filtered gastos
+      let gastosTotales = 0; // Absolute all gastos (for balance)
       
       const catsPrincipal: Record<string, number> = {};
       const catsSecundaria: Record<string, number> = {};
       let unclassifiedCount = 0;
+
+      const availableCats = new Set<string>();
+
+      let maxIncomeDesc = '';
+      let maxIncomeAmount = 0;
+      const recurringExpenses: Record<string, { total: number; count: number }> = {};
 
       const txs = transactions.filter(t => {
         const d = new Date(t.date);
@@ -137,17 +154,36 @@ export default function Dashboard() {
             } else {
               ingresosOtros += t.amount;
             }
+
+            // For intelligence
+            if (t.amount > maxIncomeAmount) {
+              maxIncomeAmount = t.amount;
+              maxIncomeDesc = t.description || t.categoria_principal || 'Ingreso';
+            }
           }
         } else {
           // Gasto
           if (!isInternal && !isInvestment) {
-            gastos += Math.abs(t.amount);
+            const absAmt = Math.abs(t.amount);
+            gastosTotales += absAmt;
             
             const catP = t.categoria_principal || 'Sin Clasificar';
             const catS = t.categoria_secundaria || 'Sin Clasificar';
             
-            catsPrincipal[catP] = (catsPrincipal[catP] || 0) + Math.abs(t.amount);
-            catsSecundaria[catS] = (catsSecundaria[catS] || 0) + Math.abs(t.amount);
+            availableCats.add(catP);
+            
+            // Intelligence logic
+            const desc = (t.description || 'Gasto').toUpperCase();
+            if (!recurringExpenses[desc]) recurringExpenses[desc] = { total: 0, count: 0 };
+            recurringExpenses[desc].total += absAmt;
+            recurringExpenses[desc].count += 1;
+
+            // Applying Filters
+            if (filters.length === 0 || filters.includes(catP)) {
+              gastos += absAmt;
+              catsPrincipal[catP] = (catsPrincipal[catP] || 0) + absAmt;
+              catsSecundaria[catS] = (catsSecundaria[catS] || 0) + absAmt;
+            }
 
             if (isUnclassified) unclassifiedCount++;
           }
@@ -162,24 +198,57 @@ export default function Dashboard() {
         .map(([name, amount]) => ({ name, amount }))
         .sort((a, b) => b.amount - a.amount);
 
+      // Intelligence Insights
+      let maxRecurringDesc = '';
+      let maxRecurringTotal = 0;
+      let maxRecurringCount = 0;
+      
+      Object.entries(recurringExpenses).forEach(([desc, data]) => {
+        if (data.count > 1 && data.total > maxRecurringTotal) {
+          maxRecurringTotal = data.total;
+          maxRecurringDesc = desc;
+          maxRecurringCount = data.count;
+        }
+      });
+      // Fallback if no recurring found, just pick the highest single expense
+      if (maxRecurringTotal === 0) {
+        Object.entries(recurringExpenses).forEach(([desc, data]) => {
+          if (data.total > maxRecurringTotal) {
+            maxRecurringTotal = data.total;
+            maxRecurringDesc = desc;
+            maxRecurringCount = data.count;
+          }
+        });
+      }
+
       return {
         ingresos,
         aportePropio,
         sueldo,
         honorarios,
         ingresosOtros,
-        gastos,
+        gastos, // Filtered
+        gastosTotales, // Unfiltered
         topCatsPrincipal,
         topCatsSecundaria,
-        unclassifiedCount
+        unclassifiedCount,
+        availableCats: Array.from(availableCats).sort(),
+        insights: {
+          balance: ingresos - gastosTotales,
+          maxIncomeDesc,
+          maxIncomeAmount,
+          maxRecurringDesc,
+          maxRecurringTotal,
+          maxRecurringCount
+        }
       };
     };
 
     return { 
-      current: calcForRange(currentRange.start, currentRange.end), 
-      prev: calcForRange(prevRange.start, prevRange.end) 
+      current: calcForRange(currentRange.start, currentRange.end, activeFilters), 
+      prev: calcForRange(prevRange.start, prevRange.end, activeFilters) 
     };
-  }, [transactions, currentRange, prevRange]);
+  }, [transactions, currentRange, prevRange, activeFilters]);
 
   // Generate 6 periods history for charts
   const historyData = useMemo(() => {
@@ -194,7 +263,13 @@ export default function Dashboard() {
           const isInternal = t.tipo_movimiento === 'Movimiento Interno';
           const isInvestment = t.tipo_movimiento === 'Ahorro/Inversión';
           if (t.type === 'ingreso' && !isInternal) ing += Math.abs(t.amount);
-          if (t.type === 'egreso' && !isInternal && !isInvestment) gas += Math.abs(t.amount);
+          
+          if (t.type === 'egreso' && !isInternal && !isInvestment) {
+             const catP = t.categoria_principal || 'Sin Clasificar';
+             if (activeFilters.length === 0 || activeFilters.includes(catP)) {
+                gas += Math.abs(t.amount);
+             }
+          }
         }
       });
       data.push({
@@ -204,7 +279,7 @@ export default function Dashboard() {
       });
     }
     return data;
-  }, [transactions, currentDate, viewMode]);
+  }, [transactions, currentDate, viewMode, activeFilters]);
 
   // --- Styles ---
   const neoCard = {
@@ -224,6 +299,18 @@ export default function Dashboard() {
     cursor: 'pointer',
     fontWeight: 700,
     transition: 'all 0.1s'
+  };
+
+  const neoPill = {
+    padding: '0.4rem 1rem',
+    border: '2px solid #000',
+    borderRadius: '2rem',
+    fontWeight: 800,
+    fontSize: '0.85rem',
+    cursor: 'pointer',
+    boxShadow: '2px 2px 0px #000',
+    transition: 'all 0.1s',
+    whiteSpace: 'nowrap' as any
   };
 
   // --- Components ---
@@ -256,40 +343,136 @@ export default function Dashboard() {
     );
   };
 
-  // BLOCK 1: PERIOD SELECTOR
-  const renderPeriodSelector = () => {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '2rem' }}>
-        <div style={{ ...neoButton, display: 'flex', alignItems: 'center', padding: '0.25rem' }}>
-          <button onClick={() => shiftPeriod(-1)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <ChevronLeft size={20} strokeWidth={3} />
-          </button>
-          
-          <div style={{ minWidth: '150px', textAlign: 'center', fontWeight: 800, fontSize: '1.1rem', textTransform: 'capitalize', margin: '0 1rem' }}>
-            {getPeriodLabel(currentDate, viewMode)}
-          </div>
-          
-          <button onClick={() => shiftPeriod(1)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <ChevronRight size={20} strokeWidth={3} />
-          </button>
+  // BLOCK 1: PERIOD SELECTOR & FILTERS
+  const renderHeader = () => {
+    const availableCats = stats.current.availableCats;
 
-          <div style={{ width: '2px', height: '24px', backgroundColor: '#000', margin: '0 0.5rem' }}></div>
+    return (
+      <div style={{ marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+          <h1 style={{ margin: 0, fontFamily: 'serif', fontSize: '2.5rem', fontWeight: 900, color: '#000' }}>Resumen Financiero</h1>
           
-          <select 
-            value={viewMode} 
-            onChange={(e) => setViewMode(e.target.value as ViewMode)}
-            style={{ padding: '0.5rem', border: 'none', backgroundColor: 'transparent', outline: 'none', cursor: 'pointer', fontWeight: 800, appearance: 'none', paddingRight: '1rem' }}
-          >
-            <option value="month">Mensual</option>
-            <option value="quarter">Trimestral</option>
-            <option value="year">Anual</option>
-          </select>
+          <div style={{ ...neoButton, display: 'flex', alignItems: 'center', padding: '0.25rem', backgroundColor: '#fff' }}>
+            <button onClick={() => shiftPeriod(-1)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <ChevronLeft size={20} strokeWidth={3} />
+            </button>
+            <div style={{ minWidth: '150px', textAlign: 'center', fontWeight: 800, fontSize: '1.1rem', textTransform: 'capitalize', margin: '0 1rem' }}>
+              {getPeriodLabel(currentDate, viewMode)}
+            </div>
+            <button onClick={() => shiftPeriod(1)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <ChevronRight size={20} strokeWidth={3} />
+            </button>
+            <div style={{ width: '2px', height: '24px', backgroundColor: '#000', margin: '0 0.5rem' }}></div>
+            <select 
+              value={viewMode} 
+              onChange={(e) => setViewMode(e.target.value as ViewMode)}
+              style={{ padding: '0.5rem', border: 'none', backgroundColor: 'transparent', outline: 'none', cursor: 'pointer', fontWeight: 800, appearance: 'none', paddingRight: '1rem' }}
+            >
+              <option value="month">Mensual</option>
+              <option value="quarter">Trimestral</option>
+              <option value="year">Anual</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Category Filters Bar */}
+        {availableCats.length > 0 && (
+          <div style={{ backgroundColor: '#fff', border: '3px solid #000', borderRadius: '12px', padding: '1rem', boxShadow: '4px 4px 0px #000', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ fontWeight: 900, fontSize: '0.9rem', textTransform: 'uppercase', color: '#000' }}>
+              Analizar Estas Categorías:
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+              {availableCats.map(cat => {
+                const isActive = activeFilters.includes(cat);
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => toggleFilter(cat)}
+                    style={{
+                      ...neoPill,
+                      backgroundColor: isActive ? '#93c5fd' : '#f1f5f9',
+                      color: '#000'
+                    }}
+                  >
+                    {cat}
+                  </button>
+                );
+              })}
+              {activeFilters.length > 0 && (
+                <button
+                  onClick={() => setActiveFilters([])}
+                  style={{
+                    ...neoPill,
+                    backgroundColor: '#fecaca',
+                    marginLeft: 'auto'
+                  }}
+                >
+                  Limpiar Filtros
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // BLOCK 2: INTELLIGENCE REPORT
+  const renderIntelligenceReport = () => {
+    const { balance, maxIncomeDesc, maxIncomeAmount, maxRecurringDesc, maxRecurringTotal, maxRecurringCount } = stats.current.insights;
+    const ingresos = stats.current.ingresos;
+    
+    const isDeficit = balance < 0;
+    const incomePercent = ingresos > 0 ? Math.round((maxIncomeAmount / ingresos) * 100) : 0;
+
+    return (
+      <div style={{ backgroundColor: '#fff', border: '3px solid #000', borderRadius: '12px', padding: '2rem', boxShadow: '6px 6px 0px #000', marginBottom: '2.5rem' }}>
+        <h2 style={{ fontSize: '1.8rem', margin: '0 0 2rem 0', fontFamily: 'serif', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Sparkles fill="#fde047" color="#000" size={28} strokeWidth={2} />
+          Reporte de Inteligencia
+        </h2>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {/* Balance Insight */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+            <div style={{ backgroundColor: isDeficit ? '#fecaca' : '#bbf7d0', padding: '1rem', borderRadius: '50%', border: '3px solid #000', flexShrink: 0 }}>
+              <Activity size={24} strokeWidth={3} />
+            </div>
+            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, lineHeight: 1.5 }}>
+              Tu balance actual indica un <span style={{ backgroundColor: isDeficit ? '#fecaca' : '#bbf7d0', padding: '0.2rem 0.5rem', border: '2px solid #000', borderRadius: '4px', fontWeight: 900, whiteSpace: 'nowrap' }}>{isDeficit ? 'DÉFICIT' : 'SUPERÁVIT'}</span> de <strong>${Math.abs(balance).toLocaleString('es-CL')}</strong>. 
+              {isDeficit ? ' Presta atención, tus gastos están superando a tus ingresos en este periodo.' : ' ¡Excelente trabajo manteniendo tus gastos por debajo de tus ingresos!'}
+            </p>
+          </div>
+
+          {/* Income Motor Insight */}
+          {maxIncomeAmount > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+              <div style={{ backgroundColor: '#bfdbfe', padding: '1rem', borderRadius: '50%', border: '3px solid #000', flexShrink: 0 }}>
+                <Wallet size={24} strokeWidth={3} />
+              </div>
+              <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, lineHeight: 1.5 }}>
+                Tu motor principal de ingresos es <strong>"{maxIncomeDesc}"</strong>, el cual representa el <span style={{ backgroundColor: '#bfdbfe', padding: '0.2rem 0.5rem', border: '2px solid #000', borderRadius: '4px', fontWeight: 900 }}>{incomePercent}%</span> de todas tus entradas de dinero (ingreso real).
+              </p>
+            </div>
+          )}
+
+          {/* Expense Fuga Insight */}
+          {maxRecurringTotal > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+              <div style={{ backgroundColor: '#fef08a', padding: '1rem', borderRadius: '50%', border: '3px solid #000', flexShrink: 0 }}>
+                <Search size={24} strokeWidth={3} />
+              </div>
+              <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, lineHeight: 1.5 }}>
+                Hemos detectado un flujo de capital importante en <strong>"{maxRecurringDesc}"</strong>, con un acumulado de <span style={{ backgroundColor: '#fef08a', padding: '0.2rem 0.5rem', border: '2px solid #000', borderRadius: '4px', fontWeight: 900 }}>${maxRecurringTotal.toLocaleString('es-CL')}</span> repartido en {maxRecurringCount} {maxRecurringCount === 1 ? 'pago' : 'pagos'}.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     );
   };
 
-  // BLOCK 2: MAIN NUMBERS
+  // BLOCK 3: MAIN NUMBERS
   const renderMainNumbers = () => {
     const c = stats.current;
     const p = stats.prev;
@@ -320,7 +503,7 @@ export default function Dashboard() {
               <div style={{ backgroundColor: '#fecaca', padding: '0.5rem', borderRadius: '50%', border: '2px solid #000' }}>
                 <CreditCard size={24} strokeWidth={2.5} />
               </div>
-              <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: 'serif' }}>Gastos</h3>
+              <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: 'serif' }}>Gastos {activeFilters.length > 0 ? '(Filtrados)' : ''}</h3>
             </div>
             {renderTrendBadge(c.gastos, p.gastos, true)}
           </div>
@@ -333,7 +516,7 @@ export default function Dashboard() {
     );
   };
 
-  // BLOCK 3: FUENTES DE INGRESO (TABLE)
+  // BLOCK 4: FUENTES DE INGRESO (TABLE)
   const renderIncomeSources = () => {
     const c = stats.current;
     const totalEntradas = c.ingresos + c.aportePropio;
@@ -384,7 +567,7 @@ export default function Dashboard() {
     );
   };
 
-  // BLOCK 4: TOP CATEGORIAS (TOGGLE + BAR CHART)
+  // BLOCK 5: TOP CATEGORIAS (TOGGLE + BAR CHART)
   const renderTopCategories = () => {
     const c = stats.current;
     if (c.gastos === 0) return null;
@@ -456,7 +639,7 @@ export default function Dashboard() {
     );
   };
 
-  // BLOCK 5: UNCLASSIFIED ALERT
+  // BLOCK 6: UNCLASSIFIED ALERT
   const renderUnclassifiedAlert = () => {
     const count = stats.current.unclassifiedCount;
     if (count === 0) return null;
@@ -482,8 +665,8 @@ export default function Dashboard() {
   };
 
   return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto', paddingBottom: '4rem', padding: '0 1rem' }}>
-      {renderPeriodSelector()}
+    <div style={{ maxWidth: '1100px', margin: '0 auto', paddingBottom: '4rem', padding: '0 1rem', paddingTop: '2rem' }}>
+      {renderHeader()}
       
       {transactions.length === 0 ? (
         <div style={{ backgroundColor: 'white', textAlign: 'center', padding: '6rem 2rem', border: '3px dashed #000', borderRadius: '12px', boxShadow: '6px 6px 0px #000' }}>
@@ -495,6 +678,7 @@ export default function Dashboard() {
         </div>
       ) : (
         <>
+          {renderIntelligenceReport()}
           {renderUnclassifiedAlert()}
           {renderMainNumbers()}
 
