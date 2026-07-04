@@ -69,12 +69,14 @@ export const BankProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const saveBanks = async (banks: Bank[], main: Bank | null) => {
-    const { error } = await supabase.from('user_settings').upsert({
-      user_id: user!.id,
-      banks,
-      main_bank: main,
-    }, { onConflict: 'user_id', ignoreDuplicates: false });
-    if (error) console.error('Error saving banks:', error);
+    const { data } = await supabase.from('user_settings').select('user_id').eq('user_id', user!.id).maybeSingle();
+    if (data) {
+      const { error } = await supabase.from('user_settings').update({ banks, main_bank: main }).eq('user_id', user!.id);
+      if (error) console.error('Error updating banks:', error);
+    } else {
+      const { error } = await supabase.from('user_settings').insert({ user_id: user!.id, banks, main_bank: main });
+      if (error) console.error('Error inserting banks:', error);
+    }
   };
 
   const addBank = async (bank: Bank) => {

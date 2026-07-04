@@ -72,7 +72,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
           .eq('user_id', user.id)
           .eq('bank', activeBank);
 
-        if (rulesData) {
+        if (rulesData && rulesData.length > 0) {
           setClassificationRules(rulesData.map(r => ({
             id: r.id,
             keyword: r.condition_value,
@@ -81,6 +81,30 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
             categoria_secundaria: r.category_secundaria
           })));
         } else {
+          // Intentar migrar desde localStorage si no hay reglas en BD
+          const localRulesStr = localStorage.getItem('finanzas_classification_rules');
+          if (localRulesStr) {
+            try {
+              const localRules = JSON.parse(localRulesStr);
+              if (localRules && localRules.length > 0) {
+                const inserts = localRules.map((r: any) => ({
+                  user_id: user.id,
+                  bank: activeBank,
+                  condition_type: 'contains',
+                  condition_value: r.keyword,
+                  category_tipo: r.tipo_movimiento,
+                  category_principal: r.categoria_principal,
+                  category_secundaria: r.categoria_secundaria || ''
+                }));
+                await supabase.from('classification_rules').insert(inserts);
+                setClassificationRules(localRules);
+                localStorage.removeItem('finanzas_classification_rules');
+                return;
+              }
+            } catch (err) {
+              console.error('Failed to parse local rules', err);
+            }
+          }
           setClassificationRules([]);
         }
       }
@@ -106,12 +130,15 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     
     setAllCustomCategories(newAllCats);
     
-    const { error } = await supabase.from('user_settings').upsert({
-      user_id: user.id,
-      custom_categories: newAllCats,
-    }, { onConflict: 'user_id' });
+    const { data } = await supabase.from('user_settings').select('user_id').eq('user_id', user.id).maybeSingle();
     
-    if (error) console.error('Error saving custom categories:', error);
+    if (data) {
+      const { error } = await supabase.from('user_settings').update({ custom_categories: newAllCats }).eq('user_id', user.id);
+      if (error) console.error('Error updating custom categories:', error);
+    } else {
+      const { error } = await supabase.from('user_settings').insert({ user_id: user.id, custom_categories: newAllCats });
+      if (error) console.error('Error inserting custom categories:', error);
+    }
   };
 
   const saveClassificationRules = async (rules: ClassificationRule[], targetBank?: string) => {

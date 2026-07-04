@@ -527,7 +527,7 @@ export default function Dashboard() {
 
             {/* Dropdown */}
             {pickerOpen && (
-              <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', backgroundColor: '#fff', border: '3px solid #000', borderRadius: '16px', boxShadow: '6px 6px 0px #000', zIndex: 200, minWidth: '300px', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', backgroundColor: '#fff', border: '3px solid #000', borderRadius: '16px', boxShadow: '6px 6px 0px #000', zIndex: 200, minWidth: '300px' }}>
                 {/* Preset pills */}
                 <div style={{ padding: '1rem', borderBottom: '2px solid #e2e8f0' }}>
                   <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#94a3b8', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>Accesos rápidos</div>
