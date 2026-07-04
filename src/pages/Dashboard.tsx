@@ -547,9 +547,9 @@ export default function Dashboard() {
     return (
       <div style={{ marginBottom: '2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-          <h1 style={{ margin: 0, fontFamily: '"Montserrat", sans-serif', fontSize: '2.5rem', fontWeight: 900, color: '#000' }}>Resumen Financiero</h1>
+          <h1 style={{ margin: 0, fontFamily: '"Montserrat", sans-serif', fontSize: '2.5rem', fontWeight: 900, color: '#000' }}>Resumen Financiero (Txs: {transactions.length})</h1>
 
-          {activeBank === 'Itaú' && transactions.length === 0 && (
+          {activeBank === 'Itaú' && (
             <button 
               onClick={async () => {
                 const { data } = await supabase.from('transactions').select('id, raw_data').eq('user_id', user?.id).eq('bank', 'Scotiabank');
