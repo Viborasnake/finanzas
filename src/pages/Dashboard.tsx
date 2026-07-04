@@ -56,12 +56,25 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { activeBank } = useBanks();
 
-  // Date Range state
-  const [dateRange, setDateRange] = useState<DateRange>(() => PRESETS[2].range()); // This month default
+  const [activePreset, setActivePreset] = useState<string>(() => {
+    return sessionStorage.getItem('finanzas_dash_preset') || 'month';
+  });
+
+  const [dateRange, setDateRange] = useState<DateRange>(() => {
+    const saved = sessionStorage.getItem('finanzas_dash_range');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return { start: new Date(parsed.start), end: new Date(parsed.end), label: parsed.label };
+      } catch (e) {}
+    }
+    const presetId = sessionStorage.getItem('finanzas_dash_preset') || 'month';
+    const preset = PRESETS.find(p => p.id === presetId) || PRESETS[2];
+    return preset.range();
+  });
   const [pickerOpen, setPickerOpen] = useState(false);
   const [customFrom, setCustomFrom] = useState<Date | null>(null);
   const [customTo, setCustomTo] = useState<Date | null>(null);
-  const [activePreset, setActivePreset] = useState<string>('month');
   const pickerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -79,6 +92,8 @@ export default function Dashboard() {
     setDateRange(r);
     setActivePreset(id);
     setPickerOpen(false);
+    sessionStorage.setItem('finanzas_dash_preset', id);
+    sessionStorage.setItem('finanzas_dash_range', JSON.stringify(r));
   };
 
   const applyCustomRange = () => {
@@ -87,9 +102,12 @@ export default function Dashboard() {
     const end = new Date(customTo.getFullYear(), customTo.getMonth(), customTo.getDate(), 23, 59, 59);
     if (start > end) return;
     const fmt = (d: Date) => d.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
-    setDateRange({ start, end, label: `${fmt(start)} — ${fmt(end)}` });
+    const r = { start, end, label: `${fmt(start)} — ${fmt(end)}` };
+    setDateRange(r);
     setActivePreset('custom');
     setPickerOpen(false);
+    sessionStorage.setItem('finanzas_dash_preset', 'custom');
+    sessionStorage.setItem('finanzas_dash_range', JSON.stringify(r));
   };
 
   const [categoryLevel, setCategoryLevel] = useState<CategoryLevel>('principal');
