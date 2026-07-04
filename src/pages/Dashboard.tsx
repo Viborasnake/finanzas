@@ -3,11 +3,11 @@ import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   ChevronLeft, ChevronRight, TrendingUp, TrendingDown, 
-  PiggyBank, Wallet, CreditCard, AlertTriangle, 
-  ChevronDown, ChevronUp
+  PiggyBank, Wallet, CreditCard, AlertTriangle
 } from 'lucide-react';
 import { 
-  LineChart, Line, Tooltip, ResponsiveContainer, XAxis
+  AreaChart, Area, PieChart, Pie, Cell,
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer
 } from 'recharts';
 
 type ViewMode = 'month' | 'quarter' | 'year';
@@ -19,7 +19,6 @@ export default function Dashboard() {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
 
-  const [expandedMetric, setExpandedMetric] = useState<'ingresos' | 'gastos' | 'ahorro' | null>(null);
   const [expandedExpenseType, setExpandedExpenseType] = useState<'fijo' | 'variable' | null>(null);
 
   useEffect(() => {
@@ -213,23 +212,27 @@ export default function Dashboard() {
     const isGood = invertGood ? !isPositive : isPositive;
     
     return (
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.5rem', backgroundColor: isGood ? '#dcfce7' : '#fee2e2', color: isGood ? '#166534' : '#991b1b', borderRadius: '1rem', fontWeight: 700, fontSize: '0.85rem' }}>
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.6rem', backgroundColor: isGood ? '#dcfce7' : '#fee2e2', color: isGood ? '#166534' : '#991b1b', borderRadius: '2rem', fontWeight: 700, fontSize: '0.85rem', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
         {isPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
         {Math.abs(pct).toFixed(1)}%
       </div>
     );
   };
 
-  const renderMiniChart = (dataKey: 'Ingresos' | 'Gastos' | 'Ahorro', color: string) => {
+  const renderSparkline = (dataKey: 'Ingresos' | 'Gastos' | 'Ahorro', color: string) => {
+    const gradientId = `color${dataKey}`;
     return (
-      <div style={{ height: '120px', width: '100%', marginTop: '1.5rem', borderTop: '1px solid #e5e7eb', paddingTop: '1rem' }}>
-        <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Tendencia últimos 6 períodos</p>
+      <div style={{ height: '80px', width: '100%', marginTop: '0.5rem', position: 'absolute', bottom: 0, left: 0, opacity: 0.8, pointerEvents: 'none', borderBottomLeftRadius: '1.5rem', borderBottomRightRadius: '1.5rem', overflow: 'hidden' }}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={historyData}>
-            <Line type="monotone" dataKey={dataKey} stroke={color} strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-            <Tooltip formatter={(value: any) => '$' + Number(value).toLocaleString('es-CL')} labelStyle={{ color: 'black' }} />
-            <XAxis dataKey="label" hide />
-          </LineChart>
+          <AreaChart data={historyData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={color} stopOpacity={0.4}/>
+                <stop offset="95%" stopColor={color} stopOpacity={0}/>
+              </linearGradient>
+            </defs>
+            <Area type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2} fillOpacity={1} fill={`url(#${gradientId})`} />
+          </AreaChart>
         </ResponsiveContainer>
       </div>
     );
@@ -239,25 +242,25 @@ export default function Dashboard() {
   const renderPeriodSelector = () => {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', backgroundColor: 'white', padding: '0.5rem 1rem', borderRadius: '2rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', border: '1px solid #e5e7eb' }}>
-          <button onClick={() => shiftPeriod(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <ChevronLeft size={24} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', backgroundColor: 'white', padding: '0.5rem 1rem', borderRadius: '2rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)', border: '1px solid #f1f5f9' }}>
+          <button onClick={() => shiftPeriod(-1)} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', cursor: 'pointer', padding: '0.5rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
+            <ChevronLeft size={20} color="#475569" />
           </button>
           
-          <div style={{ minWidth: '150px', textAlign: 'center', fontWeight: 800, fontSize: '1.2rem', textTransform: 'capitalize' }}>
+          <div style={{ minWidth: '160px', textAlign: 'center', fontWeight: 800, fontSize: '1.25rem', textTransform: 'capitalize', color: '#1e293b' }}>
             {getPeriodLabel(currentDate, viewMode)}
           </div>
           
-          <button onClick={() => shiftPeriod(1)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <ChevronRight size={24} />
+          <button onClick={() => shiftPeriod(1)} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', cursor: 'pointer', padding: '0.5rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
+            <ChevronRight size={20} color="#475569" />
           </button>
 
-          <div style={{ width: '1px', height: '24px', backgroundColor: '#e5e7eb', margin: '0 0.5rem' }}></div>
+          <div style={{ width: '1px', height: '24px', backgroundColor: '#e2e8f0', margin: '0 0.5rem' }}></div>
           
           <select 
             value={viewMode} 
             onChange={(e) => setViewMode(e.target.value as ViewMode)}
-            style={{ padding: '0.5rem', border: 'none', backgroundColor: 'transparent', outline: 'none', cursor: 'pointer', fontWeight: 600 }}
+            style={{ padding: '0.5rem', border: 'none', backgroundColor: 'transparent', outline: 'none', cursor: 'pointer', fontWeight: 700, color: '#475569' }}
           >
             <option value="month">Mensual</option>
             <option value="quarter">Trimestral</option>
@@ -274,180 +277,170 @@ export default function Dashboard() {
     const p = stats.prev;
 
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
         {/* Ingresos */}
-        <div 
-          onClick={() => setExpandedMetric(expandedMetric === 'ingresos' ? null : 'ingresos')}
-          style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', border: '1px solid #e5e7eb', cursor: 'pointer', transition: 'all 0.2s' }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#16a34a' }}>
+        <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1.5rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)', border: '1px solid #f1f5f9', position: 'relative' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem', position: 'relative', zIndex: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#10b981' }}>
               <Wallet size={20} />
-              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Ingresos</h3>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#64748b' }}>Ingresos</h3>
             </div>
             {renderTrendBadge(c.ingresos, p.ingresos, false)}
           </div>
-          <p style={{ margin: 0, fontSize: '2.5rem', fontWeight: 900, color: 'var(--text-color)' }}>
+          <p style={{ margin: 0, fontSize: '2.5rem', fontWeight: 900, color: '#0f172a', position: 'relative', zIndex: 10, marginBottom: '0.5rem' }}>
             ${c.ingresos.toLocaleString('es-CL')}
           </p>
-          {expandedMetric === 'ingresos' && renderMiniChart('Ingresos', '#16a34a')}
+          {renderSparkline('Ingresos', '#10b981')}
         </div>
 
         {/* Gastos */}
-        <div 
-          onClick={() => setExpandedMetric(expandedMetric === 'gastos' ? null : 'gastos')}
-          style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', border: '1px solid #e5e7eb', cursor: 'pointer', transition: 'all 0.2s' }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#dc2626' }}>
+        <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1.5rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)', border: '1px solid #f1f5f9', position: 'relative' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem', position: 'relative', zIndex: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#f43f5e' }}>
               <CreditCard size={20} />
-              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Gastos</h3>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#64748b' }}>Gastos</h3>
             </div>
             {renderTrendBadge(c.gastos, p.gastos, true)}
           </div>
-          <p style={{ margin: 0, fontSize: '2.5rem', fontWeight: 900, color: 'var(--text-color)' }}>
+          <p style={{ margin: 0, fontSize: '2.5rem', fontWeight: 900, color: '#0f172a', position: 'relative', zIndex: 10, marginBottom: '0.5rem' }}>
             ${c.gastos.toLocaleString('es-CL')}
           </p>
-          {expandedMetric === 'gastos' && renderMiniChart('Gastos', '#dc2626')}
+          {renderSparkline('Gastos', '#f43f5e')}
         </div>
 
         {/* Ahorro */}
-        <div 
-          onClick={() => setExpandedMetric(expandedMetric === 'ahorro' ? null : 'ahorro')}
-          style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', border: '1px solid #e5e7eb', cursor: 'pointer', transition: 'all 0.2s' }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#2563eb' }}>
+        <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1.5rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)', border: '1px solid #f1f5f9', position: 'relative' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem', position: 'relative', zIndex: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#3b82f6' }}>
               <PiggyBank size={20} />
-              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Ahorro</h3>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#64748b' }}>Ahorro</h3>
             </div>
             {renderTrendBadge(c.ahorro, p.ahorro, false)}
           </div>
-          <p style={{ margin: 0, fontSize: '2.5rem', fontWeight: 900, color: 'var(--text-color)' }}>
+          <p style={{ margin: 0, fontSize: '2.5rem', fontWeight: 900, color: '#0f172a', position: 'relative', zIndex: 10, marginBottom: '0.5rem' }}>
             ${c.ahorro.toLocaleString('es-CL')}
           </p>
-          {expandedMetric === 'ahorro' && renderMiniChart('Ahorro', '#2563eb')}
+          {renderSparkline('Ahorro', '#3b82f6')}
         </div>
       </div>
     );
   };
 
-  // BLOCK 3: FUENTES DE INGRESO
+  // BLOCK 3: FUENTES DE INGRESO (DONUT CHART)
   const renderIncomeSources = () => {
     const c = stats.current;
     const totalEntradas = c.ingresos + c.aportePropio;
     if (totalEntradas === 0) return null;
 
-    const sueldoPct = (c.sueldo / totalEntradas) * 100;
-    const otrosPct = (c.ingresosOtros / totalEntradas) * 100;
-    const aportePct = (c.aportePropio / totalEntradas) * 100;
+    const data = [
+      { name: 'Sueldo/Hon.', value: c.sueldo, color: '#10b981' },
+      { name: 'Otros', value: c.ingresosOtros, color: '#34d399' },
+      { name: 'Aporte Propio', value: c.aportePropio, color: '#cbd5e1' }
+    ].filter(d => d.value > 0);
 
     return (
-      <div className="card" style={{ marginBottom: '2rem', backgroundColor: 'white', padding: '2rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', border: '1px solid #e5e7eb' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h2 style={{ fontSize: '1.3rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            Fuentes de Entrada
-          </h2>
-        </div>
+      <div style={{ marginBottom: '2rem', backgroundColor: 'white', padding: '2rem', borderRadius: '1.5rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)', border: '1px solid #f1f5f9' }}>
+        <h2 style={{ fontSize: '1.3rem', margin: '0 0 1.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1e293b' }}>
+          Fuentes de Entrada
+        </h2>
         
-        {/* Proportional Bar */}
-        <div style={{ height: '32px', display: 'flex', width: '100%', borderRadius: '16px', overflow: 'hidden', marginBottom: '2rem' }}>
-          {sueldoPct > 0 && <div style={{ width: `${sueldoPct}%`, backgroundColor: '#16a34a', transition: 'width 0.5s' }} title="Sueldo/Honorarios"></div>}
-          {otrosPct > 0 && <div style={{ width: `${otrosPct}%`, backgroundColor: '#4ade80', transition: 'width 0.5s' }} title="Otros Ingresos"></div>}
-          {aportePct > 0 && <div style={{ width: `${aportePct}%`, backgroundColor: '#cbd5e1', transition: 'width 0.5s' }} title="Aporte Propio"></div>}
-        </div>
-
-        {/* Legend */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <div style={{ width: '16px', height: '16px', backgroundColor: '#16a34a', borderRadius: '4px' }}></div>
-            <div>
-              <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem' }}>Sueldo/Hon.</p>
-              <p style={{ margin: 0, fontWeight: 800, fontSize: '1.1rem' }}>${c.sueldo.toLocaleString('es-CL')}</p>
-            </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          <div style={{ width: '200px', height: '200px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={data} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value" stroke="none">
+                  {data.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value: any) => '$' + Number(value).toLocaleString('es-CL')} />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <div style={{ width: '16px', height: '16px', backgroundColor: '#4ade80', borderRadius: '4px' }}></div>
-            <div>
-              <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem' }}>Otros</p>
-              <p style={{ margin: 0, fontWeight: 800, fontSize: '1.1rem' }}>${c.ingresosOtros.toLocaleString('es-CL')}</p>
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <div style={{ width: '16px', height: '16px', backgroundColor: '#cbd5e1', borderRadius: '4px' }}></div>
-            <div>
-              <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Aporte propio</p>
-              <p style={{ margin: 0, fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-secondary)' }}>${c.aportePropio.toLocaleString('es-CL')}</p>
-            </div>
+          
+          <div style={{ flex: 1, minWidth: '200px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {data.map(item => (
+              <div key={item.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div style={{ width: '12px', height: '12px', backgroundColor: item.color, borderRadius: '50%' }}></div>
+                  <span style={{ fontWeight: 700, color: item.name === 'Aporte Propio' ? 'var(--text-secondary)' : '#334155' }}>{item.name}</span>
+                </div>
+                <span style={{ fontWeight: 800, color: item.name === 'Aporte Propio' ? 'var(--text-secondary)' : '#0f172a' }}>
+                  ${item.value.toLocaleString('es-CL')}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
 
         {/* Context Text */}
-        <div style={{ padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '0.5rem', borderLeft: '4px solid #3b82f6' }}>
-          <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 500, lineHeight: '1.5' }}>
+        <div style={{ padding: '1rem', backgroundColor: '#f0fdf4', borderRadius: '1rem', borderLeft: '4px solid #22c55e', marginTop: '1.5rem' }}>
+          <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 500, lineHeight: '1.5', color: '#166534' }}>
             De tus <strong>${totalEntradas.toLocaleString('es-CL')}</strong> en entradas este período, 
-            <strong style={{ color: '#16a34a' }}> ${c.ingresos.toLocaleString('es-CL')}</strong> es ingreso nuevo y 
-            <strong style={{ color: '#64748b' }}> ${c.aportePropio.toLocaleString('es-CL')}</strong> es Aporte propio desde otra cuenta tuya.
+            <strong style={{ color: '#15803d' }}> ${c.ingresos.toLocaleString('es-CL')}</strong> es ingreso nuevo y 
+            <strong style={{ color: '#64748b' }}> ${c.aportePropio.toLocaleString('es-CL')}</strong> es Aporte propio.
           </p>
         </div>
       </div>
     );
   };
 
-  // BLOCK 4: FIJOS VS VARIABLES
+  // BLOCK 4: FIJOS VS VARIABLES (DONUT CHART)
   const renderFixedVsVariable = () => {
     const c = stats.current;
     if (c.gastos === 0) return null;
     
-    const fixedPct = (c.fixedExpenses / c.gastos) * 100;
-    const varPct = (c.variableExpenses / c.gastos) * 100;
+    const data = [
+      { name: 'Fijos', value: c.fixedExpenses, color: '#0ea5e9' },
+      { name: 'Variables', value: c.variableExpenses, color: '#f59e0b' }
+    ].filter(d => d.value > 0);
 
     return (
-      <div className="card" style={{ marginBottom: '2rem', backgroundColor: 'white', padding: '2rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', border: '1px solid #e5e7eb' }}>
-        <h2 style={{ fontSize: '1.3rem', margin: '0 0 1.5rem 0' }}>Estructura de Gasto</h2>
+      <div style={{ marginBottom: '2rem', backgroundColor: 'white', padding: '2rem', borderRadius: '1.5rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)', border: '1px solid #f1f5f9' }}>
+        <h2 style={{ fontSize: '1.3rem', margin: '0 0 1.5rem 0', color: '#1e293b' }}>Estructura de Gasto</h2>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', marginBottom: '1rem' }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontWeight: 700, fontSize: '0.9rem' }}>
-              <span style={{ color: '#0ea5e9' }}>Fijos ({fixedPct.toFixed(0)}%)</span>
-              <span style={{ color: '#f59e0b' }}>Variables ({varPct.toFixed(0)}%)</span>
-            </div>
-            <div style={{ height: '24px', display: 'flex', width: '100%', borderRadius: '12px', overflow: 'hidden' }}>
-              <div 
-                onClick={() => setExpandedExpenseType(expandedExpenseType === 'fijo' ? null : 'fijo')}
-                style={{ width: `${fixedPct}%`, backgroundColor: '#0ea5e9', cursor: 'pointer', transition: 'opacity 0.2s' }}
-                title="Ver Fijos"
-              ></div>
-              <div 
-                onClick={() => setExpandedExpenseType(expandedExpenseType === 'variable' ? null : 'variable')}
-                style={{ width: `${varPct}%`, backgroundColor: '#f59e0b', cursor: 'pointer', transition: 'opacity 0.2s' }}
-                title="Ver Variables"
-              ></div>
-            </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          <div style={{ width: '200px', height: '200px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={data} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value" stroke="none">
+                  {data.map((entry, index) => (
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={entry.color} 
+                      style={{ cursor: 'pointer', outline: 'none' }}
+                      onClick={() => setExpandedExpenseType(expandedExpenseType === entry.name.toLowerCase() ? null : entry.name.toLowerCase() as any)}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value: any) => '$' + Number(value).toLocaleString('es-CL')} />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-          <div 
-            onClick={() => setExpandedExpenseType(expandedExpenseType === 'fijo' ? null : 'fijo')}
-            style={{ cursor: 'pointer', padding: '0.5rem', borderRadius: '0.5rem', backgroundColor: expandedExpenseType === 'fijo' ? '#f0f9ff' : 'transparent' }}
-          >
-            <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Total Fijos</p>
-            <p style={{ margin: 0, fontWeight: 900, fontSize: '1.2rem', color: '#0ea5e9' }}>${c.fixedExpenses.toLocaleString('es-CL')}</p>
-          </div>
-          <div 
-            onClick={() => setExpandedExpenseType(expandedExpenseType === 'variable' ? null : 'variable')}
-            style={{ cursor: 'pointer', padding: '0.5rem', borderRadius: '0.5rem', backgroundColor: expandedExpenseType === 'variable' ? '#fffbeb' : 'transparent', textAlign: 'right' }}
-          >
-            <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Total Variables</p>
-            <p style={{ margin: 0, fontWeight: 900, fontSize: '1.2rem', color: '#f59e0b' }}>${c.variableExpenses.toLocaleString('es-CL')}</p>
+          
+          <div style={{ flex: 1, minWidth: '200px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {data.map(item => (
+              <div 
+                key={item.name} 
+                onClick={() => setExpandedExpenseType(expandedExpenseType === item.name.toLowerCase() ? null : item.name.toLowerCase() as any)}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', padding: '0.5rem', borderRadius: '0.5rem', backgroundColor: expandedExpenseType === item.name.toLowerCase() ? (item.name === 'Fijos' ? '#f0f9ff' : '#fffbeb') : 'transparent' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div style={{ width: '12px', height: '12px', backgroundColor: item.color, borderRadius: '50%' }}></div>
+                  <span style={{ fontWeight: 700, color: '#334155' }}>Total {item.name}</span>
+                </div>
+                <span style={{ fontWeight: 900, color: item.color }}>
+                  ${item.value.toLocaleString('es-CL')}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
 
         {/* Expanded Category Breakdown */}
         {expandedExpenseType && (
-          <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb' }}>
-            <h4 style={{ margin: '0 0 1rem 0', fontWeight: 700 }}>
+          <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #f1f5f9' }}>
+            <h4 style={{ margin: '0 0 1rem 0', fontWeight: 800, color: '#334155' }}>
               Detalle de Gastos {expandedExpenseType === 'fijo' ? 'Fijos' : 'Variables'}
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -455,9 +448,9 @@ export default function Dashboard() {
                 const isFijo = cat.name.toLowerCase().includes('fijo') || cat.name.toLowerCase().includes('vivienda');
                 return expandedExpenseType === 'fijo' ? isFijo : !isFijo;
               }).map(cat => (
-                <div key={cat.name} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', backgroundColor: '#f8fafc', borderRadius: '4px' }}>
-                  <span style={{ fontWeight: 600 }}>{cat.name}</span>
-                  <span style={{ fontWeight: 700 }}>${cat.amount.toLocaleString('es-CL')}</span>
+                <div key={cat.name} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', backgroundColor: '#f8fafc', borderRadius: '0.5rem' }}>
+                  <span style={{ fontWeight: 600, color: '#475569' }}>{cat.name}</span>
+                  <span style={{ fontWeight: 800, color: '#0f172a' }}>${cat.amount.toLocaleString('es-CL')}</span>
                 </div>
               ))}
             </div>
@@ -467,49 +460,57 @@ export default function Dashboard() {
     );
   };
 
-  // BLOCK 5: TOP CATEGORIAS
-  const [showAllCategories, setShowAllCategories] = useState(false);
+  // BLOCK 5: TOP CATEGORIAS (HORIZONTAL BAR CHART)
   const renderTopCategories = () => {
     const c = stats.current;
     if (c.gastos === 0) return null;
 
-    const list = showAllCategories ? c.topCats : c.topCats.slice(0, 5);
+    const data = c.topCats.slice(0, 6).map(cat => ({
+      name: cat.name,
+      amount: cat.amount
+    }));
 
     return (
-      <div className="card" style={{ marginBottom: '2rem', backgroundColor: 'white', padding: '2rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', border: '1px solid #e5e7eb' }}>
-        <h2 style={{ fontSize: '1.3rem', margin: '0 0 1.5rem 0' }}>Top Categorías de Gasto</h2>
+      <div style={{ marginBottom: '2rem', backgroundColor: 'white', padding: '2rem', borderRadius: '1.5rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)', border: '1px solid #f1f5f9' }}>
+        <h2 style={{ fontSize: '1.3rem', margin: '0 0 1.5rem 0', color: '#1e293b' }}>Top Categorías de Gasto</h2>
         
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {list.map((cat, i) => {
-            const pct = (cat.amount / c.gastos) * 100;
-            const isUnclassified = cat.name === 'Sin Clasificar';
-            const color = isUnclassified ? '#ef4444' : `hsl(${(i * 137) % 360}, 70%, 50%)`;
-            
-            return (
-              <div key={cat.name} style={{ cursor: 'pointer', padding: '0.5rem', borderRadius: '8px', transition: 'background-color 0.2s' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                  <span style={{ fontWeight: 700, color: isUnclassified ? '#dc2626' : 'inherit' }}>{cat.name}</span>
-                  <span style={{ fontWeight: 800 }}>${cat.amount.toLocaleString('es-CL')}</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <div style={{ flex: 1, height: '8px', backgroundColor: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ width: `${pct}%`, height: '100%', backgroundColor: color, borderRadius: '4px' }}></div>
-                  </div>
-                  <span style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--text-secondary)', width: '40px', textAlign: 'right' }}>{pct.toFixed(1)}%</span>
-                </div>
-              </div>
-            );
-          })}
+        <div style={{ height: `${Math.max(250, data.length * 45)}px`, width: '100%' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} layout="vertical" margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
+              <XAxis type="number" hide />
+              <YAxis 
+                type="category" 
+                dataKey="name" 
+                width={120} 
+                tick={{ fill: '#475569', fontSize: 12, fontWeight: 600 }} 
+                axisLine={false} 
+                tickLine={false} 
+              />
+              <Tooltip 
+                cursor={{ fill: '#f8fafc' }}
+                contentStyle={{ borderRadius: '0.5rem', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
+                formatter={(value: any) => ['$' + Number(value).toLocaleString('es-CL'), 'Monto']}
+              />
+              <defs>
+                <linearGradient id="colorBar" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.8}/>
+                  <stop offset="100%" stopColor="#e11d48" stopOpacity={1}/>
+                </linearGradient>
+              </defs>
+              <Bar 
+                dataKey="amount" 
+                fill="url(#colorBar)" 
+                radius={4} 
+                barSize={24}
+                background={{ fill: '#f1f5f9', radius: 4 }}
+              >
+                {data.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.name === 'Sin Clasificar' ? '#fbbf24' : 'url(#colorBar)'} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
-
-        {c.topCats.length > 5 && (
-          <button 
-            onClick={() => setShowAllCategories(!showAllCategories)}
-            style={{ width: '100%', padding: '0.75rem', marginTop: '1rem', backgroundColor: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: '0.5rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}
-          >
-            {showAllCategories ? <>Ver menos <ChevronUp size={16} /></> : <>Ver todas ({c.topCats.length}) <ChevronDown size={16} /></>}
-          </button>
-        )}
       </div>
     );
   };
@@ -520,43 +521,43 @@ export default function Dashboard() {
     if (count === 0) return null;
 
     return (
-      <div style={{ backgroundColor: '#fef2f2', border: '2px solid #ef4444', borderRadius: '1rem', padding: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '2rem', boxShadow: '0 4px 6px -1px rgba(239, 68, 68, 0.2)' }}>
+      <div style={{ backgroundColor: '#fff7ed', border: '2px solid #fdba74', borderRadius: '1.5rem', padding: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '2.5rem', boxShadow: '0 4px 6px -1px rgba(251, 146, 60, 0.1)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ backgroundColor: '#fee2e2', padding: '0.75rem', borderRadius: '50%' }}>
-            <AlertTriangle color="#ef4444" size={24} />
+          <div style={{ backgroundColor: '#ffedd5', padding: '0.75rem', borderRadius: '50%' }}>
+            <AlertTriangle color="#ea580c" size={24} />
           </div>
           <div>
-            <h4 style={{ margin: '0 0 0.25rem 0', color: '#b91c1c', fontSize: '1.1rem' }}>Tienes {count} {count === 1 ? 'movimiento' : 'movimientos'} sin clasificar</h4>
-            <p style={{ margin: 0, color: '#991b1b', fontWeight: 500, fontSize: '0.9rem' }}>
+            <h4 style={{ margin: '0 0 0.25rem 0', color: '#c2410c', fontSize: '1.1rem', fontWeight: 800 }}>Tienes {count} {count === 1 ? 'movimiento' : 'movimientos'} sin clasificar</h4>
+            <p style={{ margin: 0, color: '#9a3412', fontWeight: 600, fontSize: '0.9rem' }}>
               Clasifícalos para mejorar la precisión de tus gastos.
             </p>
           </div>
         </div>
-        <a href="/transactions" style={{ backgroundColor: '#ef4444', color: 'white', padding: '0.5rem 1rem', borderRadius: '0.5rem', fontWeight: 700, textDecoration: 'none' }}>
-          Clasificar Ahora
+        <a href="/transactions" style={{ backgroundColor: '#f97316', color: 'white', padding: '0.5rem 1.25rem', borderRadius: '0.75rem', fontWeight: 800, textDecoration: 'none', boxShadow: '0 2px 4px rgba(249, 115, 22, 0.2)' }}>
+          Clasificar
         </a>
       </div>
     );
   };
 
   return (
-    <div style={{ maxWidth: '1000px', margin: '0 auto', paddingBottom: '4rem' }}>
+    <div style={{ maxWidth: '1100px', margin: '0 auto', paddingBottom: '4rem', padding: '0 1rem' }}>
       {renderPeriodSelector()}
       
       {transactions.length === 0 ? (
-        <div className="card" style={{ backgroundColor: 'white', textAlign: 'center', padding: '6rem 2rem', border: '3px dashed #cbd5e1', borderRadius: '1rem' }}>
-          <h2 style={{ fontSize: '1.8rem', margin: '0 0 1rem 0' }}>Aún no tienes movimientos cargados</h2>
+        <div style={{ backgroundColor: 'white', textAlign: 'center', padding: '6rem 2rem', border: '3px dashed #cbd5e1', borderRadius: '1.5rem' }}>
+          <h2 style={{ fontSize: '1.8rem', margin: '0 0 1rem 0', color: '#1e293b' }}>Aún no tienes movimientos cargados</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: '1.1rem', fontWeight: 500 }}>
             Importa tus cartolas bancarias para comenzar.
           </p>
-          <a href="/import" className="btn btn-primary" style={{ textDecoration: 'none', display: 'inline-block' }}>Importar Transacciones</a>
+          <a href="/import" className="btn btn-primary" style={{ textDecoration: 'none', display: 'inline-block', borderRadius: '1rem', padding: '0.75rem 2rem', fontWeight: 800 }}>Importar Transacciones</a>
         </div>
       ) : (
         <>
           {renderUnclassifiedAlert()}
           {renderMainNumbers()}
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '2rem' }}>
             <div>
               {renderIncomeSources()}
               {renderFixedVsVariable()}
