@@ -22,6 +22,14 @@ export function CascadingCategorySelector({ initialPrincipal, initialSecundaria,
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (initialSecundaria && initialPrincipal) {
+      setInputValue(initialSecundaria === initialPrincipal ? initialPrincipal : `${initialSecundaria} (${initialPrincipal})`);
+    } else {
+      setInputValue('');
+    }
+  }, [initialPrincipal, initialSecundaria]);
+
+  useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
         setIsOpen(false);
@@ -122,6 +130,7 @@ export default function Transactions() {
   const [filterMonth, setFilterMonth] = useState('all');
   const [viewMode, setViewMode] = useState<'individual' | 'bulk' | 'assistant'>('individual');
   const [bulkSearchTerm, setBulkSearchTerm] = useState('');
+  const [bulkFilterMode, setBulkFilterMode] = useState<'unclassified' | 'all'>('unclassified');
 
   const { user } = useAuth();
   const { activeBank } = useBanks();
@@ -187,11 +196,13 @@ export default function Transactions() {
   const bulkGroups = useMemo(() => {
     if (viewMode !== 'bulk') return [];
     
-    // Sin clasificar son las que no tienen tipo_movimiento
-    const uncategorized = transactions.filter(t => !t.tipo_movimiento);
-    const groups: { [key: string]: { name: string, type: string, count: number, total: number, ids: string[] } } = {};
+    const targetTransactions = bulkFilterMode === 'unclassified' 
+      ? transactions.filter(t => !t.tipo_movimiento)
+      : transactions;
+
+    const groups: { [key: string]: { name: string, type: string, count: number, total: number, ids: string[], currentCategory?: string } } = {};
     
-    uncategorized.forEach(t => {
+    targetTransactions.forEach(t => {
       const desc = (t.original_description || t.description || '').trim();
       if (!desc) return;
       if (bulkSearchTerm && !desc.toLowerCase().includes(bulkSearchTerm.toLowerCase())) return;
@@ -199,7 +210,11 @@ export default function Transactions() {
       const key = `${desc}___${t.type}`;
 
       if (!groups[key]) {
-        groups[key] = { name: desc, type: t.type, count: 0, total: 0, ids: [] };
+        groups[key] = { name: desc, type: t.type, count: 0, total: 0, ids: [], currentCategory: t.tipo_movimiento || undefined };
+      }
+      // If categories diverge within the same group, we could clear it, but let's just show the first one found
+      if (groups[key].currentCategory && t.tipo_movimiento && groups[key].currentCategory !== t.tipo_movimiento) {
+        groups[key].currentCategory = 'Múltiples categorías';
       }
       groups[key].count += 1;
       groups[key].total += Math.abs(t.amount); 
@@ -209,7 +224,7 @@ export default function Transactions() {
     return Object.values(groups)
       .filter(g => g.total > 0)
       .sort((a, b) => b.total - a.total);
-  }, [transactions, viewMode, bulkSearchTerm]);
+  }, [transactions, viewMode, bulkSearchTerm, bulkFilterMode]);
 
   const handleCategorize = async (id: string, currentDesc: string, tipo: string | null, principal: string | null, secundaria: string | null) => {
     const prevTx = transactions.find(t => t.id === id);
@@ -217,14 +232,14 @@ export default function Transactions() {
 
     setTransactions(prev => prev.map(t => t.id === id ? { ...t, tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria } : t));
 
-    const othersCount = transactions.filter(t => t.id !== id && t.description === currentDesc && !t.tipo_movimiento).length;
+    const othersCount = transactions.filter(t => t.id !== id && t.description === currentDesc).length;
 
     if (othersCount > 0 && tipo) {
       toast.custom((t) => (
         <div className="card" style={{ padding: '1.5rem', border: '2px solid black', boxShadow: '4px 4px 0px black', background: 'white', maxWidth: '400px' }}>
           <h3 style={{ marginTop: 0, fontSize: '1.125rem' }}>Categorización Múltiple</h3>
           <p style={{ margin: '0.5rem 0 1.5rem' }}>
-            Hay otras {othersCount} transacciones sin clasificar con el alias "{currentDesc}". ¿Quieres aplicarles esta misma categoría?
+            Hay otras {othersCount} transacciones con el alias "{currentDesc}". ¿Quieres aplicarles esta misma categoría?
           </p>
           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
             <button 
@@ -265,7 +280,7 @@ export default function Transactions() {
                   message: `${othersCount + 1} transacciones clasificadas`,
                   execute: async () => {
                     const { error: e1 } = await supabase.from('transactions').update({ tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria }).eq('id', id);
-                    const { error: e2 } = await supabase.from('transactions').update({ tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria }).eq('user_id', user?.id).eq('description', currentDesc).is('tipo_movimiento', null);
+                    const { error: e2 } = await supabase.from('transactions').update({ tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria }).eq('description', currentDesc).eq('bank', activeBank);
                     if (e1 || e2) throw new Error("Update error");
                   },
                   onUndo: () => {
@@ -293,34 +308,6 @@ export default function Transactions() {
         onUndo: () => setTransactions(prev => prev.map(tx => tx.id === id ? prevTx : tx))
       });
     }
-  };
-
-  const handleBulkCategorize = async (groupIds: string[], tipo: string | null, principal: string | null, secundaria: string | null) => {
-    if (!tipo) return;
-    
-    const affectedTxs = transactions.filter(t => groupIds.includes(t.id));
-
-    setTransactions(prev => prev.map(t => 
-      groupIds.includes(t.id) ? { ...t, tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria } : t
-    ));
-
-    dispatchAction({
-      id: `bulk-${groupIds[0]}`,
-      message: `${groupIds.length} transacciones clasificadas`,
-      execute: async () => {
-        const { error } = await supabase
-          .from('transactions')
-          .update({ tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria })
-          .in('id', groupIds);
-        if (error) throw error;
-      },
-      onUndo: () => {
-        setTransactions(prev => prev.map(tx => {
-          const oldTx = affectedTxs.find(old => old.id === tx.id);
-          return oldTx ? oldTx : tx;
-        }));
-      }
-    });
   };
 
   const handleDescriptionBlur = async (id: string, currentDesc: string, rawDesc: string) => {
@@ -447,19 +434,30 @@ export default function Transactions() {
         <div className="card" style={{ backgroundColor: 'var(--pastel-yellow)' }}>
           <h2 style={{ marginTop: 0 }}>Categorización Masiva</h2>
           <p style={{ fontWeight: 500, marginBottom: '2rem' }}>
-            Agrupamos las transacciones <strong>Sin Clasificar</strong> que tienen la misma descripción original para que las categorices todas con un solo clic.
+            Agrupamos las transacciones que tienen la misma descripción original para que las categorices todas con un solo clic.
           </p>
 
-          <div style={{ position: 'relative', marginBottom: '1.5rem', maxWidth: '400px' }}>
-            <Search size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
-            <input 
-              type="text" 
+          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', flex: 1, minWidth: '250px', maxWidth: '400px' }}>
+              <Search size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+              <input 
+                type="text" 
+                className="input" 
+                placeholder="Filtrar por descripción..." 
+                value={bulkSearchTerm}
+                onChange={(e) => setBulkSearchTerm(e.target.value)}
+                style={{ width: '100%', paddingLeft: '3rem', backgroundColor: 'white' }}
+              />
+            </div>
+            <select 
+              value={bulkFilterMode} 
+              onChange={e => setBulkFilterMode(e.target.value as any)}
               className="input" 
-              placeholder="Filtrar por descripción..." 
-              value={bulkSearchTerm}
-              onChange={(e) => setBulkSearchTerm(e.target.value)}
-              style={{ width: '100%', paddingLeft: '3rem', backgroundColor: 'white' }}
-            />
+              style={{ backgroundColor: 'white', width: 'auto', fontWeight: 600 }}
+            >
+              <option value="unclassified">Solo Sin Clasificar</option>
+              <option value="all">Todas las transacciones</option>
+            </select>
           </div>
 
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', backgroundColor: 'white', border: '2px solid black', borderRadius: 'var(--radius-sm)' }}>
@@ -494,9 +492,18 @@ export default function Transactions() {
                     {group.type === 'ingreso' ? '+' : '-'}${group.total.toLocaleString('es-CL')}
                   </td>
                   <td style={{ padding: '1rem' }}>
+                    <div style={{ marginBottom: '0.5rem', fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>
+                      Actual: {group.currentCategory || 'Ninguna'}
+                    </div>
                     <CascadingCategorySelector 
-                      initialTipo={null} initialPrincipal={null} initialSecundaria={null}
-                      onSave={(t: any, p: any, s: any) => handleBulkCategorize(group.ids, t, p, s)}
+                      onSave={async (tipo: any, principal: any, secundaria: any) => {
+                        if (!tipo) return;
+                        const { error } = await supabase.from('transactions').update({ tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria }).in('id', group.ids);
+                        if (!error) {
+                          setTransactions(prev => prev.map(t => group.ids.includes(t.id) ? { ...t, tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria } : t));
+                          toast.success(`${group.count} transacciones clasificadas`);
+                        }
+                      }}
                     />
                   </td>
                 </tr>
@@ -504,7 +511,7 @@ export default function Transactions() {
               {bulkGroups.length === 0 && (
                 <tr>
                   <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', fontWeight: 600 }}>
-                    ¡No tienes transacciones pendientes de clasificar!
+                    ¡No hay transacciones para mostrar en esta vista!
                   </td>
                 </tr>
               )}
