@@ -12,6 +12,37 @@ import { useSettings } from '../contexts/SettingsContext';
 export default function Settings() {
   
   const { user } = useAuth();
+  
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    const confirmDelete = window.confirm(
+      "¿Estás 100% seguro de que deseas borrar tu cuenta? Esto eliminará PERMANENTEMENTE todas tus transacciones, configuraciones y reglas de categorización. Esta acción NO se puede deshacer."
+    );
+    if (!confirmDelete) return;
+
+    try {
+      toast.loading('Borrando datos de la cuenta...', { id: 'deleteAccount' });
+      
+      await supabase.from('transactions').delete().eq('user_id', user.id);
+      await supabase.from('user_settings').delete().eq('user_id', user.id);
+      await supabase.from('known_contacts').delete().eq('user_id', user.id);
+      
+      // Intentar borrar la cuenta auth si existe la función RPC
+      try {
+        await supabase.rpc('delete_user');
+      } catch (e) {
+        // ignore
+      }
+      
+      toast.success('Cuenta eliminada exitosamente', { id: 'deleteAccount' });
+      
+      await supabase.auth.signOut();
+      window.location.href = '/login';
+    } catch (error: any) {
+      console.error('Error al borrar cuenta:', error);
+      toast.error('Ocurrió un error al intentar borrar tu cuenta. Por favor contacta a soporte.', { id: 'deleteAccount' });
+    }
+  };
 
   // Settings
   const [myRut, setMyRut] = useState('');
@@ -448,6 +479,22 @@ export default function Settings() {
         </div>
 
 
+
+        {/* Danger Zone */}
+        <div className="card" style={{ position: 'relative', zIndex: 10, borderColor: 'var(--danger)' }}>
+          <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: 'var(--danger)' }}>Zona Peligrosa</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
+            Borrar tu cuenta eliminará de forma irreversible todas tus transacciones, configuraciones y reglas guardadas. Esta acción no se puede deshacer.
+          </p>
+          <button 
+            className="btn" 
+            style={{ backgroundColor: '#fecaca', color: 'var(--danger)', borderColor: 'var(--danger)' }}
+            onClick={handleDeleteAccount}
+          >
+            <Trash2 size={20} />
+            Borrar Cuenta Definitivamente
+          </button>
+        </div>
 
       </div>
     </div>
