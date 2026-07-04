@@ -200,7 +200,7 @@ export default function Transactions() {
       ? transactions.filter(t => !t.tipo_movimiento)
       : transactions;
 
-    const groups: { [key: string]: { name: string, type: string, count: number, total: number, ids: string[], currentCategory?: string } } = {};
+    const groups: { [key: string]: { name: string, type: string, count: number, total: number, ids: string[], currentCategory?: string, currentPrincipal?: string, currentSecundaria?: string } } = {};
     
     targetTransactions.forEach(t => {
       const desc = (t.original_description || t.description || '').trim();
@@ -210,11 +210,13 @@ export default function Transactions() {
       const key = `${desc}___${t.type}`;
 
       if (!groups[key]) {
-        groups[key] = { name: desc, type: t.type, count: 0, total: 0, ids: [], currentCategory: t.tipo_movimiento || undefined };
+        groups[key] = { name: desc, type: t.type, count: 0, total: 0, ids: [], currentCategory: t.tipo_movimiento || undefined, currentPrincipal: t.categoria_principal || undefined, currentSecundaria: t.categoria_secundaria || undefined };
       }
       // If categories diverge within the same group, we could clear it, but let's just show the first one found
       if (groups[key].currentCategory && t.tipo_movimiento && groups[key].currentCategory !== t.tipo_movimiento) {
         groups[key].currentCategory = 'Múltiples categorías';
+        groups[key].currentPrincipal = undefined;
+        groups[key].currentSecundaria = undefined;
       }
       groups[key].count += 1;
       groups[key].total += Math.abs(t.amount); 
@@ -223,7 +225,11 @@ export default function Transactions() {
 
     return Object.values(groups)
       .filter(g => g.total > 0)
-      .sort((a, b) => b.total - a.total);
+      .sort((a, b) => {
+        if (a.type !== b.type) return a.type === 'ingreso' ? -1 : 1;
+        if (b.count !== a.count) return b.count - a.count;
+        return b.total - a.total;
+      });
   }, [transactions, viewMode, bulkSearchTerm, bulkFilterMode]);
 
   const handleCategorize = async (id: string, currentDesc: string, tipo: string | null, principal: string | null, secundaria: string | null) => {
@@ -494,6 +500,8 @@ export default function Transactions() {
                   <td style={{ padding: '1rem' }}>
                     <div style={{ marginBottom: '0.5rem', fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>
                       Actual: {group.currentCategory || 'Ninguna'}
+                      {group.currentPrincipal && ` > ${group.currentPrincipal}`}
+                      {group.currentSecundaria && ` > ${group.currentSecundaria}`}
                     </div>
                     <CascadingCategorySelector 
                       onSave={async (tipo: any, principal: any, secundaria: any) => {

@@ -5,13 +5,14 @@ import { useAuth } from '../contexts/AuthContext';
 import { useBanks } from '../contexts/BankContext';
 import { 
   ChevronRight, TrendingUp, TrendingDown, 
-  Wallet, CreditCard, AlertTriangle, Sparkles, Activity, Search, X, Edit2
+  Wallet, CreditCard, AlertTriangle, Sparkles, Activity, Search, X, Edit2,
+  ArrowUpRight, ArrowDownRight, Scale, PiggyBank
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { 
   AreaChart, Area,
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  LineChart, Line, CartesianGrid
+  Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  LineChart, Line, CartesianGrid, ComposedChart
 } from 'recharts';
 import NeoDatePicker from '../components/NeoDatePicker';
 import InfoTooltip from '../components/InfoTooltip';
@@ -804,7 +805,14 @@ export default function Dashboard() {
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = row.isGray ? '#f8fafc' : '#fff')}
                     >
                       <td style={{ padding: '0.75rem', fontWeight: 700, borderRight: '2px solid #000', color: row.isGray ? '#64748b' : '#000' }}>{row.name}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: row.isGray ? '#64748b' : '#000' }}>${row.value.toLocaleString('es-CL')}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: row.isGray ? '#64748b' : '#000' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
+                          ${row.value.toLocaleString('es-CL')}
+                          <div className="btn-icon" title="Ver detalles">
+                            <Search size={14} strokeWidth={3} />
+                          </div>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -1018,130 +1026,161 @@ export default function Dashboard() {
     const worstMonth = monthsWithData.reduce((worst, d) => d.Balance < worst.Balance ? d : worst, monthsWithData[0]);
 
     const kpiStyle: React.CSSProperties = {
-      flex: 1, padding: '1rem 1.25rem', border: '2px solid #000', borderRadius: '12px',
-      display: 'flex', flexDirection: 'column', gap: '0.25rem', minWidth: '120px'
+      flex: 1, padding: '1.25rem', border: '2px solid #000', borderRadius: '12px',
+      display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: '150px',
+      boxShadow: '4px 4px 0px #000', position: 'relative', overflow: 'hidden'
     };
 
-    // Custom bar tooltip
     const CustomTooltip = ({ active, payload, label }: any) => {
       if (!active || !payload?.length) return null;
       const d = monthlyData.find(m => m.mes === label);
       if (!d) return null;
       return (
-        <div style={{ backgroundColor: '#fff', border: '3px solid #000', borderRadius: '10px', boxShadow: '4px 4px 0px #000', padding: '0.75rem 1rem', fontWeight: 700, fontSize: '0.85rem', minWidth: '160px' }}>
-          <div style={{ fontWeight: 900, fontSize: '1rem', marginBottom: '0.5rem', textTransform: 'capitalize' }}>{label}. {year}</div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', color: '#22c55e' }}>
-            <span>↑ Ingresos</span><span>${d.Ingresos.toLocaleString('es-CL')}</span>
+        <div style={{ backgroundColor: '#fff', border: '3px solid #000', borderRadius: '10px', boxShadow: '4px 4px 0px #000', padding: '1rem', minWidth: '180px' }}>
+          <div style={{ fontWeight: 900, fontSize: '1.1rem', marginBottom: '0.75rem', textTransform: 'capitalize', borderBottom: '2px solid #000', paddingBottom: '0.25rem' }}>{label}. {year}</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', color: '#16a34a', fontWeight: 800 }}>
+            <span>Ingresos</span><span>${d.Ingresos.toLocaleString('es-CL')}</span>
           </div>
           {d.AportePropio > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', color: '#16a34a', fontSize: '0.75rem' }}>
-              <span>└ Aportes Propios</span><span>${d.AportePropio.toLocaleString('es-CL')}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', color: '#15803d', fontSize: '0.8rem', fontWeight: 700 }}>
+              <span>└ Aportes</span><span>${d.AportePropio.toLocaleString('es-CL')}</span>
             </div>
           )}
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', color: '#f43f5e' }}>
-            <span>↓ Gastos</span><span>${d.Gastos.toLocaleString('es-CL')}</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', color: '#e11d48', fontWeight: 800, marginTop: '0.25rem' }}>
+            <span>Gastos</span><span>${d.Gastos.toLocaleString('es-CL')}</span>
           </div>
-          <div style={{ borderTop: '2px solid #000', marginTop: '0.4rem', paddingTop: '0.4rem', display: 'flex', justifyContent: 'space-between', gap: '1rem', color: d.Balance >= 0 ? '#22c55e' : '#f43f5e', fontWeight: 900 }}>
+          <div style={{ borderTop: '2px dashed #94a3b8', marginTop: '0.5rem', paddingTop: '0.5rem', display: 'flex', justifyContent: 'space-between', gap: '1rem', color: d.Balance >= 0 ? '#16a34a' : '#e11d48', fontWeight: 900, fontSize: '1.1rem' }}>
             <span>Balance</span><span>{d.Balance >= 0 ? '+' : ''}{d.Balance.toLocaleString('es-CL')}</span>
           </div>
-          {d.Ingresos > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', color: '#6366f1', marginTop: '0.2rem' }}>
-              <span>Tasa ahorro</span><span>{d.tasaAhorro}%</span>
-            </div>
-          )}
         </div>
       );
     };
 
     return (
-      <div style={{ ...neoCard, marginBottom: '2rem' }}>
+      <div style={{ ...neoCard, marginBottom: '2rem', padding: '2rem' }}>
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <h2 style={{ fontSize: '1.6rem', margin: '0 0 0.2rem 0', fontFamily: '"Montserrat", sans-serif', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <h2 style={{ fontSize: '1.8rem', margin: '0 0 0.5rem 0', fontFamily: '"Montserrat", sans-serif', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               Resumen Anual {year}
               <InfoTooltip content="Perspectiva global de todo el año. Analiza qué meses te fue mejor y en cuáles gastaste más de lo que ganaste." />
             </h2>
-            <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 600, color: '#64748b' }}>Visión completa mes a mes · haz hover para más detalle</p>
+            <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: '#64748b' }}>Balance de ingresos, gastos y capacidad de ahorro a lo largo del año.</p>
           </div>
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
             {bestMonth && (
-              <div style={{ padding: '0.35rem 0.85rem', backgroundColor: '#dcfce7', border: '2px solid #000', borderRadius: '2rem', fontSize: '0.78rem', fontWeight: 800 }}>
-                🏆 Mejor: {bestMonth.mes} (+${bestMonth.Balance.toLocaleString('es-CL')})
+              <div style={{ padding: '0.5rem 1rem', backgroundColor: '#dcfce7', border: '2px solid #000', borderRadius: '2rem', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '2px 2px 0px #000' }}>
+                <TrendingUp size={16} /> Mejor mes: {bestMonth.mes}
               </div>
             )}
             {worstMonth && worstMonth.Balance < 0 && (
-              <div style={{ padding: '0.35rem 0.85rem', backgroundColor: '#fecaca', border: '2px solid #000', borderRadius: '2rem', fontSize: '0.78rem', fontWeight: 800 }}>
-                📉 Peor: {worstMonth.mes} ({worstMonth.Balance.toLocaleString('es-CL')})
+              <div style={{ padding: '0.5rem 1rem', backgroundColor: '#fecaca', border: '2px solid #000', borderRadius: '2rem', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '2px 2px 0px #000' }}>
+                <TrendingDown size={16} /> Peor mes: {worstMonth.mes}
               </div>
             )}
           </div>
         </div>
 
         {/* KPI Row */}
-        <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
           <div style={{ ...kpiStyle, backgroundColor: '#f0fdf4' }}>
-            <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.04em' }}>Total Ingresos</span>
-            <span style={{ fontSize: '1.2rem', fontWeight: 900, color: '#15803d' }}>${totalIng.toLocaleString('es-CL')}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', color: '#16a34a', letterSpacing: '0.05em' }}>Ingresos Totales</span>
+              <ArrowUpRight size={20} color="#16a34a" />
+            </div>
+            <span style={{ fontSize: '1.5rem', fontWeight: 900, color: '#15803d' }}>${totalIng.toLocaleString('es-CL')}</span>
           </div>
+          
           <div style={{ ...kpiStyle, backgroundColor: '#fef2f2' }}>
-            <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.04em' }}>Total Gastos</span>
-            <span style={{ fontSize: '1.2rem', fontWeight: 900, color: '#dc2626' }}>${totalGas.toLocaleString('es-CL')}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', color: '#e11d48', letterSpacing: '0.05em' }}>Gastos Totales</span>
+              <ArrowDownRight size={20} color="#e11d48" />
+            </div>
+            <span style={{ fontSize: '1.5rem', fontWeight: 900, color: '#be123c' }}>${totalGas.toLocaleString('es-CL')}</span>
           </div>
+
           <div style={{ ...kpiStyle, backgroundColor: totalBal >= 0 ? '#eff6ff' : '#fef2f2' }}>
-            <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              Balance Neto
-              <InfoTooltip content="Ingresos totales menos gastos totales. Si es positivo, ganaste más de lo que gastaste." />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', color: totalBal >= 0 ? '#2563eb' : '#e11d48', letterSpacing: '0.05em', display: 'flex', alignItems: 'center' }}>
+                Balance Neto
+                <InfoTooltip content="Ingresos totales menos gastos totales. Si es positivo, ganaste más de lo que gastaste." />
+              </span>
+              <Scale size={20} color={totalBal >= 0 ? '#2563eb' : '#e11d48'} />
+            </div>
+            <span style={{ fontSize: '1.5rem', fontWeight: 900, color: totalBal >= 0 ? '#1d4ed8' : '#be123c' }}>
+              {totalBal >= 0 ? '+' : ''}${totalBal.toLocaleString('es-CL')}
             </span>
-            <span style={{ fontSize: '1.2rem', fontWeight: 900, color: totalBal >= 0 ? '#1d4ed8' : '#dc2626' }}>{totalBal >= 0 ? '+' : ''}${totalBal.toLocaleString('es-CL')}</span>
           </div>
+
           <div style={{ ...kpiStyle, backgroundColor: '#faf5ff' }}>
-            <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              Tasa de Ahorro
-              <InfoTooltip content="Porcentaje de tus ingresos que no gastaste. Lo ideal es mantenerla por encima del 20% para unas finanzas saludables." />
-            </span>
-            <span style={{ fontSize: '1.2rem', fontWeight: 900, color: tasaAnual >= 20 ? '#7c3aed' : tasaAnual >= 0 ? '#6366f1' : '#dc2626' }}>{tasaAnual}%</span>
-            <span style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 700 }}>{tasaAnual >= 20 ? 'Excelente 🎯' : tasaAnual >= 10 ? 'Bien 👍' : tasaAnual >= 0 ? 'Ajustado ⚠️' : 'Déficit 🔴'}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', color: '#9333ea', letterSpacing: '0.05em', display: 'flex', alignItems: 'center' }}>
+                Tasa Ahorro
+                <InfoTooltip content="Porcentaje de tus ingresos que no gastaste. Lo ideal es mantenerla por encima del 20% para unas finanzas saludables." />
+              </span>
+              <PiggyBank size={20} color="#9333ea" />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+              <span style={{ fontSize: '1.5rem', fontWeight: 900, color: tasaAnual >= 20 ? '#7e22ce' : tasaAnual >= 0 ? '#9333ea' : '#dc2626' }}>{tasaAnual}%</span>
+              <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 800 }}>
+                {tasaAnual >= 20 ? 'Excelente 🎯' : tasaAnual >= 10 ? 'Bien 👍' : tasaAnual >= 0 ? 'Ajustado ⚠️' : 'Déficit 🔴'}
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Chart */}
-        <div style={{ height: '260px' }}>
+        {/* Composed Chart */}
+        <div style={{ height: '320px', position: 'relative' }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={monthlyData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }} barCategoryGap="25%">
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+            <ComposedChart data={monthlyData} margin={{ top: 20, right: 10, left: 0, bottom: 0 }} barCategoryGap="20%">
+              <defs>
+                <linearGradient id="colorIngresos" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#4ade80" stopOpacity={1}/>
+                  <stop offset="95%" stopColor="#16a34a" stopOpacity={1}/>
+                </linearGradient>
+                <linearGradient id="colorGastos" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#fb7185" stopOpacity={1}/>
+                  <stop offset="95%" stopColor="#e11d48" stopOpacity={1}/>
+                </linearGradient>
+                <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.5}/>
+                  <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="4 4" stroke="#e2e8f0" vertical={false} />
               <XAxis
                 dataKey="mes"
                 tick={{ fill: '#000', fontSize: 12, fontWeight: 800, fontFamily: 'Montserrat' }}
                 axisLine={{ stroke: '#000', strokeWidth: 2 }}
                 tickLine={false}
+                dy={10}
               />
               <YAxis hide />
-              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.04)', radius: 4 }} />
-              <Bar dataKey="Ingresos" fill="#22c55e" stroke="#000" strokeWidth={1.5} radius={[6, 6, 0, 0]} maxBarSize={40} />
-              <Bar dataKey="Gastos" fill="#f43f5e" stroke="#000" strokeWidth={1.5} radius={[6, 6, 0, 0]} maxBarSize={40} />
-            </BarChart>
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.04)', radius: 8 }} />
+              <Bar dataKey="Ingresos" fill="url(#colorIngresos)" stroke="#000" strokeWidth={2} radius={[6, 6, 0, 0]} maxBarSize={45} isAnimationActive={true} />
+              <Bar dataKey="Gastos" fill="url(#colorGastos)" stroke="#000" strokeWidth={2} radius={[6, 6, 0, 0]} maxBarSize={45} isAnimationActive={true} />
+              <Area type="monotone" dataKey="Balance" stroke="#2563eb" strokeWidth={4} fill="url(#colorBalance)" dot={{ r: 5, fill: '#fff', stroke: '#2563eb', strokeWidth: 3 }} activeDot={{ r: 8, fill: '#2563eb', stroke: '#fff', strokeWidth: 3 }} isAnimationActive={true} />
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Balance mini bars */}
-        <div style={{ marginTop: '1rem', borderTop: '2px solid #f1f5f9', paddingTop: '1rem' }}>
-          <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#94a3b8', marginBottom: '0.5rem', letterSpacing: '0.04em' }}>Balance mensual</div>
-          <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-end', height: '40px' }}>
-            {monthlyData.map((d) => {
-              const maxAbs = Math.max(...monthlyData.map(m => Math.abs(m.Balance)), 1);
-              const pct = Math.abs(d.Balance) / maxAbs;
-              const h = Math.max(4, Math.round(pct * 36));
-              return (
-                <div key={d.mes} title={`${d.mes}: ${d.Balance >= 0 ? '+' : ''}${d.Balance.toLocaleString('es-CL')}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '40px', cursor: 'default' }}>
-                  <div style={{ width: '100%', height: `${h}px`, backgroundColor: d.Balance >= 0 ? '#22c55e' : '#f43f5e', border: '1.5px solid #000', borderRadius: '3px 3px 0 0', transition: 'height 0.3s' }} />
-                </div>
-              );
-            })}
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-            {monthlyData.map(d => (
-              <div key={d.mes} style={{ flex: 1, textAlign: 'center', fontSize: '0.6rem', fontWeight: 700, color: '#94a3b8' }}>{d.mes.charAt(0).toUpperCase()}</div>
+        {/* Sleek mini pills */}
+        <div style={{ marginTop: '2rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748b', minWidth: '120px' }}>Tendencia Mensual</div>
+          <div style={{ display: 'flex', flex: 1, gap: '4px', height: '12px' }}>
+            {monthlyData.map((d) => (
+              <div 
+                key={d.mes} 
+                title={`${d.mes}: ${d.Balance >= 0 ? '+' : ''}${d.Balance.toLocaleString('es-CL')}`} 
+                style={{ 
+                  flex: 1, 
+                  height: '100%', 
+                  backgroundColor: d.Balance >= 0 ? '#4ade80' : '#fb7185', 
+                  borderRadius: '6px',
+                  opacity: Math.max(0.3, Math.abs(d.Balance) / Math.max(...monthlyData.map(m => Math.abs(m.Balance)), 1)),
+                  transition: 'opacity 0.2s'
+                }} 
+              />
             ))}
           </div>
         </div>
