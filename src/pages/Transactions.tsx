@@ -125,6 +125,7 @@ export default function Transactions() {
 
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterCategory, setFilterCategory] = useState('all');
   
   const [filterYear, setFilterYear] = useState('all');
   const [filterMonth, setFilterMonth] = useState('all');
@@ -174,8 +175,15 @@ export default function Transactions() {
   }, [transactions]);
 
   const filteredTransactions = transactions.filter(t => {
+    const searchLower = searchTerm.toLowerCase();
     const desc = t.description || '';
-    const matchesSearch = desc.toLowerCase().includes(searchTerm.toLowerCase());
+    const origDesc = t.original_description || '';
+    const catSearchStr = `${t.tipo_movimiento || ''} ${t.categoria_principal || ''} ${t.categoria_secundaria || ''}`.toLowerCase();
+    
+    const matchesSearch = 
+      desc.toLowerCase().includes(searchLower) || 
+      origDesc.toLowerCase().includes(searchLower) ||
+      catSearchStr.includes(searchLower);
     
     const date = new Date(t.date);
     const matchesYear = filterYear === 'all' || date.getFullYear().toString() === filterYear;
@@ -183,8 +191,9 @@ export default function Transactions() {
 
     const matchesType = filterType === 'all' || (filterType === 'expense' ? t.type === 'egreso' : t.type === 'ingreso');
     const matchesStatus = filterStatus === 'all' || (filterStatus === 'classified' ? !!t.tipo_movimiento : !t.tipo_movimiento);
+    const matchesCat = filterCategory === 'all' || t.tipo_movimiento === filterCategory;
 
-    return matchesSearch && matchesYear && matchesMonth && matchesType && matchesStatus;
+    return matchesSearch && matchesYear && matchesMonth && matchesType && matchesStatus && matchesCat;
   });
 
   const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
@@ -590,6 +599,15 @@ export default function Transactions() {
               <option value="all">Todas las transacciones</option>
               <option value="classified">Clasificadas</option>
               <option value="unclassified">Por clasificar</option>
+            </select>
+
+            <select className="input" style={{ width: 'auto' }} value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
+              <option value="all">Todas las categorías</option>
+              <option disabled>──────────</option>
+              <option value="Gasto Real">Gasto Real</option>
+              <option value="Ingreso">Ingreso</option>
+              <option value="Movimiento Interno">Mov. Interno</option>
+              <option value="Ahorro/Inversión">Ahorro/Inversión</option>
             </select>
           </div>
 
