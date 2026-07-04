@@ -1,6 +1,7 @@
 import { useCallback, useState, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 import { UploadCloud, CheckCircle2, AlertTriangle, Edit2 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -61,15 +62,128 @@ export default function CSVImport() {
     return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
   };
 
-  const parseAmount = (val: string) => {
+  const parseAmount = (val: string | number) => {
     if (!val) return 0;
-    return parseFloat(val.replace(/\./g, '').replace(',', '.'));
+    const cleanStr = String(val).replace(/[^0-9,-]/g, '');
+    const num = parseFloat(cleanStr.replace(',', '.'));
+    return isNaN(num) ? 0 : num;
   };
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    setError(null);
-    acceptedFiles.forEach((file) => {
-      Papa.parse(file, {
+  const parseItauXls = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const dataBuffer = e.target?.result;
+        const workbook = XLSX.read(dataBuffer, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as any[][];
+
+        let baseYear = new Date().getFullYear();
+        let headerRowIndex = -1;
+        
+        for (let i = 0; i < Math.min(50, rows.length); i++) {
+          const rowStr = rows[i].join(' ').toLowerCase();
+          
+          if (rowStr.includes('desde hasta')) {
+            const valRow = rows[i + 1]?.join(' ') || '';
+            const match = valRow.match(/\d{4}/);
+            if (match) {
+              baseYear = parseInt(match[0], 10);
+            }
+          }
+          if (rowStr.includes('fecha') && rowStr.includes('movimiento')) {
+            headerRowIndex = i;
+          }
+        }
+
+        if (headerRowIndex === -1) {
+          setError("No se pudo encontrar la tabla de Movimientos en el archivo Itaú.");
+          return;
+        }
+
+        const headers = rows[headerRowIndex].map(h => typeof h === 'string' ? h.trim().toLowerCase() : '');
+        const dateIdx = headers.findIndex(h => h.includes('fecha'));
+        const descIdx = headers.findIndex(h => h.includes('movimiento'));
+        const cargosIdx = headers.findIndex(h => h.includes('cargo'));
+        const abonosIdx = headers.findIndex(h => h.includes('abono'));
+
+        if (dateIdx === -1 || descIdx === -1 || (cargosIdx === -1 && abonosIdx === -1)) {
+          setError(`Faltan columnas en Itaú. Encontradas: ${headers.join(', ')}`);
+          return;
+        }
+
+        const parsedTransactions: Transaction[] = [];
+
+        for (let i = headerRowIndex + 1; i < rows.length; i++) {
+          const row = rows[i];
+          const dateRaw = row[dateIdx];
+          const descRaw = row[descIdx];
+          
+          if (!dateRaw || !descRaw) continue;
+
+          let dateStr = '';
+          
+          // Excel numbers for dates (if parsed as number) or string '26/06'
+          if (typeof dateRaw === 'number') {
+            const excelDate = new Date(Math.round((dateRaw - 25569) * 86400 * 1000));
+            dateStr = excelDate.toISOString().split('T')[0];
+          } else {
+            const dateParts = String(dateRaw).trim().split('/');
+            if (dateParts.length === 2) {
+              const day = dateParts[0].padStart(2, '0');
+              const month = dateParts[1].padStart(2, '0');
+              dateStr = `${baseYear}-${month}-${day}`;
+            } else {
+              continue;
+            }
+          }
+
+          const cargos = parseAmount(cargosIdx !== -1 ? row[cargosIdx] : '');
+          const abonos = parseAmount(abonosIdx !== -1 ? row[abonosIdx] : '');
+
+          let amount = 0;
+          let type: 'ingreso' | 'egreso' = 'egreso';
+
+          if (cargos > 0) {
+            amount = cargos;
+            type = 'egreso';
+          } else if (abonos > 0) {
+            amount = abonos;
+            type = 'ingreso';
+          } else {
+            continue;
+          }
+
+          const raw_data: any = {};
+          headers.forEach((h, idx) => {
+            raw_data[h] = row[idx];
+          });
+
+          parsedTransactions.push({
+            date: dateStr,
+            description: String(descRaw).trim(),
+            original_description: String(descRaw).trim(),
+            amount,
+            type,
+            raw_data
+          });
+        }
+
+        if (parsedTransactions.length === 0) {
+          setError("No se encontraron transacciones válidas en el archivo Itaú.");
+        } else {
+          setData(parsedTransactions);
+        }
+      } catch (err) {
+        console.error(err);
+        setError("Error procesando el archivo Excel Itaú.");
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const parseCsvStandard = (file: File) => {
+    Papa.parse(file, {
         header: false,
         skipEmptyLines: true,
         complete: function (results) {
@@ -151,6 +265,18 @@ export default function CSVImport() {
           }
         },
       });
+  };
+
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    setError(null);
+    acceptedFiles.forEach((file) => {
+      const isExcel = file.name.toLowerCase().endsWith('.xls') || file.name.toLowerCase().endsWith('.xlsx');
+      
+      if (isExcel) {
+        parseItauXls(file);
+      } else {
+        parseCsvStandard(file);
+      }
     });
   }, []);
 
@@ -365,10 +491,10 @@ export default function CSVImport() {
             transition: 'all 0.2s ease'
           }}
         >
-          <input {...getInputProps()} />
+          <input {...getInputProps({ accept: '.csv, .xls, .xlsx' })} />
           <UploadCloud size={64} style={{ margin: '0 auto 1rem', color: isDragActive ? 'var(--primary)' : 'var(--text-secondary)' }} />
           <h3 style={{ marginBottom: '1rem', fontSize: '1.5rem' }}>
-            {isDragActive ? 'Suelta el archivo aquí...' : 'Arrastra tu archivo CSV (Scotiabank) aquí'}
+            {isDragActive ? 'Suelta el archivo aquí...' : 'Arrastra tu cartola CSV o Excel (Itaú) aquí'}
           </h3>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
             O haz clic para seleccionar un archivo desde tu computador
