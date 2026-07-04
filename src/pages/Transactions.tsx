@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Search, Edit2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useActionQueue } from '../hooks/useActionQueue';
+import SmartAssistant from '../components/SmartAssistant';
 
 export const TAXONOMY: Record<string, Record<string, string[]>> = {
   'Ingreso Real': {
@@ -160,7 +161,7 @@ export default function Transactions() {
   
   const [filterYear, setFilterYear] = useState('all');
   const [filterMonth, setFilterMonth] = useState('all');
-  const [viewMode, setViewMode] = useState<'individual' | 'bulk'>('individual');
+  const [viewMode, setViewMode] = useState<'individual' | 'bulk' | 'assistant'>('individual');
   const [bulkSearchTerm, setBulkSearchTerm] = useState('');
 
   const { user } = useAuth();
@@ -461,14 +462,24 @@ export default function Transactions() {
           </button>
           <button 
             onClick={() => setViewMode('bulk')}
-            style={{ padding: '0.75rem 1.5rem', border: 'none', background: viewMode === 'bulk' ? 'black' : 'transparent', color: viewMode === 'bulk' ? 'white' : 'black', fontWeight: 800, fontSize: '1rem', cursor: 'pointer', transition: 'all 0.1s' }}
+            style={{ padding: '0.75rem 1.5rem', border: 'none', background: viewMode === 'bulk' ? 'black' : 'transparent', color: viewMode === 'bulk' ? 'white' : 'black', fontWeight: 800, fontSize: '1rem', cursor: 'pointer', transition: 'all 0.1s', borderLeft: '2px solid black' }}
           >
             Categorización Masiva ✨
+          </button>
+          <button 
+            onClick={() => setViewMode('assistant')}
+            style={{ padding: '0.75rem 1.5rem', border: 'none', background: viewMode === 'assistant' ? 'black' : 'transparent', color: viewMode === 'assistant' ? 'white' : 'black', fontWeight: 800, fontSize: '1rem', cursor: 'pointer', transition: 'all 0.1s', borderLeft: '2px solid black' }}
+          >
+            Asistente Inteligente 🤖
           </button>
         </div>
       </div>
 
-      {viewMode === 'bulk' ? (
+      {viewMode === 'assistant' && (
+        <SmartAssistant transactions={transactions} onRefresh={fetchTransactions} />
+      )}
+
+      {viewMode === 'bulk' && (
         <div className="card" style={{ backgroundColor: 'var(--pastel-yellow)' }}>
           <h2 style={{ marginTop: 0 }}>Categorización Masiva</h2>
           <p style={{ fontWeight: 500, marginBottom: '2rem' }}>
@@ -536,7 +547,9 @@ export default function Transactions() {
             </tbody>
           </table>
         </div>
-      ) : (
+      )}
+      
+      {viewMode === 'individual' && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           {/* Header filtros */}
           <div style={{ padding: '1.5rem', backgroundColor: '#f1f5f9', borderBottom: '2px solid black', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
