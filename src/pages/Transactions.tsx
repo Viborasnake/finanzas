@@ -5,11 +5,73 @@ import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { TransactionTypeBadge } from '../components/TransactionTypeBadge';
 import { useBanks } from '../contexts/BankContext';
-import { Search, Edit2 } from 'lucide-react';
+import { Search, Edit2, Plus, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useActionQueue } from '../hooks/useActionQueue';
 import SmartAssistant from '../components/SmartAssistant';
 import { useTaxonomy } from '../hooks/useTaxonomy';
+
+function AddTransactionModal({ onClose, onAdd, activeBank, user }: any) {
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [desc, setDesc] = useState('');
+  const [amount, setAmount] = useState('');
+  const [type, setType] = useState<'ingreso'|'egreso'>('egreso');
+
+  const handleSubmit = (e: any) => {
+    e.preventDefault();
+    if (!desc.trim() || !amount) return;
+    
+    onAdd({
+      user_id: user.id,
+      bank: activeBank,
+      date,
+      description: desc.trim(),
+      original_description: desc.trim(),
+      amount: Math.abs(parseFloat(amount)),
+      type,
+      tipo_movimiento: null,
+      categoria_principal: null,
+      categoria_secundaria: null
+    });
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyItems: 'center' }}>
+      <div style={{ background: '#fff', padding: '2rem', borderRadius: '12px', border: '3px solid #000', width: '100%', maxWidth: '400px', margin: 'auto', boxShadow: '8px 8px 0px #000' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900 }}>Agregar Manual</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={24} /></button>
+        </div>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>FECHA</label>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)} required style={{ width: '100%', padding: '0.75rem', border: '2px solid #000', borderRadius: '8px', fontFamily: 'inherit' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>DESCRIPCIÓN (Ej. Saldo Inicial 2025)</label>
+            <input type="text" value={desc} onChange={e => setDesc(e.target.value)} required style={{ width: '100%', padding: '0.75rem', border: '2px solid #000', borderRadius: '8px', fontFamily: 'inherit' }} />
+          </div>
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>MONTO</label>
+              <input type="number" min="0" step="1" value={amount} onChange={e => setAmount(e.target.value)} required style={{ width: '100%', padding: '0.75rem', border: '2px solid #000', borderRadius: '8px', fontFamily: 'inherit' }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>TIPO</label>
+              <select value={type} onChange={(e: any) => setType(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '2px solid #000', borderRadius: '8px', fontFamily: 'inherit' }}>
+                <option value="ingreso">Ingreso (+)</option>
+                <option value="egreso">Egreso (-)</option>
+              </select>
+            </div>
+          </div>
+          <button type="submit" className="btn btn-primary" style={{ marginTop: '1rem', width: '100%', padding: '1rem', fontSize: '1rem' }}>
+            Guardar Transacción
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 export function CascadingCategorySelector({ initialPrincipal, initialSecundaria, onSave }: any) {
   const { allOptions: ALL_OPTIONS } = useTaxonomy();
@@ -202,6 +264,8 @@ export default function Transactions() {
       setLoading(false);
     }
   };
+
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
@@ -471,6 +535,13 @@ export default function Transactions() {
               Faltan {uncatCount} transacciones por clasificar
             </div>
           )}
+          <button 
+            onClick={() => setIsAddModalOpen(true)}
+            className="btn btn-primary"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', fontSize: '0.875rem', marginLeft: uncatCount > 0 ? '1rem' : '0', verticalAlign: 'top' }}
+          >
+            <Plus size={16} /> Agregar Manual
+          </button>
         </div>
         
         <div style={{ display: 'flex', backgroundColor: 'white', border: '2px solid black', borderRadius: '2rem', overflow: 'hidden', boxShadow: '4px 4px 0px black' }}>
@@ -746,6 +817,35 @@ export default function Transactions() {
             </div>
           )}
         </div>
+      )}
+      {/* Floating Action Button for mobile mostly */}
+      <button 
+        onClick={() => setIsAddModalOpen(true)}
+        className="btn btn-primary" 
+        style={{ position: 'fixed', bottom: '2rem', right: '2rem', width: '56px', height: '56px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '4px 4px 0px #000', padding: 0, zIndex: 90 }}
+        title="Agregar Transacción Manual"
+      >
+        <Plus size={24} />
+      </button>
+
+      {isAddModalOpen && createPortal(
+        <AddTransactionModal 
+          onClose={() => setIsAddModalOpen(false)}
+          onAdd={async (newTx: any) => {
+            const toastId = toast.loading('Guardando...');
+            const { error } = await supabase.from('transactions').insert(newTx);
+            if (!error) {
+              fetchTransactions();
+              setIsAddModalOpen(false);
+              toast.success('Transacción agregada exitosamente', { id: toastId });
+            } else {
+              toast.error('Error al guardar', { id: toastId });
+            }
+          }}
+          activeBank={activeBank}
+          user={user}
+        />,
+        document.body
       )}
     </div>
   );
