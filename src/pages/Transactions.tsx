@@ -516,8 +516,8 @@ export default function Transactions() {
       {viewMode === 'individual' && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           {/* Header filtros */}
-          <div style={{ padding: '1.5rem', backgroundColor: '#f1f5f9', borderBottom: '2px solid black', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            <div style={{ flex: 1, minWidth: '250px', position: 'relative' }}>
+          <div style={{ padding: '1.5rem', backgroundColor: '#f1f5f9', borderBottom: '2px solid black', display: 'flex', gap: '1rem', flexWrap: 'nowrap', overflowX: 'auto', alignItems: 'center' }}>
+            <div style={{ flex: 1, minWidth: '150px', position: 'relative' }}>
               <Search size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
               <input 
                 type="text" 

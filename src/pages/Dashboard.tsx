@@ -547,25 +547,27 @@ export default function Dashboard() {
                 {/* Custom range */}
                 <div style={{ padding: '1rem' }}>
                   <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#94a3b8', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>Rango personalizado</div>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                    <div style={{ flex: 1, minWidth: '130px' }}>
-                      <div style={{ fontSize: '0.65rem', fontWeight: 800, marginBottom: '0.5rem', color: '#64748b' }}>DESDE</div>
-                      <NeoDatePicker 
-                        value={customFrom || dateRange.start}
-                        onChange={(d) => setCustomFrom(d)}
-                      />
-                    </div>
-                    <div style={{ flex: 1, minWidth: '130px' }}>
-                      <div style={{ fontSize: '0.65rem', fontWeight: 800, marginBottom: '0.5rem', color: '#64748b' }}>HASTA</div>
-                      <NeoDatePicker 
-                        value={customTo || dateRange.end}
-                        onChange={(d) => setCustomTo(d)}
-                      />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 800, marginBottom: '0.5rem', color: '#64748b' }}>DESDE</div>
+                        <NeoDatePicker 
+                          value={customFrom || dateRange.start}
+                          onChange={(d) => setCustomFrom(d)}
+                        />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 800, marginBottom: '0.5rem', color: '#64748b' }}>HASTA</div>
+                        <NeoDatePicker 
+                          value={customTo || dateRange.end}
+                          onChange={(d) => setCustomTo(d)}
+                        />
+                      </div>
                     </div>
                     <button
                       onClick={applyCustomRange}
                       disabled={!customFrom || !customTo}
-                      style={{ padding: '0.5rem 1rem', backgroundColor: customFrom && customTo ? '#000' : '#e2e8f0', color: customFrom && customTo ? '#fff' : '#94a3b8', border: '2px solid #000', borderRadius: '8px', fontWeight: 800, fontSize: '0.85rem', cursor: customFrom && customTo ? 'pointer' : 'not-allowed' }}
+                      style={{ width: '100%', padding: '0.75rem', backgroundColor: customFrom && customTo ? '#000' : '#e2e8f0', color: customFrom && customTo ? '#fff' : '#94a3b8', border: '2px solid #000', borderRadius: '8px', fontWeight: 800, fontSize: '0.9rem', cursor: customFrom && customTo ? 'pointer' : 'not-allowed', transition: 'all 0.1s' }}
                     >
                       Aplicar
                     </button>
