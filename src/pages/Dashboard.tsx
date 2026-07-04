@@ -201,38 +201,6 @@ export default function Dashboard() {
   };
 
 
-  if (!activeBank) {
-    return (
-      <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '80vh', textAlign: 'center' }}>
-        <h1 style={{ fontSize: '2.5rem', marginBottom: '1.5rem', fontWeight: 900 }}>¡Bienvenido a MisFinanzas! 👋</h1>
-        <p style={{ fontSize: '1.1rem', color: '#64748b', maxWidth: '600px', marginBottom: '2rem', fontWeight: 500 }}>
-          Para comenzar a ver tu Dashboard, necesitas configurar un banco. Dirígete a la sección de Configuración para conectar tu primer banco.
-        </p>
-        <button className="btn" style={{ backgroundColor: '#000', color: '#fff', fontSize: '1rem', padding: '0.75rem 1.5rem' }} onClick={() => navigate('/settings')}>
-          Ir a Configuración
-        </button>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div style={{ padding: '2rem' }}>
-        <h1 style={{ fontSize: '2.5rem', marginBottom: '1.5rem', fontWeight: 900 }}>Dashboard</h1>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
-          <div className="skeleton" style={{ height: '150px' }}></div>
-          <div className="skeleton" style={{ height: '150px' }}></div>
-        </div>
-        <div className="skeleton" style={{ height: '400px', marginBottom: '2.5rem' }}></div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
-          <div className="skeleton" style={{ height: '100px' }}></div>
-          <div className="skeleton" style={{ height: '100px' }}></div>
-          <div className="skeleton" style={{ height: '100px' }}></div>
-        </div>
-      </div>
-    );
-  }
-
   // --- Computations ---
   // Current range comes from dateRange state.
   // Previous range = same duration, shifted backwards.
@@ -1235,7 +1203,30 @@ export default function Dashboard() {
     <div style={{ maxWidth: '1100px', margin: '0 auto', paddingBottom: '4rem', padding: '0 1rem', paddingTop: '2rem' }}>
       {renderHeader()}
       
-      {transactions.length === 0 ? (
+      {!activeBank ? (
+        <div style={{ padding: '4rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', backgroundColor: 'white', border: '3px solid #000', borderRadius: '12px', boxShadow: '6px 6px 0px #000' }}>
+          <h1 style={{ fontSize: '2.5rem', marginBottom: '1.5rem', fontWeight: 900 }}>¡Bienvenido a MisFinanzas! 👋</h1>
+          <p style={{ fontSize: '1.1rem', color: '#64748b', maxWidth: '600px', marginBottom: '2rem', fontWeight: 500 }}>
+            Para comenzar a ver tu Dashboard, necesitas configurar un banco. Dirígete a la sección de Configuración para conectar tu primer banco.
+          </p>
+          <button className="btn" style={{ backgroundColor: '#000', color: '#fff', fontSize: '1.1rem', padding: '1rem 2rem' }} onClick={() => navigate('/settings')}>
+            Ir a Configuración
+          </button>
+        </div>
+      ) : loading ? (
+        <div style={{ marginTop: '2rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+            <div className="skeleton" style={{ height: '150px' }}></div>
+            <div className="skeleton" style={{ height: '150px' }}></div>
+          </div>
+          <div className="skeleton" style={{ height: '400px', marginBottom: '2.5rem' }}></div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+            <div className="skeleton" style={{ height: '100px' }}></div>
+            <div className="skeleton" style={{ height: '100px' }}></div>
+            <div className="skeleton" style={{ height: '100px' }}></div>
+          </div>
+        </div>
+      ) : transactions.length === 0 ? (
         <div style={{ backgroundColor: 'white', textAlign: 'center', padding: '6rem 2rem', border: '3px dashed #000', borderRadius: '12px', boxShadow: '6px 6px 0px #000' }}>
           <h2 style={{ fontSize: '2rem', margin: '0 0 1rem 0', fontFamily: '"Montserrat", sans-serif', fontWeight: 900 }}>Aún no tienes movimientos cargados</h2>
           <p style={{ marginBottom: '2rem', fontSize: '1.1rem', fontWeight: 600 }}>

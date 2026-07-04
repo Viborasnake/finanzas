@@ -45,7 +45,7 @@ const renderCustomNodeElement = ({ nodeDatum, toggleNode }: any) => {
         fill="black" 
         strokeWidth="0" 
         x="18" 
-        dy="4" 
+        y="-16" 
         style={{ 
           fontSize: isRoot || isIngreso || isEgreso ? '16px' : '14px', 
           fontWeight: isRoot || isIngreso || isEgreso ? 800 : 500,
@@ -75,16 +75,16 @@ function MindMap() {
   };
 
   return (
-    <div style={{ width: '100%', height: '400px', border: '2px solid black', borderRadius: '8px', background: 'white', overflow: 'hidden' }}>
+    <div style={{ width: '100%', height: '500px', border: '2px solid black', borderRadius: '8px', background: 'white', overflow: 'hidden' }}>
       <Tree 
         data={treeData} 
         orientation="horizontal" 
         pathFunc="step" 
-        translate={{ x: 100, y: 200 }} 
-        nodeSize={{ x: 220, y: 22 }}
+        translate={{ x: 100, y: 250 }} 
+        nodeSize={{ x: 200, y: 40 }}
         zoomable={true}
         collapsible={true}
-        separation={{ siblings: 0.8, nonSiblings: 1.2 }}
+        separation={{ siblings: 1.2, nonSiblings: 1.5 }}
         renderCustomNodeElement={renderCustomNodeElement}
       />
     </div>
