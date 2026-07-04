@@ -86,7 +86,7 @@ export function CascadingCategorySelector({ initialPrincipal, initialSecundaria,
   const isComplete = ALL_OPTIONS.some(o => o.label === inputValue);
   const selectedOption = ALL_OPTIONS.find(o => o.label === inputValue);
   
-  const normalizeText = (text: string) => text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const normalizeText = (text: any) => String(text || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const filteredOptions = ALL_OPTIONS.filter(o => normalizeText(o.label).includes(normalizeText(inputValue)));
 
   const getBgColor = (tipo: string | undefined | null) => {
@@ -212,7 +212,7 @@ export default function Transactions() {
   }, [transactions]);
 
   const filteredTransactions = transactions.filter(t => {
-    const normalizeText = (text: string) => text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const normalizeText = (text: any) => String(text || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const searchLower = normalizeText(searchTerm);
     const desc = t.description || '';
     const origDesc = t.original_description || '';
