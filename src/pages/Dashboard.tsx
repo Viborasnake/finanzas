@@ -47,13 +47,16 @@ export default function Dashboard() {
   }, [transactions]);
 
   const availablePrincipals = useMemo(() => {
-    const cats = new Set<string>();
+    const totals: { [cat: string]: number } = {};
     transactions.forEach(t => {
       if (t.categoria_principal) {
-        cats.add(t.categoria_principal);
+        if (!totals[t.categoria_principal]) totals[t.categoria_principal] = 0;
+        totals[t.categoria_principal] += Math.abs(t.amount);
       }
     });
-    return Array.from(cats).sort();
+    return Object.entries(totals)
+      .sort((a, b) => b[1] - a[1])
+      .map(([cat]) => cat);
   }, [transactions]);
 
   const toggleCategory = (catName: string) => {
