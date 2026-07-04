@@ -266,10 +266,10 @@ export default function Transactions() {
               onClick={() => {
                 toast.dismiss(t.id);
                 
-                const affectedTxs = transactions.filter(tx => tx.id === id || (tx.description === currentDesc && !tx.tipo_movimiento));
+                const affectedTxs = transactions.filter(tx => tx.id === id || tx.description === currentDesc);
                 
                 setTransactions(prev => prev.map(tx => {
-                  if (tx.description === currentDesc && !tx.tipo_movimiento) {
+                  if (tx.description === currentDesc) {
                     return { ...tx, tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria };
                   }
                   return tx;
@@ -498,11 +498,26 @@ export default function Transactions() {
                     <CascadingCategorySelector 
                       onSave={async (tipo: any, principal: any, secundaria: any) => {
                         if (!tipo) return;
-                        const { error } = await supabase.from('transactions').update({ tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria }).in('id', group.ids);
-                        if (!error) {
-                          setTransactions(prev => prev.map(t => group.ids.includes(t.id) ? { ...t, tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria } : t));
-                          toast.success(`${group.count} transacciones clasificadas`);
-                        }
+                        
+                        const affectedTxs = transactions.filter(t => group.ids.includes(t.id));
+                        
+                        // Optimistic UI update
+                        setTransactions(prev => prev.map(t => group.ids.includes(t.id) ? { ...t, tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria } : t));
+                        
+                        dispatchAction({
+                          id: `bulk-${group.name}-${group.type}`,
+                          message: `${group.count} transacciones clasificadas`,
+                          execute: async () => {
+                            const { error } = await supabase.from('transactions').update({ tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria }).in('id', group.ids);
+                            if (error) throw error;
+                          },
+                          onUndo: () => {
+                            setTransactions(prev => prev.map(tx => {
+                              const oldTx = affectedTxs.find(old => old.id === tx.id);
+                              return oldTx ? oldTx : tx;
+                            }));
+                          }
+                        });
                       }}
                     />
                   </td>

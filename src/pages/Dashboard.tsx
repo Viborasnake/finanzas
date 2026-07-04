@@ -14,6 +14,7 @@ import {
   LineChart, Line, CartesianGrid
 } from 'recharts';
 import NeoDatePicker from '../components/NeoDatePicker';
+import InfoTooltip from '../components/InfoTooltip';
 
 type CategoryLevel = 'principal' | 'secundaria' | 'detalle';
 
@@ -612,6 +613,7 @@ export default function Dashboard() {
         <h2 style={{ fontSize: '1.2rem', margin: '0 0 1rem 0', fontFamily: '"Montserrat", sans-serif', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <Sparkles fill="#fde047" color="#000" size={20} strokeWidth={2} />
           Reporte de Inteligencia
+          <InfoTooltip content="Análisis automático de tus finanzas que destaca tu balance, tu principal fuente de ingresos y tu mayor fuga de dinero." />
         </h2>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
@@ -699,7 +701,10 @@ export default function Dashboard() {
               <div style={{ backgroundColor: '#bbf7d0', padding: '0.5rem', borderRadius: '50%', border: '2px solid #000' }}>
                 <Wallet size={24} strokeWidth={2.5} />
               </div>
-              <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: '"Montserrat", sans-serif' }}>Ingresos</h3>
+              <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: '"Montserrat", sans-serif', display: 'flex', alignItems: 'center' }}>
+                Ingresos
+                <InfoTooltip content="Total de dinero que ha entrado a tus cuentas. Los traspasos entre tus propias cuentas (Aporte Propio) se desglosan aparte." />
+              </h3>
             </div>
             {renderTrendBadge(totalEntradas, p.ingresos + p.aportePropio, false)}
           </div>
@@ -761,7 +766,10 @@ export default function Dashboard() {
               <div style={{ backgroundColor: '#fecaca', padding: '0.5rem', borderRadius: '50%', border: '2px solid #000' }}>
                 <CreditCard size={24} strokeWidth={2.5} />
               </div>
-              <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: '"Montserrat", sans-serif' }}>Gastos</h3>
+              <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: '"Montserrat", sans-serif', display: 'flex', alignItems: 'center' }}>
+                Gastos
+                <InfoTooltip content="Dinero que ha salido de tus cuentas. Los traspasos entre tus cuentas y aportes a inversiones (Mov. Interno / Ahorro) no se consideran gastos reales." />
+              </h3>
             </div>
             {renderTrendBadge(totalSalidas, p.gastos + p.movimientoInternoGasto, true)}
           </div>
@@ -834,7 +842,10 @@ export default function Dashboard() {
       <div style={{ ...neoCard, marginBottom: '2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <h2 style={{ fontSize: '1.6rem', margin: 0, fontFamily: '"Montserrat", sans-serif', fontWeight: 900 }}>Evolución y Análisis de Gasto</h2>
+            <h2 style={{ fontSize: '1.6rem', margin: 0, fontFamily: '"Montserrat", sans-serif', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              Evolución y Análisis de Gasto
+              <InfoTooltip content="Línea de tiempo para ver tus tendencias. Puedes filtrar categorías abajo en el ranking para ver cómo evolucionan ingresos/gastos específicos a lo largo del tiempo." />
+            </h2>
             {selectedCategories.length > 0 && (
               <button onClick={() => setSelectedCategories([])} style={{ marginTop: '0.5rem', fontSize: '0.75rem', fontWeight: 800, background: '#fef08a', border: '2px solid #000', borderRadius: '2rem', padding: '0.25rem 0.75rem', cursor: 'pointer' }}>
                 ✕ Limpiar selección ({selectedCategories.length})
@@ -893,7 +904,11 @@ export default function Dashboard() {
           {/* Bar Chart - Ranking Top 20 clickable */}
           {barData.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <h4 style={{ margin: '0 0 1rem 0', fontWeight: 800 }}>Ranking de Gastos <span style={{ fontWeight: 600, fontSize: '0.8rem', color: '#64748b' }}>— clic para comparar</span></h4>
+              <h4 style={{ margin: '0 0 1rem 0', fontWeight: 800, display: 'flex', alignItems: 'center' }}>
+                Ranking de Gastos 
+                <InfoTooltip content="Las categorías en las que más has gastado o ingresado. Haz clic en cualquiera para graficarla en la línea de tiempo." />
+                <span style={{ fontWeight: 600, fontSize: '0.8rem', color: '#64748b', marginLeft: '0.5rem' }}>— clic para comparar</span>
+              </h4>
               <div style={{ overflowY: 'auto', maxHeight: '350px', paddingRight: '0.5rem' }}>
                 {barData.map((entry, index) => {
                   const isSelected = selectedCategories.includes(entry.name);
@@ -1037,7 +1052,10 @@ export default function Dashboard() {
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
           <div>
-            <h2 style={{ fontSize: '1.6rem', margin: '0 0 0.2rem 0', fontFamily: '"Montserrat", sans-serif', fontWeight: 900 }}>Resumen Anual {year}</h2>
+            <h2 style={{ fontSize: '1.6rem', margin: '0 0 0.2rem 0', fontFamily: '"Montserrat", sans-serif', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              Resumen Anual {year}
+              <InfoTooltip content="Perspectiva global de todo el año. Analiza qué meses te fue mejor y en cuáles gastaste más de lo que ganaste." />
+            </h2>
             <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 600, color: '#64748b' }}>Visión completa mes a mes · haz hover para más detalle</p>
           </div>
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -1065,11 +1083,17 @@ export default function Dashboard() {
             <span style={{ fontSize: '1.2rem', fontWeight: 900, color: '#dc2626' }}>${totalGas.toLocaleString('es-CL')}</span>
           </div>
           <div style={{ ...kpiStyle, backgroundColor: totalBal >= 0 ? '#eff6ff' : '#fef2f2' }}>
-            <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.04em' }}>Balance Neto</span>
+            <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              Balance Neto
+              <InfoTooltip content="Ingresos totales menos gastos totales. Si es positivo, ganaste más de lo que gastaste." />
+            </span>
             <span style={{ fontSize: '1.2rem', fontWeight: 900, color: totalBal >= 0 ? '#1d4ed8' : '#dc2626' }}>{totalBal >= 0 ? '+' : ''}${totalBal.toLocaleString('es-CL')}</span>
           </div>
           <div style={{ ...kpiStyle, backgroundColor: '#faf5ff' }}>
-            <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.04em' }}>Tasa de Ahorro</span>
+            <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              Tasa de Ahorro
+              <InfoTooltip content="Porcentaje de tus ingresos que no gastaste. Lo ideal es mantenerla por encima del 20% para unas finanzas saludables." />
+            </span>
             <span style={{ fontSize: '1.2rem', fontWeight: 900, color: tasaAnual >= 20 ? '#7c3aed' : tasaAnual >= 0 ? '#6366f1' : '#dc2626' }}>{tasaAnual}%</span>
             <span style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 700 }}>{tasaAnual >= 20 ? 'Excelente 🎯' : tasaAnual >= 10 ? 'Bien 👍' : tasaAnual >= 0 ? 'Ajustado ⚠️' : 'Déficit 🔴'}</span>
           </div>
