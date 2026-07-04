@@ -16,26 +16,21 @@ const renderCustomNodeElement = ({ nodeDatum, toggleNode }: any) => {
   const isRoot = nodeDatum.name === 'Movimientos';
   const isIngreso = nodeDatum.name === 'Ingreso' || nodeDatum.name === 'Ingreso Real';
   const isEgreso = nodeDatum.name === 'Egreso' || nodeDatum.name === 'Egreso Real';
+  const rootTipo = nodeDatum.attributes?.rootTipo;
   
   let fill = '#e2e8f0'; // default gray
   let stroke = '#94a3b8';
   if (isRoot) {
     fill = '#3b82f6'; // blue
     stroke = '#2563eb';
-  } else if (isIngreso) {
-    fill = '#22c55e'; // green
-    stroke = '#16a34a';
-  } else if (isEgreso) {
-    fill = '#ef4444'; // red
-    stroke = '#dc2626';
-  } else if (nodeDatum.children) {
-    // Principal categories
-    fill = '#f8fafc';
-    stroke = '#cbd5e1';
-  } else {
-    // Secondary categories
-    fill = 'white';
-    stroke = '#e2e8f0';
+  } else if (isIngreso || rootTipo === 'Ingreso') {
+    fill = '#dcfce7'; // pastel green
+    stroke = '#22c55e';
+    if (isIngreso) { fill = '#22c55e'; stroke = '#16a34a'; }
+  } else if (isEgreso || rootTipo === 'Egreso') {
+    fill = '#fee2e2'; // pastel red
+    stroke = '#ef4444';
+    if (isEgreso) { fill = '#ef4444'; stroke = '#dc2626'; }
   }
 
   return (
@@ -67,9 +62,11 @@ function MindMap() {
       .filter(([tipo]) => tipo === 'Ingreso' || tipo === 'Egreso')
       .map(([tipo, principals]) => ({
       name: tipo,
+      attributes: { rootTipo: tipo },
       children: Object.entries(principals as Record<string, string[]>).map(([principal, secundarias]) => ({
         name: principal,
-        children: secundarias.map(sec => ({ name: sec }))
+        attributes: { rootTipo: tipo },
+        children: secundarias.map(sec => ({ name: sec, attributes: { rootTipo: tipo } }))
       }))
     }))
   };
@@ -81,7 +78,7 @@ function MindMap() {
         orientation="horizontal" 
         pathFunc="step" 
         translate={{ x: 100, y: 250 }} 
-        nodeSize={{ x: 200, y: 40 }}
+        nodeSize={{ x: 140, y: 35 }}
         zoomable={true}
         collapsible={true}
         separation={{ siblings: 1.2, nonSiblings: 1.5 }}
