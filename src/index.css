@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap');
 
 :root {
   /* Neo-brutalist Theme */
@@ -46,7 +46,7 @@
 }
 
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   background-color: var(--bg-color);
   color: var(--text-primary);
   line-height: 1.5;
@@ -54,10 +54,11 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Playfair Display', serif;
-  font-weight: 700;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 800;
   letter-spacing: -0.02em;
 }
+
 
 a {
   color: var(--text-primary);

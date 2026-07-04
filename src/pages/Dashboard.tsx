@@ -7,12 +7,12 @@ import {
 } from 'lucide-react';
 import { 
   AreaChart, Area,
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line, CartesianGrid
 } from 'recharts';
 
 type ViewMode = 'month' | 'quarter' | 'year';
-type CategoryLevel = 'principal' | 'secundaria';
+type CategoryLevel = 'principal' | 'secundaria' | 'detalle';
 
 export default function Dashboard() {
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -22,6 +22,13 @@ export default function Dashboard() {
   const [viewMode, setViewMode] = useState<ViewMode>('month');
 
   const [categoryLevel, setCategoryLevel] = useState<CategoryLevel>('principal');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+
+  const toggleCategory = (name: string) => {
+    setSelectedCategories(prev =>
+      prev.includes(name) ? prev.filter(c => c !== name) : [...prev, name]
+    );
+  };
 
   useEffect(() => {
     if (user) {
@@ -193,6 +200,20 @@ export default function Dashboard() {
         .map(([name, amount]) => ({ name, amount }))
         .sort((a, b) => b.amount - a.amount);
 
+      // Detalle: group by description
+      const catsDetalle: Record<string, number> = {};
+      txs.forEach(t => {
+        const isInternal = t.tipo_movimiento === 'Movimiento Interno';
+        const isInvestment = t.tipo_movimiento === 'Ahorro/Inversión';
+        if (t.type === 'egreso' && !isInternal && !isInvestment) {
+          const desc = (t.description || t.original_description || 'Sin descripción').trim();
+          catsDetalle[desc] = (catsDetalle[desc] || 0) + Math.abs(t.amount);
+        }
+      });
+      const topCatsDetalle = Object.entries(catsDetalle)
+        .map(([name, amount]) => ({ name, amount }))
+        .sort((a, b) => b.amount - a.amount);
+
       // Intelligence Insights
       let maxRecurringDesc = '';
       let maxRecurringTotal = 0;
@@ -227,6 +248,7 @@ export default function Dashboard() {
         movimientoInternoGasto,
         topCatsPrincipal,
         topCatsSecundaria,
+        topCatsDetalle,
         unclassifiedCount,
         availableCats: Array.from(availableCats).sort(),
         insights: {
@@ -275,52 +297,75 @@ export default function Dashboard() {
   }, [transactions, currentDate, viewMode]);
 
   // Generate Timeline Data based on current range for the Line Chart
+  // If categories are selected, generates dynamic per-category lines instead of Ingresos/Gastos
   const timelineData = useMemo(() => {
-    const data: Record<string, { label: string; Ingresos: number; Gastos: number }> = {};
     const { start, end } = currentRange;
-    
+    const keys: string[] = [];
+    const labels: Record<string, string> = {};
+
     if (viewMode === 'month') {
       const days = end.getDate();
       for (let i = 1; i <= days; i++) {
         const key = i.toString().padStart(2, '0');
-        data[key] = { label: `${i} ${start.toLocaleString('es-CL', { month: 'short' })}`, Ingresos: 0, Gastos: 0 };
+        keys.push(key);
+        labels[key] = `${i} ${start.toLocaleString('es-CL', { month: 'short' })}`;
       }
-    } else if (viewMode === 'quarter' || viewMode === 'year') {
+    } else {
       for (let i = 0; i <= (viewMode === 'quarter' ? 2 : 11); i++) {
         const m = start.getMonth() + i;
         if (m > 11) break;
         const d = new Date(start.getFullYear(), m, 1);
         const key = m.toString().padStart(2, '0');
-        data[key] = { label: d.toLocaleString('es-CL', { month: 'short' }), Ingresos: 0, Gastos: 0 };
+        keys.push(key);
+        labels[key] = d.toLocaleString('es-CL', { month: 'short' });
       }
     }
 
-    transactions.forEach(t => {
-      const d = new Date(t.date);
-      if (d >= start && d <= end) {
-        const isInternal = t.tipo_movimiento === 'Movimiento Interno';
-        const isInvestment = t.tipo_movimiento === 'Ahorro/Inversión';
-        
-        let key = '';
-        if (viewMode === 'month') {
-          key = d.getDate().toString().padStart(2, '0');
-        } else {
-          key = d.getMonth().toString().padStart(2, '0');
-        }
-
-        if (data[key]) {
-          if (t.type === 'ingreso' && !isInternal) {
-            data[key].Ingresos += Math.abs(t.amount);
+    if (selectedCategories.length === 0) {
+      // Default: Ingresos vs Gastos
+      const data: Record<string, any> = {};
+      keys.forEach(k => { data[k] = { label: labels[k], Ingresos: 0, Gastos: 0 }; });
+      transactions.forEach(t => {
+        const d = new Date(t.date);
+        if (d >= start && d <= end) {
+          const isInternal = t.tipo_movimiento === 'Movimiento Interno';
+          const isInvestment = t.tipo_movimiento === 'Ahorro/Inversión';
+          const key = viewMode === 'month' ? d.getDate().toString().padStart(2, '0') : d.getMonth().toString().padStart(2, '0');
+          if (data[key]) {
+            if (t.type === 'ingreso' && !isInternal) data[key].Ingresos += Math.abs(t.amount);
+            if (t.type === 'egreso' && !isInternal && !isInvestment) data[key].Gastos += Math.abs(t.amount);
           }
+        }
+      });
+      return Object.values(data);
+    } else {
+      // Category mode: one line per selected category
+      const data: Record<string, any> = {};
+      keys.forEach(k => {
+        data[k] = { label: labels[k] };
+        selectedCategories.forEach(cat => { data[k][cat] = 0; });
+      });
+      transactions.forEach(t => {
+        const d = new Date(t.date);
+        if (d >= start && d <= end) {
+          const isInternal = t.tipo_movimiento === 'Movimiento Interno';
+          const isInvestment = t.tipo_movimiento === 'Ahorro/Inversión';
           if (t.type === 'egreso' && !isInternal && !isInvestment) {
-             data[key].Gastos += Math.abs(t.amount);
+            const catField = categoryLevel === 'detalle'
+              ? (t.description || t.original_description || '').trim()
+              : categoryLevel === 'principal'
+                ? (t.categoria_principal || 'Sin Clasificar')
+                : (t.categoria_secundaria || 'Sin Clasificar');
+            if (selectedCategories.includes(catField)) {
+              const key = viewMode === 'month' ? d.getDate().toString().padStart(2, '0') : d.getMonth().toString().padStart(2, '0');
+              if (data[key]) data[key][catField] += Math.abs(t.amount);
+            }
           }
         }
-      }
-    });
-
-    return Object.values(data);
-  }, [transactions, currentRange, viewMode]);
+      });
+      return Object.values(data);
+    }
+  }, [transactions, currentRange, viewMode, selectedCategories, categoryLevel]);
 
   // --- Styles ---
   const neoCard = {
@@ -333,12 +378,14 @@ export default function Dashboard() {
   };
 
   const neoButton = {
-    backgroundColor: '#fff',
+    padding: '0.75rem 1.5rem',
+    backgroundColor: '#000',
+    color: '#fff',
     border: '2px solid #000',
-    borderRadius: '8px',
-    boxShadow: '3px 3px 0px #000',
+    borderRadius: '2rem',
+    fontWeight: 800,
     cursor: 'pointer',
-    fontWeight: 700,
+    boxShadow: '4px 4px 0px #000',
     transition: 'all 0.1s'
   };
 
@@ -380,7 +427,7 @@ export default function Dashboard() {
     return (
       <div style={{ marginBottom: '2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-          <h1 style={{ margin: 0, fontFamily: 'serif', fontSize: '2.5rem', fontWeight: 900, color: '#000' }}>Resumen Financiero</h1>
+          <h1 style={{ margin: 0, fontFamily: '"Montserrat", sans-serif', fontSize: '2.5rem', fontWeight: 900, color: '#000' }}>Resumen Financiero</h1>
           
           <div style={{ ...neoButton, display: 'flex', alignItems: 'center', padding: '0.25rem', backgroundColor: '#fff' }}>
             <button onClick={() => shiftPeriod(-1)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -419,7 +466,7 @@ export default function Dashboard() {
 
     return (
       <div style={{ backgroundColor: '#fff', border: '3px solid #000', borderRadius: '12px', padding: '1.5rem', boxShadow: '4px 4px 0px #000', marginBottom: '2.5rem' }}>
-        <h2 style={{ fontSize: '1.2rem', margin: '0 0 1rem 0', fontFamily: 'serif', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <h2 style={{ fontSize: '1.2rem', margin: '0 0 1rem 0', fontFamily: '"Montserrat", sans-serif', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <Sparkles fill="#fde047" color="#000" size={20} strokeWidth={2} />
           Reporte de Inteligencia
         </h2>
@@ -504,7 +551,7 @@ export default function Dashboard() {
               <div style={{ backgroundColor: '#bbf7d0', padding: '0.5rem', borderRadius: '50%', border: '2px solid #000' }}>
                 <Wallet size={24} strokeWidth={2.5} />
               </div>
-              <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: 'serif' }}>Ingresos</h3>
+              <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: '"Montserrat", sans-serif' }}>Ingresos</h3>
             </div>
             {renderTrendBadge(totalEntradas, p.ingresos + p.aportePropio, false)}
           </div>
@@ -553,7 +600,7 @@ export default function Dashboard() {
               <div style={{ backgroundColor: '#fecaca', padding: '0.5rem', borderRadius: '50%', border: '2px solid #000' }}>
                 <CreditCard size={24} strokeWidth={2.5} />
               </div>
-              <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: 'serif' }}>Gastos</h3>
+              <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: '"Montserrat", sans-serif' }}>Gastos</h3>
             </div>
             {renderTrendBadge(totalSalidas, p.gastos + p.movimientoInternoGasto, true)}
           </div>
@@ -601,97 +648,107 @@ export default function Dashboard() {
 
 
   // BLOCK 5: TOP CATEGORIAS AND TIMELINE (Full width container)
+  const CATEGORY_COLORS = ['#f43f5e','#a78bfa','#34d399','#60a5fa','#fb923c','#f59e0b','#6366f1','#ec4899','#14b8a6','#84cc16','#e11d48','#7c3aed'];
+
   const renderAnalysisBlock = () => {
     const c = stats.current;
     if (c.gastos === 0 && c.ingresos === 0) return null;
 
-    const sourceData = categoryLevel === 'principal' ? c.topCatsPrincipal : c.topCatsSecundaria;
-    const barData = sourceData.slice(0, 8).map(cat => ({
-      name: cat.name,
-      amount: cat.amount
-    }));
+    const sourceData =
+      categoryLevel === 'principal' ? c.topCatsPrincipal
+      : categoryLevel === 'secundaria' ? c.topCatsSecundaria
+      : c.topCatsDetalle;
+    const barData = sourceData.slice(0, 20).map(cat => ({ name: cat.name, amount: cat.amount }));
+    const chartTitle = selectedCategories.length > 0
+      ? `Línea de Tiempo — ${selectedCategories.join(', ')}`
+      : 'Línea de Tiempo (Ingresos vs Gastos)';
 
     return (
       <div style={{ ...neoCard, marginBottom: '2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
-          <h2 style={{ fontSize: '1.6rem', margin: 0, fontFamily: 'serif', fontWeight: 900 }}>Evolución y Análisis de Gasto</h2>
+          <div>
+            <h2 style={{ fontSize: '1.6rem', margin: 0, fontFamily: '"Montserrat", sans-serif', fontWeight: 900 }}>Evolución y Análisis de Gasto</h2>
+            {selectedCategories.length > 0 && (
+              <button onClick={() => setSelectedCategories([])} style={{ marginTop: '0.5rem', fontSize: '0.75rem', fontWeight: 800, background: '#fef08a', border: '2px solid #000', borderRadius: '2rem', padding: '0.25rem 0.75rem', cursor: 'pointer' }}>
+                ✕ Limpiar selección ({selectedCategories.length})
+              </button>
+            )}
+          </div>
           
-          <div style={{ display: 'flex', gap: '0.5rem', backgroundColor: '#f1f5f9', padding: '0.5rem', borderRadius: '12px', border: '3px solid #000' }}>
-            <button 
-              onClick={() => setCategoryLevel('principal')}
-              style={{ ...neoButton, padding: '0.5rem 1rem', border: 'none', boxShadow: 'none', backgroundColor: categoryLevel === 'principal' ? '#fde047' : 'transparent', borderRight: categoryLevel === 'principal' ? '2px solid #000' : 'none' }}
-            >
-              Principal
-            </button>
-            <div style={{ width: '2px', backgroundColor: '#000' }}></div>
-            <button 
-              onClick={() => setCategoryLevel('secundaria')}
-              style={{ ...neoButton, padding: '0.5rem 1rem', border: 'none', boxShadow: 'none', backgroundColor: categoryLevel === 'secundaria' ? '#67e8f9' : 'transparent' }}
-            >
-              Secundaria
-            </button>
+          <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '0.35rem', borderRadius: '2rem', border: '3px solid #000' }}>
+            {(['principal', 'secundaria', 'detalle'] as CategoryLevel[]).map((level, idx, arr) => (
+              <>
+                <button
+                  key={level}
+                  onClick={() => { setCategoryLevel(level); setSelectedCategories([]); }}
+                  style={{ padding: '0.4rem 1rem', border: 'none', borderRadius: '2rem', boxShadow: 'none', backgroundColor: categoryLevel === level ? (level === 'principal' ? '#fde047' : level === 'secundaria' ? '#67e8f9' : '#bbf7d0') : 'transparent', fontWeight: 800, cursor: 'pointer', fontSize: '0.9rem', color: '#000', transition: 'all 0.15s' }}
+                >
+                  {level.charAt(0).toUpperCase() + level.slice(1)}
+                </button>
+                {idx < arr.length - 1 && <div style={{ width: '2px', height: '20px', backgroundColor: '#000', margin: '0 0.1rem' }}></div>}
+              </>
+            ))}
           </div>
         </div>
         
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '3rem' }}>
           {/* Timeline Chart */}
           <div style={{ height: '350px', width: '100%', display: 'flex', flexDirection: 'column' }}>
-            <h4 style={{ margin: '0 0 1rem 0', fontWeight: 800 }}>Línea de Tiempo (Ingresos vs Gastos)</h4>
+            <h4 style={{ margin: '0 0 0.5rem 0', fontWeight: 800, fontSize: '0.85rem' }}>{chartTitle}</h4>
+            {selectedCategories.length === 0 && (
+              <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Haz clic en una barra del ranking para ver su evolución en el tiempo →</p>
+            )}
             <div style={{ flex: 1, minHeight: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={timelineData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fill: '#000', fontSize: 12, fontWeight: 700 }} axisLine={{ stroke: '#000', strokeWidth: 2 }} tickLine={false} dy={10} />
+                  <XAxis dataKey="label" tick={{ fill: '#000', fontSize: 11, fontWeight: 700 }} axisLine={{ stroke: '#000', strokeWidth: 2 }} tickLine={false} dy={10} />
                   <YAxis hide />
-                  <Tooltip 
+                  <Tooltip
                     contentStyle={{ borderRadius: '8px', border: '3px solid #000', boxShadow: '4px 4px 0px #000', fontWeight: 800 }}
-                    formatter={(value: any) => ['$' + Number(value).toLocaleString('es-CL'), 'Monto']}
+                    formatter={(value: any, name: any) => ['$' + Number(value).toLocaleString('es-CL'), name]}
                   />
-                  <Line type="monotone" name="Ingresos" dataKey="Ingresos" stroke="#22c55e" strokeWidth={4} dot={{ r: 4, fill: '#bbf7d0', stroke: '#000', strokeWidth: 2 }} activeDot={{ r: 6, stroke: '#000', strokeWidth: 3 }} />
-                  <Line type="monotone" name="Gastos" dataKey="Gastos" stroke="#f43f5e" strokeWidth={4} dot={{ r: 4, fill: '#fecaca', stroke: '#000', strokeWidth: 2 }} activeDot={{ r: 6, stroke: '#000', strokeWidth: 3 }} />
+                  {selectedCategories.length === 0 ? (
+                    <>
+                      <Line type="monotone" name="Ingresos" dataKey="Ingresos" stroke="#22c55e" strokeWidth={4} dot={{ r: 3, fill: '#bbf7d0', stroke: '#000', strokeWidth: 2 }} activeDot={{ r: 6, stroke: '#000', strokeWidth: 3 }} />
+                      <Line type="monotone" name="Gastos" dataKey="Gastos" stroke="#f43f5e" strokeWidth={4} dot={{ r: 3, fill: '#fecaca', stroke: '#000', strokeWidth: 2 }} activeDot={{ r: 6, stroke: '#000', strokeWidth: 3 }} />
+                    </>
+                  ) : (
+                    selectedCategories.map((cat, i) => (
+                      <Line key={cat} type="monotone" name={cat} dataKey={cat} stroke={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} strokeWidth={3} dot={{ r: 3, fill: '#fff', stroke: CATEGORY_COLORS[i % CATEGORY_COLORS.length], strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                    ))
+                  )}
                 </LineChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          {/* Bar Chart */}
+          {/* Bar Chart - Ranking Top 20 clickable */}
           {barData.length > 0 && (
-            <div style={{ height: `${Math.max(350, barData.length * 45)}px`, width: '100%', display: 'flex', flexDirection: 'column' }}>
-              <h4 style={{ margin: '0 0 1rem 0', fontWeight: 800 }}>Ranking de Gastos</h4>
-              <div style={{ flex: 1, minHeight: 0 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={barData} layout="vertical" margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
-                    <XAxis type="number" hide />
-                    <YAxis 
-                      type="category" 
-                      dataKey="name" 
-                      width={140} 
-                      tick={{ fill: '#000', fontSize: 13, fontWeight: 800 }} 
-                      axisLine={{ stroke: '#000', strokeWidth: 3 }} 
-                      tickLine={false} 
-                    />
-                    <Tooltip 
-                      cursor={{ fill: '#f1f5f9' }}
-                      contentStyle={{ borderRadius: '8px', border: '3px solid #000', boxShadow: '4px 4px 0px #000', fontWeight: 800 }}
-                      formatter={(value: any) => ['$' + Number(value).toLocaleString('es-CL'), 'Monto']}
-                    />
-                    <Bar 
-                      dataKey="amount" 
-                      fill="#f43f5e" 
-                      barSize={32}
-                      radius={0}
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <h4 style={{ margin: '0 0 1rem 0', fontWeight: 800 }}>Ranking de Gastos <span style={{ fontWeight: 600, fontSize: '0.8rem', color: '#64748b' }}>— clic para comparar</span></h4>
+              <div style={{ overflowY: 'auto', maxHeight: '350px', paddingRight: '0.5rem' }}>
+                {barData.map((entry, index) => {
+                  const isSelected = selectedCategories.includes(entry.name);
+                  const color = CATEGORY_COLORS[index % CATEGORY_COLORS.length];
+                  const maxAmt = barData[0]?.amount || 1;
+                  const pct = Math.round((entry.amount / maxAmt) * 100);
+                  return (
+                    <div
+                      key={entry.name}
+                      onClick={() => toggleCategory(entry.name)}
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.6rem', cursor: 'pointer', opacity: selectedCategories.length > 0 && !isSelected ? 0.4 : 1, transition: 'opacity 0.2s' }}
                     >
-                      {barData.map((entry, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
-                          fill={entry.name === 'Sin Clasificar' ? '#fcd34d' : ['#f43f5e', '#a78bfa', '#34d399', '#60a5fa', '#fb923c'][index % 5]} 
-                          stroke="#000"
-                          strokeWidth={3}
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                      <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: color, border: '2px solid #000', flexShrink: 0 }}></div>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 700, width: '130px', flexShrink: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={entry.name}>{entry.name}</div>
+                      <div style={{ flex: 1, height: '20px', backgroundColor: '#f1f5f9', border: '2px solid #000', borderRadius: '4px', overflow: 'hidden', position: 'relative' }}>
+                        <div style={{ height: '100%', width: `${pct}%`, backgroundColor: isSelected ? color : color + 'bb', borderRadius: '2px', transition: 'width 0.3s' }}></div>
+                        {isSelected && <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: '2px solid #000', borderRadius: '4px', boxSizing: 'border-box' }}></div>}
+                      </div>
+                      <div style={{ fontSize: '0.78rem', fontWeight: 800, minWidth: '80px', textAlign: 'right' }}>${entry.amount.toLocaleString('es-CL')}</div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -727,13 +784,65 @@ export default function Dashboard() {
     );
   };
 
+  // BLOCK 7: YEARLY CHART
+  const renderYearlyChart = () => {
+    const year = currentDate.getFullYear();
+    const monthlyData = [];
+    for (let m = 0; m < 12; m++) {
+      const start = new Date(year, m, 1);
+      const end = new Date(year, m + 1, 0, 23, 59, 59);
+      let ing = 0, gas = 0;
+      transactions.forEach(t => {
+        const d = new Date(t.date);
+        if (d >= start && d <= end) {
+          const isInternal = t.tipo_movimiento === 'Movimiento Interno';
+          const isInv = t.tipo_movimiento === 'Ahorro/Inversión';
+          if (t.type === 'ingreso' && !isInternal) ing += Math.abs(t.amount);
+          if (t.type === 'egreso' && !isInternal && !isInv) gas += Math.abs(t.amount);
+        }
+      });
+      monthlyData.push({ mes: new Date(year, m, 1).toLocaleString('es-CL', { month: 'short' }), Ingresos: ing, Gastos: gas, Balance: ing - gas });
+    }
+    const hasData = monthlyData.some(d => d.Ingresos > 0 || d.Gastos > 0);
+    if (!hasData) return null;
+
+    return (
+      <div style={{ ...neoCard, marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+          <h2 style={{ fontSize: '1.6rem', margin: 0, fontFamily: '"Montserrat", sans-serif', fontWeight: 900 }}>Resumen Anual {year}</h2>
+          <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.85rem', fontWeight: 800 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><span style={{ display: 'inline-block', width: '12px', height: '12px', backgroundColor: '#22c55e', border: '2px solid #000', borderRadius: '2px' }}></span>Ingresos</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><span style={{ display: 'inline-block', width: '12px', height: '12px', backgroundColor: '#f43f5e', border: '2px solid #000', borderRadius: '2px' }}></span>Gastos</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><span style={{ display: 'inline-block', width: '12px', height: '3px', backgroundColor: '#6366f1', borderRadius: '2px' }}></span>Balance</span>
+          </div>
+        </div>
+        <div style={{ height: '280px' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={monthlyData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+              <XAxis dataKey="mes" tick={{ fill: '#000', fontSize: 13, fontWeight: 800 }} axisLine={{ stroke: '#000', strokeWidth: 2 }} tickLine={false} />
+              <YAxis hide />
+              <Tooltip
+                contentStyle={{ borderRadius: '8px', border: '3px solid #000', boxShadow: '4px 4px 0px #000', fontWeight: 800 }}
+                formatter={(value: any, name: any) => ['$' + Number(value).toLocaleString('es-CL'), name]}
+              />
+              <Bar dataKey="Ingresos" fill="#22c55e" stroke="#000" strokeWidth={2} radius={[4,4,0,0]} />
+              <Bar dataKey="Gastos" fill="#f43f5e" stroke="#000" strokeWidth={2} radius={[4,4,0,0]} />
+              <Line type="monotone" dataKey="Balance" stroke="#6366f1" strokeWidth={3} dot={{ r: 4, fill: '#fff', stroke: '#6366f1', strokeWidth: 2 }} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div style={{ maxWidth: '1100px', margin: '0 auto', paddingBottom: '4rem', padding: '0 1rem', paddingTop: '2rem' }}>
       {renderHeader()}
       
       {transactions.length === 0 ? (
         <div style={{ backgroundColor: 'white', textAlign: 'center', padding: '6rem 2rem', border: '3px dashed #000', borderRadius: '12px', boxShadow: '6px 6px 0px #000' }}>
-          <h2 style={{ fontSize: '2rem', margin: '0 0 1rem 0', fontFamily: 'serif', fontWeight: 900 }}>Aún no tienes movimientos cargados</h2>
+          <h2 style={{ fontSize: '2rem', margin: '0 0 1rem 0', fontFamily: '"Montserrat", sans-serif', fontWeight: 900 }}>Aún no tienes movimientos cargados</h2>
           <p style={{ marginBottom: '2rem', fontSize: '1.1rem', fontWeight: 600 }}>
             Importa tus cartolas bancarias para comenzar a analizar.
           </p>
@@ -744,10 +853,8 @@ export default function Dashboard() {
           {renderIntelligenceReport()}
           {renderUnclassifiedAlert()}
           {renderMainNumbers()}
-
-
-          
           {renderAnalysisBlock()}
+          {renderYearlyChart()}
         </>
       )}
     </div>
