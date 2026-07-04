@@ -63,7 +63,13 @@ export const BankProvider = ({ children }: { children: React.ReactNode }) => {
 
       setConnectedBanks(banks);
       setMainBankState(main);
-      setActiveBankState(main || banks[0] || null);
+      
+      const savedActive = localStorage.getItem(`finanzas_active_bank_${currentUser.id}`) as Bank | null;
+      if (savedActive && banks.includes(savedActive)) {
+        setActiveBankState(savedActive);
+      } else {
+        setActiveBankState(main || banks[0] || null);
+      }
     } catch (e) {
       console.error('Error loading banks:', e);
     } finally {
@@ -110,12 +116,15 @@ export const BankProvider = ({ children }: { children: React.ReactNode }) => {
 
   const setMainBankAndSave = async (bank: Bank) => {
     setMainBankState(bank);
-    setActiveBankState(bank);
+    setActiveBank(bank);
     await saveBanks(connectedBanks, bank);
   };
 
   const setActiveBank = (bank: Bank) => {
     setActiveBankState(bank);
+    if (user) {
+      localStorage.setItem(`finanzas_active_bank_${user.id}`, bank);
+    }
   };
 
   return (
