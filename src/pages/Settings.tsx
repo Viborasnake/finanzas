@@ -242,7 +242,7 @@ export default function Settings() {
               toast.loading('Escaneando transacciones...', { id: 'rescan' });
               try {
                 // 1. Obtener pendientes
-                const { data: txs, error: fetchErr } = await supabase.from('transactions').select('id, original_description, description').eq('user_id', user.id).is('tipo_movimiento', null);
+                const { data: txs, error: fetchErr } = await supabase.from('transactions').select('id, raw_data, description').eq('user_id', user.id).is('tipo_movimiento', null);
                 if (fetchErr) throw fetchErr;
                 if (!txs || txs.length === 0) {
                   toast.success('No hay transacciones pendientes.', { id: 'rescan' });
@@ -251,7 +251,9 @@ export default function Settings() {
 
                 let updated = 0;
                 for (const tx of txs) {
-                  const desc = (tx.original_description || tx.description || '').toLowerCase();
+                  const rawDescKey = tx.raw_data ? Object.keys(tx.raw_data).find(k => k.toLowerCase().includes('descripc')) || '' : '';
+                  const rawDesc = tx.raw_data && rawDescKey ? tx.raw_data[rawDescKey] : '';
+                  const desc = (rawDesc || tx.description || '').toLowerCase();
                   let tipo = null, principal = null, secundaria = null;
                   
                   const rutEx = extractAndNormalizeRUT(desc);
@@ -346,7 +348,7 @@ export default function Settings() {
         </div>
 
         {/* Classification Rules */}
-        <div className="card">
+        <div className="card" style={{ position: 'relative', zIndex: 10 }}>
           <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Reglas de Auto-Clasificación (Mapeo)</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
             Define qué texto debe estar en la glosa (descripción) de una transacción para asignarle automáticamente una categoría. Las reglas se aplican al importar.
