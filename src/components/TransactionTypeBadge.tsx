@@ -5,7 +5,10 @@ export interface TransactionTypeBadgeProps {
 }
 
 export function TransactionTypeBadge({ type }: TransactionTypeBadgeProps) {
-  if (type === 'Ingreso') {
+  // Normalize legacy values
+  const normalizedType = type === 'Gasto Real' ? 'Egreso' : type;
+
+  if (normalizedType === 'Ingreso') {
     return (
       <div style={{
         display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
@@ -20,7 +23,7 @@ export function TransactionTypeBadge({ type }: TransactionTypeBadgeProps) {
     );
   }
 
-  if (type === 'Egreso') {
+  if (normalizedType === 'Egreso') {
     return (
       <div style={{
         display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
@@ -35,7 +38,7 @@ export function TransactionTypeBadge({ type }: TransactionTypeBadgeProps) {
     );
   }
   
-  if (type === 'Movimiento Interno') {
+  if (normalizedType === 'Movimiento Interno') {
     return (
       <div style={{
         display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
@@ -50,7 +53,7 @@ export function TransactionTypeBadge({ type }: TransactionTypeBadgeProps) {
     );
   }
   
-  if (type === 'Ahorro/Inversión') {
+  if (normalizedType === 'Ahorro/Inversión') {
     return (
       <div style={{
         display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
@@ -73,7 +76,7 @@ export function TransactionTypeBadge({ type }: TransactionTypeBadgeProps) {
       fontWeight: 800, fontSize: '0.75rem', border: '2px solid #9ca3af',
       boxShadow: '2px 2px 0px #9ca3af'
     }}>
-      <span>{type ? type.toUpperCase() : 'DESCONOCIDO'}</span>
+      <span>{normalizedType ? normalizedType.toUpperCase() : 'DESCONOCIDO'}</span>
     </div>
   );
 }

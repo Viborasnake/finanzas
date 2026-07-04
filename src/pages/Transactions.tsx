@@ -653,7 +653,7 @@ export default function Transactions() {
             <select className="input" style={{ width: 'auto' }} value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
               <option value="all">Todas las categorías</option>
               <option disabled>──────────</option>
-              <option value="Gasto Real">Gasto Real</option>
+              <option value="Egreso">Egreso</option>
               <option value="Ingreso">Ingreso</option>
               <option value="Movimiento Interno">Mov. Interno</option>
               <option value="Ahorro/Inversión">Ahorro/Inversión</option>
