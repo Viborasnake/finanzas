@@ -22,7 +22,6 @@ export default function Dashboard() {
   const [viewMode, setViewMode] = useState<ViewMode>('month');
 
   const [categoryLevel, setCategoryLevel] = useState<CategoryLevel>('principal');
-  const [activeFilters, setActiveFilters] = useState<string[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -75,8 +74,6 @@ export default function Dashboard() {
     else if (viewMode === 'quarter') d.setMonth(d.getMonth() + (dir * 3));
     else d.setFullYear(d.getFullYear() + dir);
     setCurrentDate(d);
-    // Clear filters on period change
-    setActiveFilters([]);
   };
 
   const getPeriodLabel = (date: Date, mode: ViewMode) => {
@@ -96,11 +93,7 @@ export default function Dashboard() {
     return date.getFullYear().toString();
   };
 
-  const toggleFilter = (cat: string) => {
-    setActiveFilters(prev => 
-      prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
-    );
-  };
+
 
   // --- Computations ---
   const { currentRange, prevRange } = useMemo(() => {
@@ -111,7 +104,7 @@ export default function Dashboard() {
   }, [currentDate, viewMode]);
 
   const stats = useMemo(() => {
-    const calcForRange = (start: Date, end: Date, filters: string[]) => {
+    const calcForRange = (start: Date, end: Date) => {
       let ingresos = 0;
       let aportePropio = 0;
       let sueldo = 0;
@@ -120,6 +113,7 @@ export default function Dashboard() {
       
       let gastos = 0; // Filtered gastos
       let gastosTotales = 0; // Absolute all gastos (for balance)
+      let movimientoInternoGasto = 0;
       
       const catsPrincipal: Record<string, number> = {};
       const catsSecundaria: Record<string, number> = {};
@@ -164,8 +158,10 @@ export default function Dashboard() {
           }
         } else {
           // Gasto
-          if (!isInternal && !isInvestment) {
-            const absAmt = Math.abs(t.amount);
+          const absAmt = Math.abs(t.amount);
+          if (isInternal) {
+            movimientoInternoGasto += absAmt;
+          } else if (!isInvestment) {
             gastosTotales += absAmt;
             
             const catP = t.categoria_principal || 'Sin Clasificar';
@@ -179,12 +175,10 @@ export default function Dashboard() {
             recurringExpenses[desc].total += absAmt;
             recurringExpenses[desc].count += 1;
 
-            // Applying Filters
-            if (filters.length === 0 || filters.includes(catP)) {
-              gastos += absAmt;
-              catsPrincipal[catP] = (catsPrincipal[catP] || 0) + absAmt;
-              catsSecundaria[catS] = (catsSecundaria[catS] || 0) + absAmt;
-            }
+            // Accumulate All Gastos
+            gastos += absAmt;
+            catsPrincipal[catP] = (catsPrincipal[catP] || 0) + absAmt;
+            catsSecundaria[catS] = (catsSecundaria[catS] || 0) + absAmt;
 
             if (isUnclassified) unclassifiedCount++;
           }
@@ -230,6 +224,7 @@ export default function Dashboard() {
         ingresosOtros,
         gastos, // Filtered
         gastosTotales, // Unfiltered
+        movimientoInternoGasto,
         topCatsPrincipal,
         topCatsSecundaria,
         unclassifiedCount,
@@ -246,10 +241,10 @@ export default function Dashboard() {
     };
 
     return { 
-      current: calcForRange(currentRange.start, currentRange.end, activeFilters), 
-      prev: calcForRange(prevRange.start, prevRange.end, activeFilters) 
+      current: calcForRange(currentRange.start, currentRange.end), 
+      prev: calcForRange(prevRange.start, prevRange.end) 
     };
-  }, [transactions, currentRange, prevRange, activeFilters]);
+  }, [transactions, currentRange, prevRange]);
 
   // Generate 6 periods history for sparklines
   const historyData = useMemo(() => {
@@ -266,10 +261,7 @@ export default function Dashboard() {
           if (t.type === 'ingreso' && !isInternal) ing += Math.abs(t.amount);
           
           if (t.type === 'egreso' && !isInternal && !isInvestment) {
-             const catP = t.categoria_principal || 'Sin Clasificar';
-             if (activeFilters.length === 0 || activeFilters.includes(catP)) {
-                gas += Math.abs(t.amount);
-             }
+             gas += Math.abs(t.amount);
           }
         }
       });
@@ -280,7 +272,7 @@ export default function Dashboard() {
       });
     }
     return data;
-  }, [transactions, currentDate, viewMode, activeFilters]);
+  }, [transactions, currentDate, viewMode]);
 
   // Generate Timeline Data based on current range for the Line Chart
   const timelineData = useMemo(() => {
@@ -321,17 +313,14 @@ export default function Dashboard() {
             data[key].Ingresos += Math.abs(t.amount);
           }
           if (t.type === 'egreso' && !isInternal && !isInvestment) {
-             const catP = t.categoria_principal || 'Sin Clasificar';
-             if (activeFilters.length === 0 || activeFilters.includes(catP)) {
-                data[key].Gastos += Math.abs(t.amount);
-             }
+             data[key].Gastos += Math.abs(t.amount);
           }
         }
       }
     });
 
     return Object.values(data);
-  }, [transactions, currentRange, viewMode, activeFilters]);
+  }, [transactions, currentRange, viewMode]);
 
   // --- Styles ---
   const neoCard = {
@@ -353,17 +342,7 @@ export default function Dashboard() {
     transition: 'all 0.1s'
   };
 
-  const neoPill = {
-    padding: '0.4rem 1rem',
-    border: '2px solid #000',
-    borderRadius: '2rem',
-    fontWeight: 800,
-    fontSize: '0.85rem',
-    cursor: 'pointer',
-    boxShadow: '2px 2px 0px #000',
-    transition: 'all 0.1s',
-    whiteSpace: 'nowrap' as any
-  };
+
 
   // --- Components ---
 
@@ -397,7 +376,6 @@ export default function Dashboard() {
 
   // BLOCK 1: PERIOD SELECTOR & FILTERS
   const renderHeader = () => {
-    const availableCats = stats.current.availableCats;
 
     return (
       <div style={{ marginBottom: '2rem' }}>
@@ -427,96 +405,61 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Category Filters Bar */}
-        {availableCats.length > 0 && (
-          <div style={{ backgroundColor: '#fff', border: '3px solid #000', borderRadius: '12px', padding: '1rem', boxShadow: '4px 4px 0px #000', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ fontWeight: 900, fontSize: '0.9rem', textTransform: 'uppercase', color: '#000' }}>
-              Analizar Estas Categorías:
-            </div>
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-              {availableCats.map(cat => {
-                const isActive = activeFilters.includes(cat);
-                return (
-                  <button
-                    key={cat}
-                    onClick={() => toggleFilter(cat)}
-                    style={{
-                      ...neoPill,
-                      backgroundColor: isActive ? '#93c5fd' : '#f1f5f9',
-                      color: '#000'
-                    }}
-                  >
-                    {cat}
-                  </button>
-                );
-              })}
-              {activeFilters.length > 0 && (
-                <button
-                  onClick={() => setActiveFilters([])}
-                  style={{
-                    ...neoPill,
-                    backgroundColor: '#fecaca',
-                    marginLeft: 'auto'
-                  }}
-                >
-                  Limpiar Filtros
-                </button>
-              )}
-            </div>
-          </div>
-        )}
       </div>
     );
   };
 
   // BLOCK 2: INTELLIGENCE REPORT
   const renderIntelligenceReport = () => {
-    const { balance, maxIncomeDesc, maxIncomeAmount, maxRecurringDesc, maxRecurringTotal, maxRecurringCount } = stats.current.insights;
+    const { balance, maxIncomeDesc, maxIncomeAmount, maxRecurringDesc, maxRecurringTotal } = stats.current.insights;
     const ingresos = stats.current.ingresos;
     
     const isDeficit = balance < 0;
     const incomePercent = ingresos > 0 ? Math.round((maxIncomeAmount / ingresos) * 100) : 0;
 
     return (
-      <div style={{ backgroundColor: '#fff', border: '3px solid #000', borderRadius: '12px', padding: '2rem', boxShadow: '6px 6px 0px #000', marginBottom: '2.5rem' }}>
-        <h2 style={{ fontSize: '1.8rem', margin: '0 0 2rem 0', fontFamily: 'serif', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Sparkles fill="#fde047" color="#000" size={28} strokeWidth={2} />
+      <div style={{ backgroundColor: '#fff', border: '3px solid #000', borderRadius: '12px', padding: '1.5rem', boxShadow: '4px 4px 0px #000', marginBottom: '2.5rem' }}>
+        <h2 style={{ fontSize: '1.2rem', margin: '0 0 1rem 0', fontFamily: 'serif', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Sparkles fill="#fde047" color="#000" size={20} strokeWidth={2} />
           Reporte de Inteligencia
         </h2>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
           {/* Balance Insight */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-            <div style={{ backgroundColor: isDeficit ? '#fecaca' : '#bbf7d0', padding: '1rem', borderRadius: '50%', border: '3px solid #000', flexShrink: 0 }}>
-              <Activity size={24} strokeWidth={3} />
+          <div style={{ padding: '1rem', backgroundColor: isDeficit ? '#fef2f2' : '#f0fdf4', border: '2px solid #000', borderRadius: '8px', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+            <Activity size={20} style={{ color: isDeficit ? '#ef4444' : '#22c55e', marginTop: '0.2rem', flexShrink: 0 }} />
+            <div>
+              <div style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.25rem' }}>Balance Actual</div>
+              <div style={{ fontSize: '1rem', fontWeight: 600 }}>
+                {isDeficit ? 'Déficit de ' : 'Superávit de '}
+                <span style={{ fontWeight: 900 }}>${Math.abs(balance).toLocaleString('es-CL')}</span>
+              </div>
             </div>
-            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, lineHeight: 1.5 }}>
-              Tu balance actual indica un <span style={{ backgroundColor: isDeficit ? '#fecaca' : '#bbf7d0', padding: '0.2rem 0.5rem', border: '2px solid #000', borderRadius: '4px', fontWeight: 900, whiteSpace: 'nowrap' }}>{isDeficit ? 'DÉFICIT' : 'SUPERÁVIT'}</span> de <strong>${Math.abs(balance).toLocaleString('es-CL')}</strong>. 
-              {isDeficit ? ' Presta atención, tus gastos están superando a tus ingresos en este periodo.' : ' ¡Excelente trabajo manteniendo tus gastos por debajo de tus ingresos!'}
-            </p>
           </div>
 
           {/* Income Motor Insight */}
           {maxIncomeAmount > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-              <div style={{ backgroundColor: '#bfdbfe', padding: '1rem', borderRadius: '50%', border: '3px solid #000', flexShrink: 0 }}>
-                <Wallet size={24} strokeWidth={3} />
+            <div style={{ padding: '1rem', backgroundColor: '#eff6ff', border: '2px solid #000', borderRadius: '8px', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+              <Wallet size={20} style={{ color: '#3b82f6', marginTop: '0.2rem', flexShrink: 0 }} />
+              <div>
+                <div style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.25rem' }}>Motor de Ingresos</div>
+                <div style={{ fontSize: '1rem', fontWeight: 600 }}>
+                  <span style={{ fontWeight: 900 }}>{incomePercent}%</span> proviene de "{maxIncomeDesc}"
+                </div>
               </div>
-              <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, lineHeight: 1.5 }}>
-                Tu motor principal de ingresos es <strong>"{maxIncomeDesc}"</strong>, el cual representa el <span style={{ backgroundColor: '#bfdbfe', padding: '0.2rem 0.5rem', border: '2px solid #000', borderRadius: '4px', fontWeight: 900 }}>{incomePercent}%</span> de todas tus entradas de dinero (ingreso real).
-              </p>
             </div>
           )}
 
           {/* Expense Fuga Insight */}
           {maxRecurringTotal > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-              <div style={{ backgroundColor: '#fef08a', padding: '1rem', borderRadius: '50%', border: '3px solid #000', flexShrink: 0 }}>
-                <Search size={24} strokeWidth={3} />
+            <div style={{ padding: '1rem', backgroundColor: '#fefce8', border: '2px solid #000', borderRadius: '8px', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+              <Search size={20} style={{ color: '#eab308', marginTop: '0.2rem', flexShrink: 0 }} />
+              <div>
+                <div style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.25rem' }}>Flujo de Capital Detectado</div>
+                <div style={{ fontSize: '1rem', fontWeight: 600 }}>
+                  <span style={{ fontWeight: 900 }}>${maxRecurringTotal.toLocaleString('es-CL')}</span> acumulado en "{maxRecurringDesc}"
+                </div>
               </div>
-              <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, lineHeight: 1.5 }}>
-                Hemos detectado un flujo de capital importante en <strong>"{maxRecurringDesc}"</strong>, con un acumulado de <span style={{ backgroundColor: '#fef08a', padding: '0.2rem 0.5rem', border: '2px solid #000', borderRadius: '4px', fontWeight: 900 }}>${maxRecurringTotal.toLocaleString('es-CL')}</span> repartido en {maxRecurringCount} {maxRecurringCount === 1 ? 'pago' : 'pagos'}.
-              </p>
             </div>
           )}
         </div>
@@ -555,7 +498,7 @@ export default function Dashboard() {
               <div style={{ backgroundColor: '#fecaca', padding: '0.5rem', borderRadius: '50%', border: '2px solid #000' }}>
                 <CreditCard size={24} strokeWidth={2.5} />
               </div>
-              <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: 'serif' }}>Gastos {activeFilters.length > 0 ? '(Filtrados)' : ''}</h3>
+              <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: 'serif' }}>Gastos</h3>
             </div>
             {renderTrendBadge(c.gastos, p.gastos, true)}
           </div>
@@ -574,7 +517,7 @@ export default function Dashboard() {
     const totalEntradas = c.ingresos + c.aportePropio;
     if (totalEntradas === 0) return null;
 
-    const data = [
+    const data: { name: string; value: number; isGray?: boolean }[] = [
       { name: 'Sueldo', value: c.sueldo },
       { name: 'Honorarios', value: c.honorarios },
       { name: 'Otros Ingresos', value: c.ingresosOtros },
@@ -582,7 +525,7 @@ export default function Dashboard() {
     ];
 
     return (
-      <div style={neoCard}>
+      <div style={{ ...neoCard, marginBottom: 0, height: '100%' }}>
         <h2 style={{ fontSize: '1.6rem', margin: '0 0 1.5rem 0', fontFamily: 'serif', fontWeight: 900 }}>
           Fuentes de Entrada
         </h2>
@@ -719,6 +662,65 @@ export default function Dashboard() {
     );
   };
 
+  // BLOCK 5: FUENTES DE SALIDA (TABLE)
+  const renderExpenseSources = () => {
+    const c = stats.current;
+    
+    // Calculate Top 3
+    const sorted = [...c.topCatsPrincipal].filter(x => x.name !== 'Sin Clasificar');
+    const top3 = sorted.slice(0, 3);
+    const others = sorted.slice(3).reduce((acc, curr) => acc + curr.amount, 0);
+    
+    const sinClasificarAmount = c.topCatsPrincipal.find(x => x.name === 'Sin Clasificar')?.amount || 0;
+    const totalOtros = others + sinClasificarAmount;
+
+    const totalSalidas = top3.reduce((a, b) => a + b.amount, 0) + totalOtros + c.movimientoInternoGasto;
+    if (totalSalidas === 0) return null;
+
+    const data: { name: string; value: number; isGray?: boolean }[] = [
+      ...top3.map(cat => ({ name: cat.name, value: cat.amount })),
+      ...(totalOtros > 0 ? [{ name: 'Otros Gastos', value: totalOtros }] : []),
+      { name: 'Movimiento Interno', value: c.movimientoInternoGasto, isGray: true }
+    ];
+
+    return (
+      <div style={{ ...neoCard, marginBottom: 0 }}>
+        <h2 style={{ fontSize: '1.6rem', margin: '0 0 1.5rem 0', fontFamily: 'serif', fontWeight: 900 }}>
+          Fuentes de Salida
+        </h2>
+        
+        <table style={{ width: '100%', borderCollapse: 'collapse', border: '3px solid #000', borderRadius: '8px', overflow: 'hidden', display: 'table' }}>
+          <thead>
+            <tr style={{ backgroundColor: '#f1f5f9', borderBottom: '3px solid #000' }}>
+              <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 900, borderRight: '2px solid #000' }}>Concepto</th>
+              <th style={{ padding: '1rem', textAlign: 'right', fontWeight: 900 }}>Monto</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((row, i) => (
+              <tr key={row.name} style={{ borderBottom: i === data.length - 1 ? 'none' : '2px solid #000', backgroundColor: row.isGray ? '#f8fafc' : '#fff' }}>
+                <td style={{ padding: '1rem', fontWeight: 700, borderRight: '2px solid #000', color: row.isGray ? '#64748b' : '#000' }}>
+                  {row.name}
+                </td>
+                <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 800, fontSize: '1.1rem', color: row.isGray ? '#64748b' : '#000' }}>
+                  ${row.value.toLocaleString('es-CL')}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr style={{ backgroundColor: '#fecaca', borderTop: '3px solid #000' }}>
+              <td style={{ padding: '1rem', fontWeight: 900, borderRight: '2px solid #000' }}>Total Salidas</td>
+              <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 900, fontSize: '1.2rem' }}>
+                ${totalSalidas.toLocaleString('es-CL')}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    );
+  };
+
   // BLOCK 6: UNCLASSIFIED ALERT
   const renderUnclassifiedAlert = () => {
     const count = stats.current.unclassifiedCount;
@@ -762,7 +764,11 @@ export default function Dashboard() {
           {renderUnclassifiedAlert()}
           {renderMainNumbers()}
 
-          {renderIncomeSources()}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem', marginBottom: '2rem' }}>
+            {renderIncomeSources()}
+            {renderExpenseSources()}
+          </div>
+          
           {renderAnalysisBlock()}
         </>
       )}
