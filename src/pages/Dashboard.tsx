@@ -394,7 +394,10 @@ export default function Dashboard() {
   // Generate Timeline Data — bucket by day or month depending on range span
   // If categories are selected, generates dynamic per-category lines instead of Ingresos/Gastos
   const timelineData = useMemo(() => {
-    const { start, end } = dateRange;
+    const { start, end: rawEnd } = dateRange;
+    const today = new Date();
+    const end = rawEnd > today ? today : rawEnd;
+
     const daysSpan = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     const byMonth = daysSpan > 60;
 
@@ -971,7 +974,10 @@ export default function Dashboard() {
     const year = dateRange.start.getFullYear();
     const monthlyData: { mes: string; mesIdx: number; Ingresos: number; AportePropio: number; Gastos: number; Balance: number; tasaAhorro: number }[] = [];
 
-    for (let m = 0; m < 12; m++) {
+    const today = new Date();
+    const maxMonth = year === today.getFullYear() ? today.getMonth() : 11;
+
+    for (let m = 0; m <= maxMonth; m++) {
       const start = new Date(year, m, 1);
       const end = new Date(year, m + 1, 0, 23, 59, 59);
       let ing = 0, aporte = 0, gas = 0;
