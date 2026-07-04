@@ -113,6 +113,7 @@ export default function Transactions() {
   const [filterYear, setFilterYear] = useState('all');
   const [filterMonth, setFilterMonth] = useState('all');
   const [viewMode, setViewMode] = useState<'individual' | 'bulk'>('individual');
+  const [bulkSearchTerm, setBulkSearchTerm] = useState('');
 
   const { user } = useAuth();
 
@@ -173,25 +174,27 @@ export default function Transactions() {
     
     // Sin clasificar son las que no tienen tipo_movimiento
     const uncategorized = transactions.filter(t => !t.tipo_movimiento);
-    const groups: { [desc: string]: { count: number, total: number, ids: string[] } } = {};
+    const groups: { [key: string]: { name: string, type: string, count: number, total: number, ids: string[] } } = {};
     
     uncategorized.forEach(t => {
       const desc = (t.original_description || t.description || '').trim();
       if (!desc) return;
+      if (bulkSearchTerm && !desc.toLowerCase().includes(bulkSearchTerm.toLowerCase())) return;
 
-      if (!groups[desc]) {
-        groups[desc] = { count: 0, total: 0, ids: [] };
+      const key = `${desc}___${t.type}`;
+
+      if (!groups[key]) {
+        groups[key] = { name: desc, type: t.type, count: 0, total: 0, ids: [] };
       }
-      groups[desc].count += 1;
-      groups[desc].total += Math.abs(t.amount); 
-      groups[desc].ids.push(t.id);
+      groups[key].count += 1;
+      groups[key].total += Math.abs(t.amount); 
+      groups[key].ids.push(t.id);
     });
 
-    return Object.entries(groups)
-      .map(([name, info]) => ({ name, ...info }))
+    return Object.values(groups)
       .filter(g => g.total > 0)
       .sort((a, b) => b.total - a.total);
-  }, [transactions, viewMode]);
+  }, [transactions, viewMode, bulkSearchTerm]);
 
   const handleCategorize = async (id: string, currentDesc: string, tipo: string | null, principal: string | null, secundaria: string | null) => {
     // Update locally
@@ -368,6 +371,18 @@ export default function Transactions() {
             Agrupamos las transacciones <strong>Sin Clasificar</strong> que tienen la misma descripción original para que las categorices todas con un solo clic.
           </p>
 
+          <div style={{ position: 'relative', marginBottom: '1.5rem', maxWidth: '400px' }}>
+            <Search size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+            <input 
+              type="text" 
+              className="input" 
+              placeholder="Filtrar por descripción..." 
+              value={bulkSearchTerm}
+              onChange={(e) => setBulkSearchTerm(e.target.value)}
+              style={{ width: '100%', paddingLeft: '3rem', backgroundColor: 'white' }}
+            />
+          </div>
+
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', backgroundColor: 'white', border: '2px solid black', borderRadius: 'var(--radius-sm)' }}>
             <thead style={{ backgroundColor: 'black', color: 'white' }}>
               <tr>
@@ -379,11 +394,25 @@ export default function Transactions() {
             </thead>
             <tbody>
               {bulkGroups.map((group) => (
-                <tr key={group.name} style={{ borderBottom: '2px solid black' }}>
-                  <td style={{ padding: '1rem', fontWeight: 700 }}>{group.name}</td>
+                <tr key={`${group.name}-${group.type}`} style={{ borderBottom: '2px solid black' }}>
+                  <td style={{ padding: '1rem', fontWeight: 700 }}>
+                    {group.name}
+                    <span style={{ 
+                      display: 'inline-block', 
+                      marginLeft: '0.5rem', 
+                      padding: '0.1rem 0.5rem', 
+                      borderRadius: '1rem', 
+                      fontSize: '0.75rem', 
+                      fontWeight: 800,
+                      backgroundColor: group.type === 'ingreso' ? '#dcfce7' : '#fee2e2',
+                      color: group.type === 'ingreso' ? '#166534' : '#991b1b'
+                    }}>
+                      {group.type === 'ingreso' ? 'Ingreso' : 'Egreso'}
+                    </span>
+                  </td>
                   <td style={{ padding: '1rem', fontWeight: 800, fontSize: '1.25rem' }}>{group.count}</td>
-                  <td style={{ padding: '1rem', fontWeight: 800, color: 'black' }}>
-                    ${group.total.toLocaleString('es-CL')}
+                  <td style={{ padding: '1rem', fontWeight: 800, color: group.type === 'ingreso' ? 'var(--success)' : 'var(--danger)' }}>
+                    {group.type === 'ingreso' ? '+' : '-'}${group.total.toLocaleString('es-CL')}
                   </td>
                   <td style={{ padding: '1rem' }}>
                     <CascadingCategorySelector 
