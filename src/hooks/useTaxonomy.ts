@@ -31,7 +31,7 @@ export const BASE_TAXONOMY: Record<string, Record<string, string[]>> = {
     'Impuestos': ['IVA', 'Renta / F22', 'PPM', 'Retención Boletas', 'Otros'],
     'Intereses y Comisiones': ['Mantención Cuenta', 'Comisiones', 'Seguro Desgravamen/Fraude', 'Intereses'],
     'Pago Tarjeta Crédito': ['Tarjeta Credito'],
-    'Servicio de Deuda': ['Interés Línea de Crédito', 'Abono Línea de Crédito', 'Crédito Consumo'],
+    'Servicio de Deuda': ['Interés Línea de Crédito', 'Abono Línea de Crédito', 'Crédito Consumo', 'Línea de Crédito (Crédito)'],
     'Otros': ['Egresos Varios', 'Caja Chica', 'Diferencia de Cambio'],
     'Sin Especificar': ['Sin Especificar']
   },
