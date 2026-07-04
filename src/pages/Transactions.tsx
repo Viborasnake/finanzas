@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Search, Edit2 } from 'lucide-react';
@@ -101,9 +102,18 @@ export function CascadingCategorySelector({ initialPrincipal, initialSecundaria,
 }
 
 export default function Transactions() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
+  
+  useEffect(() => {
+    const q = searchParams.get('search');
+    if (q !== null) {
+      setSearchTerm(q);
+    }
+  }, [searchParams]);
+
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   
@@ -508,7 +518,10 @@ export default function Transactions() {
                 className="input" 
                 placeholder="Buscar por descripción..." 
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setSearchParams(e.target.value ? { search: e.target.value } : {});
+                }}
                 style={{ width: '100%', paddingLeft: '3rem' }}
               />
             </div>

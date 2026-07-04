@@ -4,8 +4,9 @@ import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   ChevronRight, TrendingUp, TrendingDown, 
-  Wallet, CreditCard, AlertTriangle, Sparkles, Activity, Search, X
+  Wallet, CreditCard, AlertTriangle, Sparkles, Activity, Search, X, Edit2
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { 
   AreaChart, Area,
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -48,6 +49,7 @@ function toInputDate(d: Date) {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [transactions, setTransactions] = useState<any[]>([]);
   const { user } = useAuth();
 
@@ -322,7 +324,7 @@ export default function Dashboard() {
         unclassifiedCount,
         availableCats: Array.from(availableCats).sort(),
         insights: {
-          balance: (ingresos + aportePropio) - gastosTotales,
+          balance: (ingresos + aportePropio) - (gastosTotales + movimientoInternoGasto),
           maxIncomeDesc,
           maxIncomeAmount,
           maxRecurringDesc,
@@ -942,7 +944,7 @@ export default function Dashboard() {
             if (isInternal) aporte += Math.abs(t.amount);
             else ing += Math.abs(t.amount);
           }
-          if (t.type === 'egreso' && !isInternal && !isInv) gas += Math.abs(t.amount);
+          if (t.type === 'egreso' && !isInv) gas += Math.abs(t.amount);
         }
       });
       const totalIng = ing + aporte;
@@ -1149,7 +1151,20 @@ export default function Dashboard() {
                         <td style={{ padding: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap', fontSize: '0.9rem' }}>{t.date}</td>
                         <td style={{ padding: '0.75rem', fontSize: '0.9rem', fontWeight: 500 }}>{t.description || t.original_description || 'Sin descripción'}</td>
                         <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: t.type === 'ingreso' ? '#16a34a' : '#000' }}>
-                          ${Math.abs(t.amount).toLocaleString('es-CL')}
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
+                            ${Math.abs(t.amount).toLocaleString('es-CL')}
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDetailsModal(null);
+                                navigate('/transactions?search=' + encodeURIComponent(t.description || t.original_description || ''));
+                              }}
+                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f1f5f9', padding: '4px', borderRadius: '4px', border: '1px solid #cbd5e1', color: '#64748b', cursor: 'pointer' }}
+                              title="Corregir categoría"
+                            >
+                              <Edit2 size={14} strokeWidth={3} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
