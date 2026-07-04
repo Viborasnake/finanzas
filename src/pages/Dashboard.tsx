@@ -55,6 +55,7 @@ function toInputDate(d: Date) {
 export default function Dashboard() {
   const navigate = useNavigate();
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { activeBank } = useBanks();
 
@@ -132,18 +133,20 @@ export default function Dashboard() {
 
   const fetchTransactions = async () => {
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
         .eq('user_id', user!.id)
         .eq('bank', activeBank)
-        .neq('amount', 0)
         .order('date', { ascending: true });
 
       if (error) throw error;
       setTransactions(data || []);
     } catch (error) {
       console.error('Error fetching transactions:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -195,6 +198,25 @@ export default function Dashboard() {
       transactions: filtered
     });
   };
+
+
+  if (loading) {
+    return (
+      <div style={{ padding: '2rem' }}>
+        <h1 style={{ fontSize: '2.5rem', marginBottom: '1.5rem', fontWeight: 900 }}>Dashboard</h1>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+          <div className="skeleton" style={{ height: '150px' }}></div>
+          <div className="skeleton" style={{ height: '150px' }}></div>
+        </div>
+        <div className="skeleton" style={{ height: '400px', marginBottom: '2.5rem' }}></div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+          <div className="skeleton" style={{ height: '100px' }}></div>
+          <div className="skeleton" style={{ height: '100px' }}></div>
+          <div className="skeleton" style={{ height: '100px' }}></div>
+        </div>
+      </div>
+    );
+  }
 
   // --- Computations ---
   // Current range comes from dateRange state.

@@ -8,6 +8,7 @@ import type { ClassificationRule } from '../utils/classificationRules';
 import { applyRules } from '../utils/classificationRules';
 import { CascadingCategorySelector } from './Transactions';
 import { useSettings } from '../contexts/SettingsContext';
+import { useBanks, AVAILABLE_BANKS } from '../contexts/BankContext';
 import Tree from 'react-d3-tree';
 import { useTaxonomy } from '../hooks/useTaxonomy';
 
@@ -128,14 +129,13 @@ export default function Settings() {
   // Settings
   const [myRut, setMyRut] = useState('');
   const [isSavingRut, setIsSavingRut] = useState(false);
-
-  // Contacts
   const [contacts, setContacts] = useState<any[]>([]);
   const [newContactName, setNewContactName] = useState('');
   const [newContactRut, setNewContactRut] = useState('');
-
-  // Custom Categories & Rules
+  
   const { customCategories, saveCustomCategories, classificationRules, saveClassificationRules } = useSettings();
+  const { connectedBanks, mainBank, setMainBankAndSave, addBank, removeBank } = useBanks();
+  
   const [newRuleKeyword, setNewRuleKeyword] = useState('');
   const [newRuleCategory, setNewRuleCategory] = useState<{ tipo: string | null, principal: string | null, secundaria: string | null }>({ tipo: null, principal: null, secundaria: null });
   const [newCatTipo, setNewCatTipo] = useState('Egreso');
@@ -567,7 +567,74 @@ export default function Settings() {
           </div>
         </div>
 
+        {/* Bank Management */}
+        <div className="card" style={{ position: 'relative', zIndex: 9 }}>
+          <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Mis Bancos</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
+            Administra los bancos que tienes conectados y define cuál es el banco principal para tus reportes globales.
+          </p>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '2rem' }}>
+            {connectedBanks.map(bankId => {
+              const bank = AVAILABLE_BANKS.find(b => b.id === bankId);
+              if (!bank) return null;
+              const isMain = bank.id === mainBank;
+              return (
+                <div key={bank.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', border: '2px solid black', borderRadius: '8px', backgroundColor: 'var(--bg-color)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <span style={{ fontSize: '1.5rem' }}>{bank.emoji}</span>
+                    <span style={{ fontWeight: 800, fontSize: '1.1rem' }}>{bank.label}</span>
+                    {isMain && (
+                      <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', backgroundColor: '#fef08a', color: '#854d0e', borderRadius: '999px', fontWeight: 900, border: '2px solid #000' }}>
+                        BANCO PRINCIPAL
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    {!isMain && (
+                      <button 
+                        className="btn btn-outline" 
+                        onClick={() => setMainBankAndSave(bank.id)}
+                        style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}
+                      >
+                        Establecer Principal
+                      </button>
+                    )}
+                    {connectedBanks.length > 1 && (
+                      <button 
+                        className="btn" 
+                        onClick={() => removeBank(bank.id)}
+                        style={{ padding: '0.5rem', backgroundColor: '#fee2e2', color: 'var(--danger)', border: '2px solid var(--danger)' }}
+                        title="Desconectar banco"
+                      >
+                        <X size={18} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
 
+          <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', fontWeight: 700 }}>Agregar Nuevo Banco</h3>
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            {AVAILABLE_BANKS.filter(b => !connectedBanks.includes(b.id)).map(bank => (
+              <button
+                key={bank.id}
+                onClick={() => addBank(bank.id)}
+                className="btn btn-outline"
+                style={{ padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '1', minWidth: '150px' }}
+              >
+                <Plus size={16} />
+                {bank.emoji} {bank.label}
+              </button>
+            ))}
+            {AVAILABLE_BANKS.filter(b => !connectedBanks.includes(b.id)).length === 0 && (
+              <p style={{ color: 'var(--text-secondary)' }}>Ya tienes todos los bancos disponibles conectados.</p>
+            )}
+          </div>
+        </div>
 
         {/* Danger Zone */}
         <div className="card" style={{ position: 'relative', zIndex: 10, borderColor: 'var(--danger)' }}>

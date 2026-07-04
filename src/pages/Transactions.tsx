@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { TransactionTypeBadge } from '../components/TransactionTypeBadge';
 import { useBanks } from '../contexts/BankContext';
 import { Search, Edit2 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -83,8 +84,17 @@ export function CascadingCategorySelector({ initialPrincipal, initialSecundaria,
   };
 
   const isComplete = ALL_OPTIONS.some(o => o.label === inputValue);
+  const selectedOption = ALL_OPTIONS.find(o => o.label === inputValue);
   
   const filteredOptions = ALL_OPTIONS.filter(o => o.label.toLowerCase().includes(inputValue.toLowerCase()));
+
+  const getBgColor = (tipo: string | undefined | null) => {
+    if (tipo === 'Ingreso') return '#dcfce7'; // pastel green
+    if (tipo === 'Egreso') return '#fee2e2'; // pastel red
+    if (tipo === 'Movimiento Interno') return '#f1f5f9'; // pastel slate
+    if (tipo === 'Ahorro/Inversión') return '#f3e8ff'; // pastel purple
+    return '#f3f4f6';
+  };
 
   return (
     <div ref={wrapperRef} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', position: 'relative' }}>
@@ -103,7 +113,7 @@ export function CascadingCategorySelector({ initialPrincipal, initialSecundaria,
           fontSize: '0.875rem', 
           width: '280px',
           fontWeight: 600,
-          backgroundColor: isComplete ? '#bbf7d0' : 'white',
+          backgroundColor: isComplete && selectedOption ? getBgColor(selectedOption.tipo) : 'white',
           borderColor: 'black'
         }}
       />
@@ -118,11 +128,12 @@ export function CascadingCategorySelector({ initialPrincipal, initialSecundaria,
             <li 
               key={i} 
               onClick={() => selectOption(o)}
-              style={{ padding: '0.5rem', cursor: 'pointer', borderBottom: '1px solid #e2e8f0', fontSize: '0.875rem', fontWeight: 600 }}
+              style={{ padding: '0.5rem', cursor: 'pointer', borderBottom: '1px solid #e2e8f0', fontSize: '0.875rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
               onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
               onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
             >
-              {o.label} <span style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 500 }}>- {o.tipo}</span>
+              <span>{o.label}</span>
+              <TransactionTypeBadge type={o.tipo} />
             </li>
           ))}
         </ul>,
@@ -431,7 +442,20 @@ export default function Transactions() {
     }
   };
 
-  if (loading) return <div style={{ padding: '2rem' }}>Cargando transacciones...</div>;
+  if (loading) {
+    return (
+      <div style={{ padding: '2rem' }}>
+        <h1 style={{ fontSize: '2.5rem', marginBottom: '1.5rem', fontWeight: 900 }}>Clasificador de Transacciones</h1>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
+          <div className="skeleton" style={{ height: '100px' }}></div>
+          <div className="skeleton" style={{ height: '100px' }}></div>
+          <div className="skeleton" style={{ height: '100px' }}></div>
+          <div className="skeleton" style={{ height: '100px' }}></div>
+        </div>
+        <div className="skeleton" style={{ height: '600px' }}></div>
+      </div>
+    );
+  }
 
   const uncatCount = transactions.filter(t => !t.tipo_movimiento).length;
 
