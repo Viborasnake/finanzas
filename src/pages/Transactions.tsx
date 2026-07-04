@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -29,14 +30,33 @@ export function CascadingCategorySelector({ initialPrincipal, initialSecundaria,
     }
   }, [initialPrincipal, initialSecundaria]);
 
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const updatePosition = () => {
+    if (inputRef.current) {
+      const rect = inputRef.current.getBoundingClientRect();
+      setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    }
+  };
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
+      // If clicking inside the portal, ignore
+      if ((event.target as Element).closest('.portal-dropdown')) return;
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -69,9 +89,13 @@ export function CascadingCategorySelector({ initialPrincipal, initialSecundaria,
   return (
     <div ref={wrapperRef} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', position: 'relative' }}>
       <input 
+        ref={inputRef}
         value={inputValue}
         onChange={handleInputChange}
-        onFocus={() => setIsOpen(true)}
+        onFocus={() => {
+          updatePosition();
+          setIsOpen(true);
+        }}
         className="input"
         placeholder="Escribe para clasificar..."
         style={{ 
@@ -83,12 +107,12 @@ export function CascadingCategorySelector({ initialPrincipal, initialSecundaria,
           borderColor: 'black'
         }}
       />
-      {isOpen && filteredOptions.length > 0 && (
-        <ul style={{
-          position: 'absolute', top: '100%', left: 0, width: '280px', zIndex: 50,
+      {isOpen && filteredOptions.length > 0 && createPortal(
+        <ul className="portal-dropdown" style={{
+          position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999,
           backgroundColor: 'white', border: '2px solid black', borderRadius: '4px',
           boxShadow: '4px 4px 0px black', maxHeight: '200px', overflowY: 'auto',
-          listStyle: 'none', padding: 0, margin: '4px 0 0 0'
+          listStyle: 'none', padding: 0, margin: 0
         }}>
           {filteredOptions.map((o, i) => (
             <li 
@@ -101,7 +125,8 @@ export function CascadingCategorySelector({ initialPrincipal, initialSecundaria,
               {o.label} <span style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 500 }}>- {o.tipo}</span>
             </li>
           ))}
-        </ul>
+        </ul>,
+        document.body
       )}
       {!isComplete && inputValue !== '' && !isOpen && (
         <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Pendiente...</span>

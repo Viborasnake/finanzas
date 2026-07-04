@@ -49,10 +49,13 @@ export const BankProvider = ({ children }: { children: React.ReactNode }) => {
 
   const loadBanks = async () => {
     try {
+      const currentUser = user || (await supabase.auth.getUser()).data.user;
+      if (!currentUser) return;
+
       const { data } = await supabase
         .from('user_settings')
         .select('banks, main_bank')
-        .eq('user_id', user!.id)
+        .eq('user_id', currentUser.id)
         .maybeSingle();
 
       const banks: Bank[] = data?.banks || [];
@@ -69,13 +72,18 @@ export const BankProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const saveBanks = async (banks: Bank[], main: Bank | null) => {
-    const { data } = await supabase.from('user_settings').select('user_id').eq('user_id', user!.id).maybeSingle();
+    const currentUser = user || (await supabase.auth.getUser()).data.user;
+    if (!currentUser) {
+      console.error('No user found');
+      return;
+    }
+    const { data } = await supabase.from('user_settings').select('user_id').eq('user_id', currentUser.id).maybeSingle();
     if (data) {
-      const { error } = await supabase.from('user_settings').update({ banks, main_bank: main }).eq('user_id', user!.id);
-      if (error) console.error('Error updating banks:', error);
+      const { error } = await supabase.from('user_settings').update({ banks, main_bank: main }).eq('user_id', currentUser.id);
+      if (error) throw error;
     } else {
-      const { error } = await supabase.from('user_settings').insert({ user_id: user!.id, banks, main_bank: main });
-      if (error) console.error('Error inserting banks:', error);
+      const { error } = await supabase.from('user_settings').insert({ user_id: currentUser.id, banks, main_bank: main });
+      if (error) throw error;
     }
   };
 
