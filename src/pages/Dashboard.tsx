@@ -631,7 +631,7 @@ export default function Dashboard() {
           <InfoTooltip content="Análisis automático de tus finanzas que destaca tu balance, tu principal fuente de ingresos y tu mayor fuga de dinero." />
         </h2>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: '1rem' }}>
           {/* Balance Insight */}
           <div style={{ padding: '1rem', backgroundColor: isDeficit ? '#fef2f2' : '#f0fdf4', border: '2px solid #000', borderRadius: '8px', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
             <Activity size={20} style={{ color: isDeficit ? '#ef4444' : '#22c55e', marginTop: '0.2rem', flexShrink: 0 }} />
@@ -708,7 +708,7 @@ export default function Dashboard() {
     ];
 
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 350px), 1fr))', gap: '2rem', marginBottom: '3rem' }}>
         {/* Ingresos Card */}
         <div style={{ ...neoCard, position: 'relative', overflow: 'hidden', paddingBottom: '7rem', marginBottom: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', position: 'relative', zIndex: 10 }}>
@@ -891,7 +891,7 @@ export default function Dashboard() {
           </div>
         </div>
         
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '3rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 400px), 1fr))', gap: '3rem' }}>
           {/* Timeline Chart */}
           <div style={{ height: '350px', width: '100%', display: 'flex', flexDirection: 'column' }}>
             <h4 style={{ margin: '0 0 0.5rem 0', fontWeight: 800, fontSize: '0.85rem' }}>{chartTitle}</h4>
@@ -1093,7 +1093,7 @@ export default function Dashboard() {
         </div>
 
         {/* KPI Row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
           <div style={{ ...kpiStyle, backgroundColor: '#f0fdf4' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', color: '#16a34a', letterSpacing: '0.05em' }}>Ingresos Totales</span>
@@ -1215,12 +1215,12 @@ export default function Dashboard() {
         </div>
       ) : loading ? (
         <div style={{ marginTop: '2rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
             <div className="skeleton" style={{ height: '150px' }}></div>
             <div className="skeleton" style={{ height: '150px' }}></div>
           </div>
           <div className="skeleton" style={{ height: '400px', marginBottom: '2.5rem' }}></div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
             <div className="skeleton" style={{ height: '100px' }}></div>
             <div className="skeleton" style={{ height: '100px' }}></div>
             <div className="skeleton" style={{ height: '100px' }}></div>

@@ -276,3 +276,68 @@ select.input {
   border: 2px solid #000;
   box-shadow: 2px 2px 0px #000;
 }
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .flex-stack {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  
+  .flex-stack > * {
+    width: 100% !important;
+  }
+
+  /* Responsive Table - Card View */
+  .responsive-table table, 
+  .responsive-table thead, 
+  .responsive-table tbody, 
+  .responsive-table th, 
+  .responsive-table td, 
+  .responsive-table tr {
+    display: block;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  
+  .responsive-table thead tr {
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+  }
+  
+  .responsive-table tr {
+    margin-bottom: 1rem;
+    border: 2px solid var(--border-color) !important;
+    border-radius: var(--radius-md);
+    background-color: var(--surface-color) !important;
+    box-shadow: 2px 2px 0px 0px #000;
+  }
+  
+  .responsive-table td {
+    border: none !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    position: relative;
+    padding: 0.75rem 1rem 0.75rem 40% !important;
+    text-align: right !important;
+    min-height: 3rem;
+  }
+  
+  .responsive-table td:last-child {
+    border-bottom: none !important;
+  }
+  
+  .responsive-table td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 1rem;
+    width: 35%;
+    padding-right: 10px;
+    white-space: nowrap;
+    text-align: left;
+    font-weight: 800;
+    color: var(--text-secondary);
+    top: 50%;
+    transform: translateY(-50%);
+  }
+}

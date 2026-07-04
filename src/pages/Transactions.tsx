@@ -532,7 +532,7 @@ export default function Transactions() {
             </select>
           </div>
 
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', backgroundColor: 'white', border: '2px solid black', borderRadius: 'var(--radius-sm)' }}>
+          <table className="responsive-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', backgroundColor: 'white', border: '2px solid black', borderRadius: 'var(--radius-sm)' }}>
             <thead style={{ backgroundColor: 'black', color: 'white' }}>
               <tr>
                 <th style={{ padding: '1rem', fontWeight: 800 }}>Descripción Base</th>
@@ -544,7 +544,7 @@ export default function Transactions() {
             <tbody>
               {bulkGroups.map((group) => (
                 <tr key={`${group.name}-${group.type}`} style={{ borderBottom: '2px solid black' }}>
-                  <td style={{ padding: '1rem', fontWeight: 700 }}>
+                  <td data-label="Descripción" style={{ padding: '1rem', fontWeight: 700 }}>
                     {group.name}
                     <span style={{ 
                       display: 'inline-block', 
@@ -559,11 +559,11 @@ export default function Transactions() {
                       {group.type === 'ingreso' ? 'Ingreso' : 'Egreso'}
                     </span>
                   </td>
-                  <td style={{ padding: '1rem', fontWeight: 800, fontSize: '1.25rem' }}>{group.count}</td>
-                  <td style={{ padding: '1rem', fontWeight: 800, color: group.type === 'ingreso' ? 'var(--success)' : 'var(--danger)' }}>
+                  <td data-label="Cant." style={{ padding: '1rem', fontWeight: 800, fontSize: '1.25rem' }}>{group.count}</td>
+                  <td data-label="Acumulado" style={{ padding: '1rem', fontWeight: 800, color: group.type === 'ingreso' ? 'var(--success)' : 'var(--danger)' }}>
                     {group.type === 'ingreso' ? '+' : '-'}${group.total.toLocaleString('es-CL')}
                   </td>
-                  <td style={{ padding: '1rem' }}>
+                  <td data-label="Clasificar" style={{ padding: '1rem' }}>
                     <div style={{ marginBottom: '0.5rem', fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>
                       Actual: {group.currentCategory || 'Ninguna'}
                       {group.currentPrincipal && ` > ${group.currentPrincipal}`}
@@ -612,7 +612,7 @@ export default function Transactions() {
       {viewMode === 'individual' && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           {/* Header filtros */}
-          <div style={{ padding: '1.5rem', backgroundColor: '#f1f5f9', borderBottom: '2px solid black', display: 'flex', gap: '1rem', flexWrap: 'nowrap', overflowX: 'auto', alignItems: 'center' }}>
+          <div style={{ padding: '1.5rem', backgroundColor: '#f1f5f9', borderBottom: '2px solid black', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <div style={{ flex: 1, minWidth: '150px', position: 'relative' }}>
               <Search size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
               <input 
@@ -660,8 +660,8 @@ export default function Transactions() {
             </select>
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' }}>
+          <div style={{ overflowX: 'hidden' }}>
+            <table className="responsive-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '100%' }}>
               <thead style={{ backgroundColor: 'black', color: 'white' }}>
                 <tr>
                   <th style={{ padding: '1rem', fontWeight: 800 }}>Fecha</th>
@@ -677,8 +677,8 @@ export default function Transactions() {
 
                   return (
                     <tr key={tx.id} style={{ borderBottom: '2px solid black', backgroundColor: i % 2 === 0 ? 'white' : 'rgba(0,0,0,0.02)' }} className="table-row">
-                      <td style={{ padding: '1rem', fontWeight: 600 }}>{tx.date}</td>
-                      <td style={{ padding: '1rem' }}>
+                      <td data-label="Fecha" style={{ padding: '1rem', fontWeight: 600 }}>{tx.date}</td>
+                      <td data-label="Descripción" style={{ padding: '1rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'transparent', border: '1px solid transparent' }} className="editable-cell">
                           <input 
                             type="text" 
@@ -697,10 +697,10 @@ export default function Transactions() {
                           </div>
                         )}
                       </td>
-                      <td style={{ padding: '1rem', fontWeight: 800, color: tx.type === 'ingreso' ? 'var(--success)' : 'var(--danger)' }}>
-                        {tx.type === 'ingreso' ? '+' : '-'}${tx.amount.toLocaleString('es-CL')}
+                      <td data-label="Monto" style={{ padding: '1rem', fontWeight: 800, color: tx.type === 'ingreso' ? 'var(--success)' : 'var(--danger)' }}>
+                        {new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(tx.amount)}
                       </td>
-                      <td style={{ padding: '1rem' }}>
+                      <td data-label="Clasificación" style={{ padding: '1rem' }}>
                         <CascadingCategorySelector 
                           initialTipo={tx.tipo_movimiento}
                           initialPrincipal={tx.categoria_principal}

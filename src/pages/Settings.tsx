@@ -466,7 +466,7 @@ export default function Settings() {
             Agrega RUTs de amigos o familiares. Cuando importes, el sistema clasificará automáticamente los traspasos a ellos como "Transferencias a Otras Personas".
           </p>
           
-          <form onSubmit={handleAddContact} style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+          <form className="flex-stack" onSubmit={handleAddContact} style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
             <input 
               type="text" 
               className="input" 
@@ -518,7 +518,7 @@ export default function Settings() {
             Define qué texto debe estar en la glosa (descripción) de una transacción para asignarle automáticamente una categoría. Las reglas se aplican al importar.
           </p>
           
-          <form onSubmit={handleAddRule} style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <form className="flex-stack" onSubmit={handleAddRule} style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <input 
               type="text" 
               className="input" 

@@ -219,6 +219,7 @@ export default function Layout() {
         {/* Mobile Navigation */}
         {isMobileMenuOpen && (
           <nav className="mobile-nav">
+            <BankIndicator />
             {navItems.map((item) => (
               <Link 
                 key={item.path} 
@@ -230,6 +231,31 @@ export default function Layout() {
                 <span>{item.name}</span>
               </Link>
             ))}
+            
+            <div style={{ marginTop: 'auto', borderTop: '2px solid black' }}>
+              {user && (
+                <div style={{ 
+                  padding: '1rem 1.5rem', 
+                  borderBottom: '2px solid black', 
+                  fontWeight: 700, 
+                  fontSize: '0.85rem', 
+                  backgroundColor: '#bfdbfe',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}>
+                  <span style={{ fontSize: '1.25rem' }}>👤</span> {user.email}
+                </div>
+              )}
+              <button 
+                className="nav-item logout-btn" 
+                onClick={() => { setIsMobileMenuOpen(false); handleSignOut(); }} 
+                style={{ backgroundColor: '#fecaca', color: 'black', fontWeight: 800 }}
+              >
+                <LogOut size={20} />
+                <span>Cerrar Sesión</span>
+              </button>
+            </div>
           </nav>
         )}
 
