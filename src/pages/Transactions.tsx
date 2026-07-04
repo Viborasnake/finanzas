@@ -130,7 +130,7 @@ export default function Transactions() {
   const [filterMonth, setFilterMonth] = useState('all');
   const [viewMode, setViewMode] = useState<'individual' | 'bulk' | 'assistant'>('individual');
   const [bulkSearchTerm, setBulkSearchTerm] = useState('');
-  const [bulkFilterMode, setBulkFilterMode] = useState<'unclassified' | 'all'>('unclassified');
+  const [bulkFilterMode, setBulkFilterMode] = useState<string>('unclassified');
 
   const { user } = useAuth();
   const { activeBank } = useBanks();
@@ -196,9 +196,12 @@ export default function Transactions() {
   const bulkGroups = useMemo(() => {
     if (viewMode !== 'bulk') return [];
     
-    const targetTransactions = bulkFilterMode === 'unclassified' 
-      ? transactions.filter(t => !t.tipo_movimiento)
-      : transactions;
+    let targetTransactions = transactions;
+    if (bulkFilterMode === 'unclassified') {
+      targetTransactions = transactions.filter(t => !t.tipo_movimiento);
+    } else if (bulkFilterMode !== 'all') {
+      targetTransactions = transactions.filter(t => t.tipo_movimiento === bulkFilterMode);
+    }
 
     const groups: { [key: string]: { name: string, type: string, count: number, total: number, ids: string[], currentCategory?: string, currentPrincipal?: string, currentSecundaria?: string } } = {};
     
@@ -457,12 +460,17 @@ export default function Transactions() {
             </div>
             <select 
               value={bulkFilterMode} 
-              onChange={e => setBulkFilterMode(e.target.value as any)}
+              onChange={e => setBulkFilterMode(e.target.value)}
               className="input" 
               style={{ backgroundColor: 'white', width: 'auto', fontWeight: 600 }}
             >
               <option value="unclassified">Solo Sin Clasificar</option>
               <option value="all">Todas las transacciones</option>
+              <option disabled>──────────</option>
+              <option value="Gasto Real">Gasto Real</option>
+              <option value="Ingreso">Ingreso</option>
+              <option value="Movimiento Interno">Mov. Interno</option>
+              <option value="Ahorro/Inversión">Ahorro/Inversión</option>
             </select>
           </div>
 
