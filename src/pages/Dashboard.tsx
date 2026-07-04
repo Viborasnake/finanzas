@@ -7,7 +7,8 @@ import {
 } from 'lucide-react';
 import { 
   AreaChart, Area,
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
+  LineChart, Line, CartesianGrid
 } from 'recharts';
 
 type ViewMode = 'month' | 'quarter' | 'year';
@@ -250,7 +251,7 @@ export default function Dashboard() {
     };
   }, [transactions, currentRange, prevRange, activeFilters]);
 
-  // Generate 6 periods history for charts
+  // Generate 6 periods history for sparklines
   const historyData = useMemo(() => {
     const data = [];
     for (let i = -5; i <= 0; i++) {
@@ -280,6 +281,57 @@ export default function Dashboard() {
     }
     return data;
   }, [transactions, currentDate, viewMode, activeFilters]);
+
+  // Generate Timeline Data based on current range for the Line Chart
+  const timelineData = useMemo(() => {
+    const data: Record<string, { label: string; Ingresos: number; Gastos: number }> = {};
+    const { start, end } = currentRange;
+    
+    if (viewMode === 'month') {
+      const days = end.getDate();
+      for (let i = 1; i <= days; i++) {
+        const key = i.toString().padStart(2, '0');
+        data[key] = { label: `${i} ${start.toLocaleString('es-CL', { month: 'short' })}`, Ingresos: 0, Gastos: 0 };
+      }
+    } else if (viewMode === 'quarter' || viewMode === 'year') {
+      for (let i = 0; i <= (viewMode === 'quarter' ? 2 : 11); i++) {
+        const m = start.getMonth() + i;
+        if (m > 11) break;
+        const d = new Date(start.getFullYear(), m, 1);
+        const key = m.toString().padStart(2, '0');
+        data[key] = { label: d.toLocaleString('es-CL', { month: 'short' }), Ingresos: 0, Gastos: 0 };
+      }
+    }
+
+    transactions.forEach(t => {
+      const d = new Date(t.date);
+      if (d >= start && d <= end) {
+        const isInternal = t.tipo_movimiento === 'Movimiento Interno';
+        const isInvestment = t.tipo_movimiento === 'Ahorro/Inversión';
+        
+        let key = '';
+        if (viewMode === 'month') {
+          key = d.getDate().toString().padStart(2, '0');
+        } else {
+          key = d.getMonth().toString().padStart(2, '0');
+        }
+
+        if (data[key]) {
+          if (t.type === 'ingreso' && !isInternal) {
+            data[key].Ingresos += Math.abs(t.amount);
+          }
+          if (t.type === 'egreso' && !isInternal && !isInvestment) {
+             const catP = t.categoria_principal || 'Sin Clasificar';
+             if (activeFilters.length === 0 || activeFilters.includes(catP)) {
+                data[key].Gastos += Math.abs(t.amount);
+             }
+          }
+        }
+      }
+    });
+
+    return Object.values(data);
+  }, [transactions, currentRange, viewMode, activeFilters]);
 
   // --- Styles ---
   const neoCard = {
@@ -567,21 +619,21 @@ export default function Dashboard() {
     );
   };
 
-  // BLOCK 5: TOP CATEGORIAS (TOGGLE + BAR CHART)
-  const renderTopCategories = () => {
+  // BLOCK 5: TOP CATEGORIAS AND TIMELINE (Full width container)
+  const renderAnalysisBlock = () => {
     const c = stats.current;
-    if (c.gastos === 0) return null;
+    if (c.gastos === 0 && c.ingresos === 0) return null;
 
     const sourceData = categoryLevel === 'principal' ? c.topCatsPrincipal : c.topCatsSecundaria;
-    const data = sourceData.slice(0, 8).map(cat => ({
+    const barData = sourceData.slice(0, 8).map(cat => ({
       name: cat.name,
       amount: cat.amount
     }));
 
     return (
-      <div style={neoCard}>
+      <div style={{ ...neoCard, marginBottom: '2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
-          <h2 style={{ fontSize: '1.6rem', margin: 0, fontFamily: 'serif', fontWeight: 900 }}>Análisis de Gasto</h2>
+          <h2 style={{ fontSize: '1.6rem', margin: 0, fontFamily: 'serif', fontWeight: 900 }}>Evolución y Análisis de Gasto</h2>
           
           <div style={{ display: 'flex', gap: '0.5rem', backgroundColor: '#f1f5f9', padding: '0.5rem', borderRadius: '12px', border: '3px solid #000' }}>
             <button 
@@ -600,40 +652,68 @@ export default function Dashboard() {
           </div>
         </div>
         
-        <div style={{ height: `${Math.max(300, data.length * 50)}px`, width: '100%' }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} layout="vertical" margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
-              <XAxis type="number" hide />
-              <YAxis 
-                type="category" 
-                dataKey="name" 
-                width={140} 
-                tick={{ fill: '#000', fontSize: 13, fontWeight: 800 }} 
-                axisLine={{ stroke: '#000', strokeWidth: 3 }} 
-                tickLine={false} 
-              />
-              <Tooltip 
-                cursor={{ fill: '#f1f5f9' }}
-                contentStyle={{ borderRadius: '8px', border: '3px solid #000', boxShadow: '4px 4px 0px #000', fontWeight: 800 }}
-                formatter={(value: any) => ['$' + Number(value).toLocaleString('es-CL'), 'Monto']}
-              />
-              <Bar 
-                dataKey="amount" 
-                fill="#f43f5e" 
-                barSize={32}
-                radius={0}
-              >
-                {data.map((entry, index) => (
-                  <Cell 
-                    key={`cell-${index}`} 
-                    fill={entry.name === 'Sin Clasificar' ? '#fcd34d' : ['#f43f5e', '#a78bfa', '#34d399', '#60a5fa', '#fb923c'][index % 5]} 
-                    stroke="#000"
-                    strokeWidth={3}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '3rem' }}>
+          {/* Timeline Chart */}
+          <div style={{ height: '350px', width: '100%', display: 'flex', flexDirection: 'column' }}>
+            <h4 style={{ margin: '0 0 1rem 0', fontWeight: 800 }}>Línea de Tiempo (Ingresos vs Gastos)</h4>
+            <div style={{ flex: 1, minHeight: 0 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={timelineData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fill: '#000', fontSize: 12, fontWeight: 700 }} axisLine={{ stroke: '#000', strokeWidth: 2 }} tickLine={false} dy={10} />
+                  <YAxis hide />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '8px', border: '3px solid #000', boxShadow: '4px 4px 0px #000', fontWeight: 800 }}
+                    formatter={(value: any) => ['$' + Number(value).toLocaleString('es-CL'), 'Monto']}
                   />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+                  <Line type="monotone" name="Ingresos" dataKey="Ingresos" stroke="#22c55e" strokeWidth={4} dot={{ r: 4, fill: '#bbf7d0', stroke: '#000', strokeWidth: 2 }} activeDot={{ r: 6, stroke: '#000', strokeWidth: 3 }} />
+                  <Line type="monotone" name="Gastos" dataKey="Gastos" stroke="#f43f5e" strokeWidth={4} dot={{ r: 4, fill: '#fecaca', stroke: '#000', strokeWidth: 2 }} activeDot={{ r: 6, stroke: '#000', strokeWidth: 3 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Bar Chart */}
+          {barData.length > 0 && (
+            <div style={{ height: `${Math.max(350, barData.length * 45)}px`, width: '100%', display: 'flex', flexDirection: 'column' }}>
+              <h4 style={{ margin: '0 0 1rem 0', fontWeight: 800 }}>Ranking de Gastos</h4>
+              <div style={{ flex: 1, minHeight: 0 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={barData} layout="vertical" margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
+                    <XAxis type="number" hide />
+                    <YAxis 
+                      type="category" 
+                      dataKey="name" 
+                      width={140} 
+                      tick={{ fill: '#000', fontSize: 13, fontWeight: 800 }} 
+                      axisLine={{ stroke: '#000', strokeWidth: 3 }} 
+                      tickLine={false} 
+                    />
+                    <Tooltip 
+                      cursor={{ fill: '#f1f5f9' }}
+                      contentStyle={{ borderRadius: '8px', border: '3px solid #000', boxShadow: '4px 4px 0px #000', fontWeight: 800 }}
+                      formatter={(value: any) => ['$' + Number(value).toLocaleString('es-CL'), 'Monto']}
+                    />
+                    <Bar 
+                      dataKey="amount" 
+                      fill="#f43f5e" 
+                      barSize={32}
+                      radius={0}
+                    >
+                      {barData.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={entry.name === 'Sin Clasificar' ? '#fcd34d' : ['#f43f5e', '#a78bfa', '#34d399', '#60a5fa', '#fb923c'][index % 5]} 
+                          stroke="#000"
+                          strokeWidth={3}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -682,14 +762,8 @@ export default function Dashboard() {
           {renderUnclassifiedAlert()}
           {renderMainNumbers()}
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '2rem' }}>
-            <div>
-              {renderIncomeSources()}
-            </div>
-            <div>
-              {renderTopCategories()}
-            </div>
-          </div>
+          {renderIncomeSources()}
+          {renderAnalysisBlock()}
         </>
       )}
     </div>
