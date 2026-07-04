@@ -1,10 +1,18 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Search, Edit2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useActionQueue } from '../hooks/useActionQueue';
 
 export const TAXONOMY: Record<string, Record<string, string[]>> = {
+  'Ingreso Real': {
+    'Sueldo': ['Sueldo', 'Bono', 'Aguinaldo'],
+    'Honorarios': ['Boleta', 'Servicios'],
+    'Ventas/Negocio': ['Giro', 'Venta', 'Servicios'],
+    'Devoluciones': ['Devolución Impuestos', 'Devolución Gastos'],
+    'Otros Ingresos': ['Regalos', 'Intereses/Dividendos', 'Otros']
+  },
   'Gasto Real': {
     'Alimentación': ['Supermercado', 'Feria', 'Abarrotes', 'Panadería', 'Cafetería/Snacks', 'Agua', 'Delivery/Restaurantes'],
     'Transporte': ['Bencina', 'Autopista', 'Estacionamiento', 'Transporte Público', 'Uber/Taxi', 'Seguro Auto', 'Mantención/Taller', 'Lavado Auto', 'Permisos', 'Municipalidad', 'Revisión Técnica'],
@@ -58,10 +66,23 @@ export function CascadingCategorySelector({ initialPrincipal, initialSecundaria,
     }
     return '';
   });
+  const [isOpen, setIsOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setInputValue(val);
+    setIsOpen(true);
     
     if (val === '') {
       onSave(null, null, null);
@@ -71,32 +92,58 @@ export function CascadingCategorySelector({ initialPrincipal, initialSecundaria,
     const match = ALL_OPTIONS.find(o => o.label === val);
     if (match) {
       onSave(match.tipo, match.principal, match.secundaria);
+      setIsOpen(false);
     }
   };
 
+  const selectOption = (o: any) => {
+    setInputValue(o.label);
+    onSave(o.tipo, o.principal, o.secundaria);
+    setIsOpen(false);
+  };
+
   const isComplete = ALL_OPTIONS.some(o => o.label === inputValue);
+  
+  const filteredOptions = ALL_OPTIONS.filter(o => o.label.toLowerCase().includes(inputValue.toLowerCase()));
 
   return (
-    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+    <div ref={wrapperRef} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', position: 'relative' }}>
       <input 
-        list="taxonomy-options"
         value={inputValue}
         onChange={handleInputChange}
+        onFocus={() => setIsOpen(true)}
         className="input"
-        placeholder="Clasificar..."
+        placeholder="Escribe para clasificar..."
         style={{ 
           padding: '0.25rem 0.5rem', 
           fontSize: '0.875rem', 
-          width: '200px',
+          width: '280px',
           fontWeight: 600,
           backgroundColor: isComplete ? '#bbf7d0' : 'white',
           borderColor: 'black'
         }}
       />
-      <datalist id="taxonomy-options">
-        {ALL_OPTIONS.map((o, i) => <option key={i} value={o.label} />)}
-      </datalist>
-      {!isComplete && inputValue !== '' && (
+      {isOpen && filteredOptions.length > 0 && (
+        <ul style={{
+          position: 'absolute', top: '100%', left: 0, width: '280px', zIndex: 50,
+          backgroundColor: 'white', border: '2px solid black', borderRadius: '4px',
+          boxShadow: '4px 4px 0px black', maxHeight: '200px', overflowY: 'auto',
+          listStyle: 'none', padding: 0, margin: '4px 0 0 0'
+        }}>
+          {filteredOptions.map((o, i) => (
+            <li 
+              key={i} 
+              onClick={() => selectOption(o)}
+              style={{ padding: '0.5rem', cursor: 'pointer', borderBottom: '1px solid #e2e8f0', fontSize: '0.875rem', fontWeight: 600 }}
+              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+              onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              {o.label} <span style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 500 }}>- {o.tipo}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {!isComplete && inputValue !== '' && !isOpen && (
         <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Pendiente...</span>
       )}
     </div>
@@ -116,6 +163,7 @@ export default function Transactions() {
   const [bulkSearchTerm, setBulkSearchTerm] = useState('');
 
   const { user } = useAuth();
+  const { dispatchAction } = useActionQueue();
 
   useEffect(() => {
     if (user) {
@@ -129,6 +177,7 @@ export default function Transactions() {
         .from('transactions')
         .select('*')
         .eq('user_id', user?.id)
+        .neq('amount', 0)
         .order('date', { ascending: false });
 
       if (error) throw error;
@@ -197,7 +246,9 @@ export default function Transactions() {
   }, [transactions, viewMode, bulkSearchTerm]);
 
   const handleCategorize = async (id: string, currentDesc: string, tipo: string | null, principal: string | null, secundaria: string | null) => {
-    // Update locally
+    const prevTx = transactions.find(t => t.id === id);
+    if (!prevTx) return;
+
     setTransactions(prev => prev.map(t => t.id === id ? { ...t, tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria } : t));
 
     const othersCount = transactions.filter(t => t.id !== id && t.description === currentDesc && !t.tipo_movimiento).length;
@@ -213,11 +264,17 @@ export default function Transactions() {
             <button 
               className="btn btn-outline" 
               style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }} 
-              onClick={async () => {
+              onClick={() => {
                 toast.dismiss(t.id);
-                const { error } = await supabase.from('transactions').update({ tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria }).eq('id', id);
-                if (error) toast.error("Error al actualizar");
-                else toast.success("Categoría actualizada");
+                dispatchAction({
+                  id: id,
+                  message: `1 transacción clasificada`,
+                  execute: async () => {
+                    const { error } = await supabase.from('transactions').update({ tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria }).eq('id', id);
+                    if (error) throw error;
+                  },
+                  onUndo: () => setTransactions(prev => prev.map(tx => tx.id === id ? prevTx : tx))
+                });
               }}
             >
               Solo a esta
@@ -225,8 +282,10 @@ export default function Transactions() {
             <button 
               className="btn btn-primary" 
               style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }} 
-              onClick={async () => {
+              onClick={() => {
                 toast.dismiss(t.id);
+                
+                const affectedTxs = transactions.filter(tx => tx.id === id || (tx.description === currentDesc && !tx.tipo_movimiento));
                 
                 setTransactions(prev => prev.map(tx => {
                   if (tx.description === currentDesc && !tx.tipo_movimiento) {
@@ -235,19 +294,21 @@ export default function Transactions() {
                   return tx;
                 }));
 
-                const { error } = await supabase
-                  .from('transactions')
-                  .update({ tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria })
-                  .eq('user_id', user?.id)
-                  .eq('description', currentDesc)
-                  .is('tipo_movimiento', null);
-
-                if (error) {
-                  console.error(error);
-                  toast.error("Error al actualizar masivamente");
-                } else {
-                  toast.success("Categoría actualizada masivamente");
-                }
+                dispatchAction({
+                  id: `bulk-cat-${currentDesc}`,
+                  message: `${othersCount + 1} transacciones clasificadas`,
+                  execute: async () => {
+                    const { error: e1 } = await supabase.from('transactions').update({ tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria }).eq('id', id);
+                    const { error: e2 } = await supabase.from('transactions').update({ tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria }).eq('user_id', user?.id).eq('description', currentDesc).is('tipo_movimiento', null);
+                    if (e1 || e2) throw new Error("Update error");
+                  },
+                  onUndo: () => {
+                    setTransactions(prev => prev.map(tx => {
+                      const oldTx = affectedTxs.find(old => old.id === tx.id);
+                      return oldTx ? oldTx : tx;
+                    }));
+                  }
+                });
               }}
             >
               Sí, a todas
@@ -256,39 +317,52 @@ export default function Transactions() {
         </div>
       ), { duration: Infinity });
     } else {
-      const { error } = await supabase.from('transactions').update({ tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria }).eq('id', id);
-      if (error) toast.error("Error al actualizar");
-      else toast.success("Categoría actualizada");
+      dispatchAction({
+        id: id,
+        message: `1 transacción clasificada`,
+        execute: async () => {
+          const { error } = await supabase.from('transactions').update({ tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria }).eq('id', id);
+          if (error) throw error;
+        },
+        onUndo: () => setTransactions(prev => prev.map(tx => tx.id === id ? prevTx : tx))
+      });
     }
   };
 
   const handleBulkCategorize = async (groupIds: string[], tipo: string | null, principal: string | null, secundaria: string | null) => {
     if (!tipo) return;
     
-    try {
-      const { error } = await supabase
-        .from('transactions')
-        .update({ tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria })
-        .in('id', groupIds);
-        
-      if (error) throw error;
-      
-      setTransactions(prev => prev.map(t => 
-        groupIds.includes(t.id) ? { ...t, tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria } : t
-      ));
-      
-      toast.success(`Se categorizaron ${groupIds.length} transacciones`);
-    } catch (error) {
-      console.error(error);
-      toast.error('Error al categorizar');
-    }
+    const affectedTxs = transactions.filter(t => groupIds.includes(t.id));
+
+    setTransactions(prev => prev.map(t => 
+      groupIds.includes(t.id) ? { ...t, tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria } : t
+    ));
+
+    dispatchAction({
+      id: `bulk-${groupIds[0]}`,
+      message: `${groupIds.length} transacciones clasificadas`,
+      execute: async () => {
+        const { error } = await supabase
+          .from('transactions')
+          .update({ tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria })
+          .in('id', groupIds);
+        if (error) throw error;
+      },
+      onUndo: () => {
+        setTransactions(prev => prev.map(tx => {
+          const oldTx = affectedTxs.find(old => old.id === tx.id);
+          return oldTx ? oldTx : tx;
+        }));
+      }
+    });
   };
 
   const handleDescriptionBlur = async (id: string, currentDesc: string, rawDesc: string) => {
     const originalTx = transactions.find(t => t.id === id);
     if (!originalTx || originalTx.description.trim() === '') return;
 
-    const othersCount = transactions.filter(t => t.id !== id && t.raw_data && t.raw_data[Object.keys(t.raw_data).find(k => k.toLowerCase().includes('descripc')) || ''] === rawDesc && t.description !== currentDesc).length;
+    const descKey = Object.keys(originalTx.raw_data || {}).find(k => k.toLowerCase().includes('descripc')) || '';
+    const othersCount = transactions.filter(t => t.id !== id && t.raw_data && t.raw_data[descKey] === rawDesc && t.description !== currentDesc).length;
 
     if (othersCount > 0) {
       toast.custom((t) => (
@@ -300,26 +374,47 @@ export default function Transactions() {
           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
             <button 
               className="btn btn-outline" 
-              onClick={async () => {
+              onClick={() => {
                 toast.dismiss(t.id);
-                await supabase.from('transactions').update({ description: currentDesc }).eq('id', id);
+                dispatchAction({
+                  id: `desc-${id}`,
+                  message: `Transacción renombrada a "${currentDesc}"`,
+                  execute: async () => {
+                    const { error } = await supabase.from('transactions').update({ description: currentDesc }).eq('id', id);
+                    if (error) throw error;
+                  },
+                  onUndo: () => setTransactions(prev => prev.map(tx => tx.id === id ? originalTx : tx))
+                });
               }}
             >
               Solo a esta
             </button>
             <button 
               className="btn btn-primary" 
-              onClick={async () => {
+              onClick={() => {
                 toast.dismiss(t.id);
-                const descKey = Object.keys(originalTx.raw_data).find(k => k.toLowerCase().includes('descripc')) || '';
                 
+                const affectedTxs = transactions.filter(tx => tx.id === id || (tx.raw_data && tx.raw_data[descKey] === rawDesc));
+
                 setTransactions(prev => prev.map(tx => {
                   if (tx.raw_data && tx.raw_data[descKey] === rawDesc) return { ...tx, description: currentDesc };
                   return tx;
                 }));
 
-                await supabase.from('transactions').update({ description: currentDesc }).eq('user_id', user?.id).contains('raw_data', { [descKey]: rawDesc });
-                toast.success("Actualizado masivamente");
+                dispatchAction({
+                  id: `bulk-desc-${id}`,
+                  message: `${othersCount + 1} transacciones renombradas a "${currentDesc}"`,
+                  execute: async () => {
+                    const { error } = await supabase.from('transactions').update({ description: currentDesc }).eq('user_id', user?.id).contains('raw_data', { [descKey]: rawDesc });
+                    if (error) throw error;
+                  },
+                  onUndo: () => {
+                    setTransactions(prev => prev.map(tx => {
+                      const oldTx = affectedTxs.find(old => old.id === tx.id);
+                      return oldTx ? oldTx : tx;
+                    }));
+                  }
+                });
               }}
             >
               Sí, a todas
@@ -328,7 +423,15 @@ export default function Transactions() {
         </div>
       ), { duration: Infinity });
     } else {
-      await supabase.from('transactions').update({ description: currentDesc }).eq('id', id);
+      dispatchAction({
+        id: `desc-${id}`,
+        message: `Transacción renombrada a "${currentDesc}"`,
+        execute: async () => {
+          const { error } = await supabase.from('transactions').update({ description: currentDesc }).eq('id', id);
+          if (error) throw error;
+        },
+        onUndo: () => setTransactions(prev => prev.map(tx => tx.id === id ? originalTx : tx))
+      });
     }
   };
 

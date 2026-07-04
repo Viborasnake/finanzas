@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { TrendingUp, TrendingDown, DollarSign, Search, Filter, AlertTriangle, PiggyBank, Shuffle } from 'lucide-react';
 
 export default function Dashboard() {
@@ -15,7 +15,7 @@ export default function Dashboard() {
   const [filterPeriod, setFilterPeriod] = useState('all');
   const [groupByPrincipal, setGroupByPrincipal] = useState(true);
   const [hiddenPrincipals, setHiddenPrincipals] = useState<string[]>([]);
-  const [isRealExpenseMode, setIsRealExpenseMode] = useState(true);
+  const isRealExpenseMode = true;
 
   const { user } = useAuth();
 
@@ -30,6 +30,7 @@ export default function Dashboard() {
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
+        .neq('amount', 0)
         .order('date', { ascending: true });
 
       if (error) throw error;
@@ -123,6 +124,7 @@ export default function Dashboard() {
     let prevEgresosTotales = 0;
     let hasPrevData = false;
     let prevLabel = '';
+    const prevPeriodTransactions: any[] = [];
 
     if (filterYear !== 'all' && (filterPeriod !== 'all' || periodType === 'year') && periodType !== 'all') {
       let py = parseInt(filterYear);
@@ -175,6 +177,7 @@ export default function Dashboard() {
               prevEgresosTotales += t.amount;
               if (isGastoReal) prevEgresosReales += t.amount;
             }
+            prevPeriodTransactions.push(t);
           }
         }
       });
@@ -183,7 +186,7 @@ export default function Dashboard() {
     return { 
       ingresosBrutos, ingresosReales, egresosReales, egresosTotales, ahorro, movimientosInternosIngreso, movimientosInternosEgreso,
       balanceReal, balanceFlujoCaja,
-      prevIngresosReales, prevEgresosReales, prevIngresosBrutos, prevEgresosTotales, hasPrevData, prevLabel
+      prevIngresosReales, prevEgresosReales, prevIngresosBrutos, prevEgresosTotales, hasPrevData, prevLabel, prevPeriodTransactions
     };
   };
 
@@ -265,28 +268,53 @@ export default function Dashboard() {
       .sort((a, b) => b.total - a.total);
   };
 
-  const getSpecificItemTrend = (itemName: string) => {
-    const recurringData = getRecurringExpenses();
-    const itemData = recurringData.find(i => i.name === itemName);
-    if (!itemData) return [];
+  const getAnomalies = () => {
+    if (!hasPrevData) return null;
     
-    const monthly: { [key: string]: { name: string, Gasto: number, dateObj: Date } } = {};
-    itemData.data.forEach(t => {
-      const date = new Date(t.date);
-      const monthYear = `${date.getMonth() + 1}/${date.getFullYear()}`;
-      if (!monthly[monthYear]) {
-        monthly[monthYear] = { name: monthYear, Gasto: 0, dateObj: new Date(date.getFullYear(), date.getMonth(), 1) };
+    const currentCats: Record<string, number> = {};
+    const prevCats: Record<string, number> = {};
+    
+    baseTransactions.forEach(t => {
+      if (t.type === 'egreso' && t.tipo_movimiento === 'Gasto Real') {
+        const cat = t.categoria_principal || 'Sin Clasificar';
+        currentCats[cat] = (currentCats[cat] || 0) + t.amount;
       }
-      monthly[monthYear].Gasto += t.amount;
     });
 
-    return Object.values(monthly).sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
+    prevPeriodTransactions.forEach(t => {
+      if (t.type === 'egreso' && t.tipo_movimiento === 'Gasto Real') {
+        const cat = t.categoria_principal || 'Sin Clasificar';
+        prevCats[cat] = (prevCats[cat] || 0) + t.amount;
+      }
+    });
+
+    let maxAnomaly = null;
+    let maxPct = 0;
+
+    for (const [cat, currTotal] of Object.entries(currentCats)) {
+      const prevTotal = prevCats[cat] || 0;
+      if (prevTotal > 0 && currTotal > prevTotal) {
+        const pctGrowth = ((currTotal - prevTotal) / prevTotal) * 100;
+        const absGrowth = currTotal - prevTotal;
+        // Flag anomaly if >40% growth AND at least $50,000 difference
+        if (pctGrowth >= 40 && absGrowth >= 50000) {
+          if (pctGrowth > maxPct) {
+            maxPct = pctGrowth;
+            maxAnomaly = { name: cat, pctGrowth, absGrowth, currTotal, prevTotal };
+          }
+        }
+      }
+    }
+
+    return maxAnomaly;
   };
 
+
+
   const { 
-    ingresosBrutos, ingresosReales, egresosReales, egresosTotales, ahorro, movimientosInternosIngreso, movimientosInternosEgreso,
+    ingresosBrutos, ingresosReales, egresosReales, egresosTotales, ahorro, movimientosInternosEgreso,
     balanceReal, balanceFlujoCaja,
-    prevIngresosReales, prevEgresosReales, prevIngresosBrutos, prevEgresosTotales, hasPrevData, prevLabel 
+    prevIngresosReales, prevEgresosReales, prevIngresosBrutos, prevEgresosTotales, hasPrevData, prevLabel, prevPeriodTransactions 
   } = calculateSummary();
   
   const chartData = getChartData();
@@ -298,33 +326,6 @@ export default function Dashboard() {
     }
   }, [recurringExpenses, selectedRecurringItem]);
 
-  const specificItemTrendData = selectedRecurringItem ? getSpecificItemTrend(selectedRecurringItem) : [];
-
-  const renderUncategorizedAlert = () => {
-    const uncategorized = baseTransactions.filter(t => !t.tipo_movimiento);
-
-    if (uncategorized.length === 0) return null;
-
-    const totalUncat = uncategorized.reduce((acc, t) => acc + t.amount, 0);
-    const pct = baseTransactions.length > 0 ? (uncategorized.length / baseTransactions.length) * 100 : 0;
-
-    return (
-      <div style={{ backgroundColor: pct > 10 ? '#fecaca' : '#fef08a', padding: '1.5rem', border: '2px solid black', borderRadius: 'var(--radius-sm)', boxShadow: '4px 4px 0px black', marginBottom: '3rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-        <div style={{ backgroundColor: 'white', padding: '1rem', border: '2px solid black', borderRadius: '50%' }}>
-          <AlertTriangle size={28} color={pct > 10 ? "#b91c1c" : "#ca8a04"} />
-        </div>
-        <div>
-          <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.25rem', color: pct > 10 ? '#7f1d1d' : '#854d0e' }}>
-            ⚠️ Alerta de Calidad de Datos {pct > 10 ? '(Crítica)' : ''}
-          </h3>
-          <p style={{ margin: 0, fontSize: '1rem', fontWeight: 500, color: pct > 10 ? '#991b1b' : '#a16207' }}>
-            Tienes <strong>{uncategorized.length} pagos</strong> sin clasificar ({pct.toFixed(1)}% del total) sumando <strong>${totalUncat.toLocaleString('es-CL')}</strong>. 
-            {pct > 10 && " Esto distorsiona severamente tu análisis financiero."} Ve a Transacciones para solucionarlo.
-          </p>
-        </div>
-      </div>
-    );
-  };
 
   const generateInsightReport = (
     balance: number, 
@@ -426,224 +427,213 @@ export default function Dashboard() {
   const prevIngr = isRealExpenseMode ? prevIngresosReales : prevIngresosBrutos;
   const prevEgr = isRealExpenseMode ? prevEgresosReales : prevEgresosTotales;
 
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
-        <div style={{ display: 'flex', backgroundColor: 'white', border: '2px solid black', borderRadius: '2rem', overflow: 'hidden', boxShadow: '4px 4px 0px black' }}>
-          <button 
-            onClick={() => setIsRealExpenseMode(true)}
-            style={{ padding: '0.75rem 1.5rem', border: 'none', background: isRealExpenseMode ? 'black' : 'transparent', color: isRealExpenseMode ? 'white' : 'black', fontWeight: 800, fontSize: '1rem', cursor: 'pointer', transition: 'all 0.1s' }}
-          >
-            Gasto Real
-          </button>
-          <button 
-            onClick={() => setIsRealExpenseMode(false)}
-            style={{ padding: '0.75rem 1.5rem', border: 'none', background: !isRealExpenseMode ? 'black' : 'transparent', color: !isRealExpenseMode ? 'white' : 'black', fontWeight: 800, fontSize: '1rem', cursor: 'pointer', transition: 'all 0.1s' }}
-          >
-            Flujo de Caja Total
-          </button>
-        </div>
-      </div>
+  const margin = currentIngresos > 0 ? (currentBalance / currentIngresos) * 100 : 0;
+  
+  const renderTarjetaEstado = () => {
+    let stateColor = '#22c55e'; 
+    let bgColor = '#bbf7d0';
+    let statusText = 'Superávit';
+    
+    if (currentBalance < 0) {
+      stateColor = '#ef4444';
+      bgColor = '#fecaca';
+      statusText = 'Déficit';
+    } else if (margin < 10) {
+      stateColor = '#eab308';
+      bgColor = '#fef08a';
+      statusText = 'Ajustado';
+    }
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1.5rem' }}>
-        <h1 style={{ margin: 0, fontSize: '2.5rem' }}>Resumen Financiero</h1>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', alignItems: 'flex-end' }}>
-          {transactions.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'white', padding: '0.5rem 1rem', border: '2px solid black', borderRadius: 'var(--radius-sm)', boxShadow: '2px 2px 0px black' }}>
-              <Filter size={20} />
-              <select 
-                style={{ padding: '0.25rem', border: 'none', backgroundColor: 'transparent', outline: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '1rem' }}
-                value={filterYear}
-                onChange={(e) => setFilterYear(e.target.value)}
-              >
-                <option value="all">Todos los años</option>
-                {availableYears.map(year => (
-                  <option key={year} value={year.toString()}>{year}</option>
-                ))}
-              </select>
-              <span style={{ fontWeight: 800 }}>/</span>
-              <select 
-                style={{ padding: '0.25rem', border: 'none', backgroundColor: 'transparent', outline: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '1rem' }}
-                value={periodType}
-                onChange={(e) => {
-                  setPeriodType(e.target.value as PeriodType);
-                  setFilterPeriod('all');
-                }}
-              >
-                <option value="month">Mensual</option>
-                <option value="quarter">Trimestral</option>
-                <option value="semester">Semestral</option>
-                <option value="year">Anual (Todo el año)</option>
-                <option value="all">Historico</option>
-              </select>
-              
-              {periodType !== 'year' && periodType !== 'all' && (
-                <>
-                  <span style={{ fontWeight: 800 }}>/</span>
-                  <select 
-                    style={{ padding: '0.25rem', border: 'none', backgroundColor: 'transparent', outline: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '1rem' }}
-                    value={filterPeriod}
-                    onChange={(e) => setFilterPeriod(e.target.value)}
-                  >
-                    <option value="all">Todos</option>
-                    {periodType === 'month' && Array.from({length: 12}, (_, i) => (
-                      <option key={`m${i+1}`} value={(i+1).toString()}>{new Date(2000, i, 1).toLocaleString('es-CL', { month: 'short' })}</option>
-                    ))}
-                    {periodType === 'quarter' && [1, 2, 3, 4].map(q => <option key={`q${q}`} value={`Q${q}`}>Q{q}</option>)}
-                    {periodType === 'semester' && [1, 2].map(h => <option key={`h${h}`} value={`H${h}`}>H{h}</option>)}
-                  </select>
-                </>
-              )}
-            </div>
-          )}
-
-          {transactions.length > 0 && availablePrincipals.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-              <span style={{ fontWeight: 700, fontSize: '0.875rem' }}>Incluir:</span>
-              {availablePrincipals.map(catName => {
-                const isHidden = hiddenPrincipals.includes(catName);
-                return (
-                  <button
-                    key={catName}
-                    onClick={() => toggleCategory(catName)}
-                    style={{
-                      padding: '0.2rem 0.5rem', borderRadius: '1rem', border: '2px solid black',
-                      backgroundColor: isHidden ? '#f1f5f9' : '#bfdbfe',
-                      color: isHidden ? '#94a3b8' : 'black',
-                      fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer',
-                      boxShadow: isHidden ? 'none' : '1px 1px 0px black',
-                      opacity: isHidden ? 0.7 : 1, transition: 'all 0.1s'
-                    }}
-                  >
-                    {isHidden ? '❌' : '✅'} {catName}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {renderUncategorizedAlert()}
-
-      {generateInsightReport(currentBalance, currentBalance < 0, ingresosReales)}
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
-        
-        {/* Card Balance */}
-        <div className="card" style={{ backgroundColor: 'var(--pastel-purple)', color: 'black' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700 }}>{isRealExpenseMode ? 'Balance Estructural' : 'Balance Flujo de Caja'}</h3>
-            <div style={{ backgroundColor: 'black', color: 'white', padding: '0.25rem', borderRadius: '50%' }}>
-              <DollarSign size={24} />
+    return (
+      <div className="card" style={{ backgroundColor: 'white', border: '3px solid ' + stateColor, padding: '2rem', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800 }}>Balance Real</h2>
+            <div style={{ display: 'inline-block', padding: '0.2rem 0.6rem', backgroundColor: bgColor, color: stateColor, borderRadius: 'var(--radius-sm)', fontWeight: 800, fontSize: '0.75rem', marginTop: '0.5rem', textTransform: 'uppercase' }}>
+              {statusText}
             </div>
           </div>
-          <p style={{ fontSize: '3rem', fontWeight: 800, margin: 0 }}>
-            ${currentBalance.toLocaleString('es-CL')}
-          </p>
-          <p style={{ margin: '0.5rem 0 0 0', fontWeight: 600, fontSize: '0.9rem', opacity: 0.8 }}>
-            {isRealExpenseMode ? 'Ingreso Real - Gasto Real' : 'Total Entradas - Total Salidas'}
-          </p>
-        </div>
-
-        {/* Card Ingresos */}
-        <div className="card" style={{ backgroundColor: 'var(--pastel-green)', color: 'black' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700 }}>{isRealExpenseMode ? 'Ingreso Real' : 'Total Entradas'}</h3>
-            <div style={{ backgroundColor: 'black', color: 'var(--success)', padding: '0.25rem', borderRadius: '50%' }}>
-              <TrendingUp size={24} />
-            </div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <p style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0 }}>
-              ${currentIngresos.toLocaleString('es-CL')}
-            </p>
-            {renderChangeBadge(currentIngresos, prevIngr, prevLabel, false)}
-            {isRealExpenseMode && movimientosInternosIngreso > 0 && (
-              <span style={{ fontSize: '0.85rem', fontWeight: 600, marginTop: '0.5rem' }}>
-                Excluye ${movimientosInternosIngreso.toLocaleString('es-CL')} propios
-              </span>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#f8fafc', padding: '0.5rem 1rem', border: '2px solid black', borderRadius: 'var(--radius-sm)' }}>
+            <Filter size={20} />
+            <select 
+              style={{ padding: '0.25rem', border: 'none', backgroundColor: 'transparent', outline: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '1rem' }}
+              value={filterYear}
+              onChange={(e) => setFilterYear(e.target.value)}
+            >
+              <option value="all">Todos los años</option>
+              {availableYears.map(year => (
+                <option key={year} value={year.toString()}>{year}</option>
+              ))}
+            </select>
+            <span style={{ fontWeight: 800 }}>/</span>
+            <select 
+              style={{ padding: '0.25rem', border: 'none', backgroundColor: 'transparent', outline: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '1rem' }}
+              value={periodType}
+              onChange={(e) => {
+                setPeriodType(e.target.value as PeriodType);
+                setFilterPeriod('all');
+              }}
+            >
+              <option value="month">Mensual</option>
+              <option value="quarter">Trimestral</option>
+              <option value="semester">Semestral</option>
+              <option value="year">Anual</option>
+              <option value="all">Histórico</option>
+            </select>
+            
+            {periodType !== 'year' && periodType !== 'all' && (
+              <>
+                <span style={{ fontWeight: 800 }}>/</span>
+                <select 
+                  style={{ padding: '0.25rem', border: 'none', backgroundColor: 'transparent', outline: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '1rem' }}
+                  value={filterPeriod}
+                  onChange={(e) => setFilterPeriod(e.target.value)}
+                >
+                  <option value="all">Todos</option>
+                  {periodType === 'month' && Array.from({length: 12}, (_, i) => (
+                    <option key={`m${i+1}`} value={(i+1).toString()}>{new Date(2000, i, 1).toLocaleString('es-CL', { month: 'short' })}</option>
+                  ))}
+                  {periodType === 'quarter' && [1, 2, 3, 4].map(q => <option key={`q${q}`} value={`Q${q}`}>Q{q}</option>)}
+                  {periodType === 'semester' && [1, 2].map(h => <option key={`h${h}`} value={`H${h}`}>H{h}</option>)}
+                </select>
+              </>
             )}
           </div>
         </div>
 
-        {/* Card Egresos */}
-        <div className="card" style={{ backgroundColor: 'var(--pastel-yellow)', color: 'black' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700 }}>{isRealExpenseMode ? 'Gasto Real' : 'Total Salidas'}</h3>
-            <div style={{ backgroundColor: 'black', color: 'var(--danger)', padding: '0.25rem', borderRadius: '50%' }}>
-              <TrendingDown size={24} />
+        <p style={{ fontSize: '3.5rem', fontWeight: 900, margin: 0, color: stateColor }}>
+          ${currentBalance.toLocaleString('es-CL')}
+        </p>
+        <p style={{ margin: '1rem 0 0 0', fontWeight: 600, fontSize: '1rem', color: 'var(--text-secondary)' }}>
+          De esto, <strong>${currentEgresos.toLocaleString('es-CL')}</strong> fue gasto real y <strong>${movimientosInternosEgreso.toLocaleString('es-CL')}</strong> fueron movimientos entre tus cuentas.
+        </p>
+      </div>
+    );
+  };
+
+  const renderComparacionInmediata = () => {
+    const maxVal = Math.max(currentIngresos, currentEgresos, 1);
+    const ingrPct = (currentIngresos / maxVal) * 100;
+    const egrPct = (currentEgresos / maxVal) * 100;
+
+    return (
+      <div className="card" style={{ backgroundColor: 'white', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <h3 style={{ margin: '0 0 1.5rem 0', fontSize: '1.25rem' }}>Comparación Inmediata</h3>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontWeight: 700 }}>
+              <span>Ingreso Real</span>
+              <span>${currentIngresos.toLocaleString('es-CL')}</span>
             </div>
+            <div style={{ width: '100%', backgroundColor: '#f1f5f9', height: '24px', borderRadius: '12px', overflow: 'hidden' }}>
+              <div style={{ width: ingrPct + '%', backgroundColor: '#22c55e', height: '100%', transition: 'width 0.5s' }} />
+            </div>
+            {renderChangeBadge(currentIngresos, prevIngr, prevLabel, false)}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <p style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0 }}>
-              ${currentEgresos.toLocaleString('es-CL')}
-            </p>
+
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontWeight: 700 }}>
+              <span>Gasto Real</span>
+              <span>${currentEgresos.toLocaleString('es-CL')}</span>
+            </div>
+            <div style={{ width: '100%', backgroundColor: '#f1f5f9', height: '24px', borderRadius: '12px', overflow: 'hidden' }}>
+              <div style={{ width: egrPct + '%', backgroundColor: '#ef4444', height: '100%', transition: 'width 0.5s' }} />
+            </div>
             {renderChangeBadge(currentEgresos, prevEgr, prevLabel, true)}
           </div>
         </div>
       </div>
-      
-      {/* Cards secundarias para Ahorro y Movimientos Internos */}
-      {isRealExpenseMode && (ahorro > 0 || movimientosInternosEgreso > 0) && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
-          {ahorro > 0 && (
-            <div className="card" style={{ backgroundColor: '#86efac', borderStyle: 'dashed' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <h3 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 700 }}>Patrimonio / Ahorro</h3>
-                <PiggyBank size={20} />
-              </div>
-              <p style={{ fontSize: '2rem', fontWeight: 800, margin: 0 }}>${ahorro.toLocaleString('es-CL')}</p>
-              <p style={{ fontSize: '0.85rem', fontWeight: 600, margin: '0.5rem 0 0 0', opacity: 0.8 }}>Capital retenido (No resta del balance)</p>
-            </div>
-          )}
-          {movimientosInternosEgreso > 0 && (
-            <div className="card" style={{ backgroundColor: '#e2e8f0', borderStyle: 'dashed' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <h3 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 700 }}>Movimientos Internos</h3>
-                <Shuffle size={20} />
-              </div>
-              <p style={{ fontSize: '2rem', fontWeight: 800, margin: 0 }}>${movimientosInternosEgreso.toLocaleString('es-CL')}</p>
-              <p style={{ fontSize: '0.85rem', fontWeight: 600, margin: '0.5rem 0 0 0', opacity: 0.8 }}>Traspasos entre tus propias cuentas</p>
-            </div>
-          )}
-        </div>
-      )}
+    );
+  };
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '2rem', marginBottom: '4rem' }}>
-        {/* Evolución Mensual */}
-        <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
-          <h3 style={{ fontSize: '1.5rem', marginBottom: '2rem', marginTop: 0 }}>Evolución Mensual</h3>
-          {chartData.length > 0 ? (
-            <div style={{ height: '400px', width: '100%', flex: 1 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#000" vertical={false} />
-                  <XAxis dataKey="name" stroke="#000" tick={{ fill: '#000', fontWeight: 600 }} />
-                  <YAxis stroke="#000" tick={{ fill: '#000', fontWeight: 600 }} />
-                  <Tooltip 
-                    contentStyle={{ border: '2px solid black', boxShadow: '4px 4px 0px black', borderRadius: '8px', fontWeight: 600 }}
-                    itemStyle={{ fontWeight: 700 }}
-                  />
-                  <Legend wrapperStyle={{ fontWeight: 600, paddingTop: '1rem' }} />
-                  <Bar dataKey="Egresos" fill="var(--danger)" stroke="black" strokeWidth={2} radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="Ingresos" fill="var(--success)" stroke="black" strokeWidth={2} radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-              No hay datos suficientes para graficar. Importa un CSV para comenzar.
-            </div>
-          )}
+  const renderAlerts = () => {
+    const uncategorized = baseTransactions.filter(t => !t.tipo_movimiento);
+    const pct = baseTransactions.length > 0 ? (uncategorized.length / baseTransactions.length) * 100 : 0;
+    const topRecurrente = recurringExpenses.length > 0 ? recurringExpenses[0] : null;
+    const anomaly = getAnomalies();
+    
+    if (uncategorized.length === 0 && !topRecurrente && !anomaly) {
+      return (
+        <div style={{ backgroundColor: '#bbf7d0', padding: '1.5rem', border: '2px solid black', borderRadius: 'var(--radius-sm)', boxShadow: '4px 4px 0px black', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+          <div style={{ backgroundColor: 'white', padding: '1rem', border: '2px solid black', borderRadius: '50%' }}>
+            ✨
+          </div>
+          <div>
+            <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.25rem', color: '#166534' }}>Todo en orden</h3>
+            <p style={{ margin: 0, fontWeight: 500, color: '#15803d' }}>Todo tu historial está clasificado y no detectamos fugas ni anomalías este período.</p>
+          </div>
         </div>
+      );
+    }
 
-        <div className="card" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '2rem', backgroundColor: '#bfdbfe', borderBottom: '2px solid black', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {uncategorized.length > 0 && (
+          <div style={{ backgroundColor: pct > 5 ? '#fecaca' : '#fef08a', padding: '1.5rem', border: '2px solid black', borderRadius: 'var(--radius-sm)', boxShadow: '4px 4px 0px black', display: 'flex', alignItems: 'center', gap: '1.5rem', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+              <div style={{ backgroundColor: 'white', padding: '1rem', border: '2px solid black', borderRadius: '50%' }}>
+                <AlertTriangle size={28} color={pct > 5 ? "#b91c1c" : "#ca8a04"} />
+              </div>
+              <div>
+                <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.25rem', color: pct > 5 ? '#7f1d1d' : '#854d0e' }}>
+                  Atención: Transacciones sin clasificar
+                </h3>
+                <p style={{ margin: 0, fontSize: '1rem', fontWeight: 500, color: pct > 5 ? '#991b1b' : '#a16207' }}>
+                  Tienes <strong>{uncategorized.length} pagos</strong> sin clasificar ({pct.toFixed(1)}% del total).
+                </p>
+              </div>
+            </div>
+            <a href="/transactions" className="btn btn-primary" style={{ textDecoration: 'none', backgroundColor: pct > 5 ? '#b91c1c' : 'black' }}>
+              Clasificar Ahora
+            </a>
+          </div>
+        )}
+
+        {topRecurrente && (
+          <div style={{ backgroundColor: '#bfdbfe', padding: '1.5rem', border: '2px solid black', borderRadius: 'var(--radius-sm)', boxShadow: '4px 4px 0px black', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+            <div style={{ backgroundColor: 'white', padding: '1rem', border: '2px solid black', borderRadius: '50%' }}>
+              <Search size={28} color="#1d4ed8" />
+            </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: '1.5rem', marginBottom: '0.5rem' }}>Top Fugas Recurrentes</h3>
-              <p style={{ margin: 0, color: 'var(--text-secondary)', fontWeight: 500 }}>Basado en Gasto Real Variable</p>
+              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.25rem', color: '#1e3a8a' }}>
+                Fuga detectada: {topRecurrente.name}
+              </h3>
+              <p style={{ margin: 0, fontSize: '1rem', fontWeight: 500, color: '#1d4ed8' }}>
+                Gasto recurrente fuera de tus cuentas fijas, sumando <strong>${topRecurrente.total.toLocaleString('es-CL')}</strong> ({topRecurrente.count} pagos).
+              </p>
+            </div>
+          </div>
+        )}
+
+        {anomaly && (
+          <div style={{ backgroundColor: '#fed7aa', padding: '1.5rem', border: '2px solid black', borderRadius: 'var(--radius-sm)', boxShadow: '4px 4px 0px black', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+            <div style={{ backgroundColor: 'white', padding: '1rem', border: '2px solid black', borderRadius: '50%' }}>
+              <TrendingUp size={28} color="#c2410c" />
+            </div>
+            <div>
+              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.25rem', color: '#9a3412' }}>
+                Crecimiento anómalo: {anomaly.name}
+              </h3>
+              <p style={{ margin: 0, fontSize: '1rem', fontWeight: 500, color: '#c2410c' }}>
+                Esta categoría subió un <strong>{anomaly.pctGrowth.toFixed(1)}%</strong> (+${anomaly.absGrowth.toLocaleString('es-CL')}) vs {prevLabel}.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderDesglose = () => {
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '2rem' }}>
+        <div className="card" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '2rem', backgroundColor: 'var(--pastel-yellow)', borderBottom: '2px solid black', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1.5rem', marginBottom: '0.5rem' }}>Top Categorías (Gasto Real)</h3>
+              <p style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 500 }}>Donde se concentra tu dinero</p>
             </div>
             
             <div style={{ display: 'flex', alignItems: 'center', backgroundColor: 'white', border: '2px solid black', borderRadius: 'var(--radius-sm)', overflow: 'hidden', boxShadow: '2px 2px 0px black' }}>
@@ -665,7 +655,7 @@ export default function Dashboard() {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead style={{ backgroundColor: 'var(--primary-light)', borderBottom: '2px solid black' }}>
                 <tr>
-                  <th style={{ padding: '0.75rem 1rem', borderRight: '2px solid black', fontWeight: 700 }}>Concepto</th>
+                  <th style={{ padding: '0.75rem 1rem', borderRight: '2px solid black', fontWeight: 700 }}>Categoría</th>
                   <th style={{ padding: '0.75rem 1rem', borderRight: '2px solid black', fontWeight: 700 }}>Cant.</th>
                   <th style={{ padding: '0.75rem 1rem', fontWeight: 700 }}>Total Pagado</th>
                 </tr>
@@ -693,35 +683,128 @@ export default function Dashboard() {
             </table>
           </div>
         </div>
-      </div>
-      
-      {/* Gráfico de Tendencia Específico */}
-      {selectedRecurringItem && (
-        <div className="card" style={{ marginBottom: '4rem' }}>
-          <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem' }}>
-            Tendencia Mensual: <span style={{ color: 'var(--primary)' }}>{selectedRecurringItem}</span>
-          </h3>
-          {specificItemTrendData.length > 0 ? (
-            <div style={{ height: '300px', width: '100%' }}>
+
+        <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+          <h3 style={{ fontSize: '1.5rem', marginBottom: '2rem', marginTop: 0 }}>Evolución Mensual</h3>
+          {chartData.length > 0 ? (
+            <div style={{ height: '400px', width: '100%', flex: 1 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={specificItemTrendData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#ccc" />
-                  <XAxis dataKey="name" stroke="black" fontWeight="600" />
-                  <YAxis stroke="black" fontWeight="600" />
+                <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#000" vertical={false} />
+                  <XAxis dataKey="name" stroke="#000" tick={{ fill: '#000', fontWeight: 600 }} />
+                  <YAxis stroke="#000" tick={{ fill: '#000', fontWeight: 600 }} />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: 'white', border: '2px solid black', boxShadow: '4px 4px 0px black', borderRadius: 'var(--radius-sm)', fontWeight: '600' }}
-                    formatter={(value: any) => [`$${Number(value).toLocaleString('es-CL')}`, 'Gasto']}
+                    contentStyle={{ border: '2px solid black', boxShadow: '4px 4px 0px black', borderRadius: '8px', fontWeight: 600 }}
+                    itemStyle={{ fontWeight: 700 }}
                   />
-                  <Line type="monotone" dataKey="Gasto" stroke="var(--danger)" strokeWidth={4} activeDot={{ r: 8, stroke: 'black', strokeWidth: 2 }} />
-                </LineChart>
+                  <Legend wrapperStyle={{ fontWeight: 600, paddingTop: '1rem' }} />
+                  <Bar dataKey="Egresos" fill="var(--danger)" stroke="black" strokeWidth={2} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Ingresos" fill="var(--success)" stroke="black" strokeWidth={2} radius={[4, 4, 0, 0]} />
+                </BarChart>
               </ResponsiveContainer>
             </div>
           ) : (
-            <p style={{ textAlign: 'center', fontWeight: 500, color: 'var(--text-secondary)', padding: '2rem 0' }}>
-              Sin datos temporales suficientes.
-            </p>
+            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+              No hay datos suficientes para graficar. Importa un CSV para comenzar.
+            </div>
           )}
         </div>
+      </div>
+    );
+  };
+
+  const renderInformativo = () => {
+    if (ahorro === 0 && movimientosInternosEgreso === 0) return null;
+    return (
+      <div style={{ marginTop: '2rem' }}>
+        <h3 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Informativo / No Urgente</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+          {ahorro > 0 && (
+            <div className="card" style={{ backgroundColor: '#86efac', borderStyle: 'dashed' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <h3 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 700 }}>Patrimonio / Ahorro</h3>
+                <PiggyBank size={20} />
+              </div>
+              <p style={{ fontSize: '2rem', fontWeight: 800, margin: 0 }}>${ahorro.toLocaleString('es-CL')}</p>
+              <p style={{ fontSize: '0.85rem', fontWeight: 600, margin: '0.5rem 0 0 0', opacity: 0.8 }}>Capital retenido (No resta del balance real)</p>
+            </div>
+          )}
+          {movimientosInternosEgreso > 0 && (
+            <div className="card" style={{ backgroundColor: '#e2e8f0', borderStyle: 'dashed' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <h3 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 700 }}>Movimientos Internos</h3>
+                <Shuffle size={20} />
+              </div>
+              <p style={{ fontSize: '2rem', fontWeight: 800, margin: 0 }}>${movimientosInternosEgreso.toLocaleString('es-CL')}</p>
+              <p style={{ fontSize: '0.85rem', fontWeight: 600, margin: '0.5rem 0 0 0', opacity: 0.8 }}>Traspasos entre tus propias cuentas</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem', paddingBottom: '4rem' }}>
+      
+      {transactions.length === 0 ? (
+        <div className="card" style={{ backgroundColor: 'white', textAlign: 'center', padding: '6rem 2rem', border: '3px dashed black' }}>
+          <h2 style={{ fontSize: '2rem', margin: '0 0 1rem 0' }}>Aún no tienes movimientos cargados</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: '1.1rem', fontWeight: 500 }}>
+            Para ver tu balance y análisis financiero, necesitas importar tus cartolas bancarias.
+          </p>
+          <a href="/import" className="btn btn-primary" style={{ textDecoration: 'none', display: 'inline-block' }}>Importar Transacciones</a>
+        </div>
+      ) : baseTransactions.length === 0 ? (
+        <>
+          {renderTarjetaEstado()}
+          <div className="card" style={{ backgroundColor: 'white', textAlign: 'center', padding: '4rem 2rem' }}>
+            <h2 style={{ fontSize: '1.5rem', margin: '0 0 1rem 0' }}>No hay movimientos registrados en este período</h2>
+            <p style={{ color: 'var(--text-secondary)', margin: 0, fontWeight: 500 }}>Prueba seleccionando otro rango de fechas en los filtros superiores.</p>
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
+            {renderTarjetaEstado()}
+            {renderComparacionInmediata()}
+          </div>
+
+          {availablePrincipals.length > 0 && (
+            <div>
+              <span style={{ fontWeight: 700, fontSize: '0.875rem', marginRight: '1rem' }}>Filtros Rapidos:</span>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {availablePrincipals.map(catName => {
+                  const isHidden = hiddenPrincipals.includes(catName);
+                  return (
+                    <button
+                      key={catName}
+                      onClick={() => toggleCategory(catName)}
+                      style={{
+                        padding: '0.2rem 0.6rem', borderRadius: '1rem', border: '2px solid black',
+                        backgroundColor: isHidden ? '#f1f5f9' : '#bfdbfe',
+                        color: isHidden ? '#94a3b8' : 'black',
+                        fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer',
+                        boxShadow: isHidden ? 'none' : '1px 1px 0px black',
+                        opacity: isHidden ? 0.7 : 1, transition: 'all 0.1s'
+                      }}
+                    >
+                      {isHidden ? '❌' : '✅'} {catName}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {renderAlerts()}
+          
+          {renderDesglose()}
+
+          {generateInsightReport(currentBalance, currentBalance < 0, ingresosReales)}
+
+          {renderInformativo()}
+        </>
       )}
     </div>
   );
