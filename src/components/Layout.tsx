@@ -175,7 +175,7 @@ export default function Layout() {
           style={{ 
             position: 'absolute',
             top: '50%',
-            right: '-14px',
+            right: '-15px',
             transform: 'translateY(-50%)',
             width: '28px',
             height: '28px',
@@ -197,7 +197,7 @@ export default function Layout() {
           padding: isCollapsed ? '2rem 0 1rem 0' : '2rem 1rem 1rem', 
           borderBottom: '2px solid black',
           display: 'flex',
-          justifyContent: 'center',
+          justifyContent: isCollapsed ? 'center' : 'flex-start',
           alignItems: 'center'
         }}>
           {!isCollapsed && (
