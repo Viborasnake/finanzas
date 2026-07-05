@@ -393,7 +393,16 @@ export default function Dashboard() {
           if (t.type === 'egreso' && !isInternal && !isInvestment) gas += Math.abs(t.amount);
         }
       });
-      data.push({ label: `P${i+6}`, Ingresos: ing, Egresos: gas });
+      let label = '';
+      const days = Math.round(durationMs / (1000 * 60 * 60 * 24));
+      if (days >= 28 && days <= 31) {
+        label = bStart.toLocaleString('es-CL', { month: 'short', timeZone: 'UTC' });
+      } else if (days > 360) {
+        label = bStart.getFullYear().toString();
+      } else {
+        label = `${bStart.getUTCDate()}/${bStart.getUTCMonth()+1}`;
+      }
+      data.push({ label, Ingresos: ing, Egresos: gas });
     }
     return data;
   }, [transactions, dateRange]);
@@ -1145,20 +1154,6 @@ export default function Dashboard() {
         <div style={{ height: '320px', position: 'relative' }}>
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={monthlyData} margin={{ top: 20, right: 10, left: 0, bottom: 0 }} barCategoryGap="20%">
-              <defs>
-                <linearGradient id="colorIngresos" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#4ade80" stopOpacity={1}/>
-                  <stop offset="95%" stopColor="#16a34a" stopOpacity={1}/>
-                </linearGradient>
-                <linearGradient id="colorEgresos" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#fb7185" stopOpacity={1}/>
-                  <stop offset="95%" stopColor="#e11d48" stopOpacity={1}/>
-                </linearGradient>
-                <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.5}/>
-                  <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
               <CartesianGrid strokeDasharray="4 4" stroke="#e2e8f0" vertical={false} />
               <XAxis
                 dataKey="mes"
@@ -1169,9 +1164,9 @@ export default function Dashboard() {
               />
               <YAxis hide />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.04)', radius: 8 }} />
-              <Bar dataKey="Ingresos" fill="url(#colorIngresos)" stroke="#000" strokeWidth={2} radius={[6, 6, 0, 0]} maxBarSize={45} isAnimationActive={true} />
-              <Bar dataKey="Egresos" fill="url(#colorEgresos)" stroke="#000" strokeWidth={2} radius={[6, 6, 0, 0]} maxBarSize={45} isAnimationActive={true} />
-              <Area type="monotone" dataKey="Balance" stroke="#2563eb" strokeWidth={4} fill="url(#colorBalance)" dot={{ r: 5, fill: '#fff', stroke: '#2563eb', strokeWidth: 3 }} activeDot={{ r: 8, fill: '#2563eb', stroke: '#fff', strokeWidth: 3 }} isAnimationActive={true} />
+              <Bar dataKey="Ingresos" fill="#4ade80" stroke="#000" strokeWidth={2} radius={[6, 6, 0, 0]} maxBarSize={45} isAnimationActive={true} />
+              <Bar dataKey="Egresos" fill="#fb7185" stroke="#000" strokeWidth={2} radius={[6, 6, 0, 0]} maxBarSize={45} isAnimationActive={true} />
+              <Area type="monotone" dataKey="Balance" stroke="#2563eb" strokeWidth={4} fill="#60a5fa" fillOpacity={0.3} dot={{ r: 5, fill: '#fff', stroke: '#2563eb', strokeWidth: 3 }} activeDot={{ r: 8, fill: '#2563eb', stroke: '#fff', strokeWidth: 3 }} isAnimationActive={true} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
