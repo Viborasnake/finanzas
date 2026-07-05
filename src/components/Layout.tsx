@@ -175,8 +175,21 @@ export default function Layout() {
           justifyContent: isCollapsed ? 'center' : 'space-between',
           alignItems: 'center'
         }}>
-          {!isCollapsed && <div style={{ fontSize: '1.35rem', margin: 0, fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}>✨ MisFinanzas</div>}
-          {isCollapsed && <div style={{ fontSize: '1.35rem', margin: 0, fontWeight: 900 }}>✨</div>}
+          {!isCollapsed && (
+            <div style={{ fontSize: '1.35rem', margin: 0, fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}>
+              <div style={{ background: 'black', color: 'white', padding: '0.2rem', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>✨</span>
+              </div>
+              MisFinanzas
+            </div>
+          )}
+          {isCollapsed && (
+            <div style={{ margin: 0 }}>
+              <div style={{ background: 'black', color: 'white', padding: '0.2rem', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>✨</span>
+              </div>
+            </div>
+          )}
           <button 
             onClick={() => setIsCollapsed(!isCollapsed)} 
             style={{ 
