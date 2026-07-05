@@ -169,14 +169,14 @@ export default function Layout() {
       {/* Sidebar Desktop */}
       <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
         <div style={{ 
-          padding: isCollapsed ? '2rem 0 1rem 0' : '2rem 1.5rem 1rem', 
+          padding: isCollapsed ? '2rem 0 1rem 0' : '2rem 1rem 1rem', 
           borderBottom: '2px solid black',
           display: 'flex',
           justifyContent: isCollapsed ? 'center' : 'space-between',
           alignItems: 'center'
         }}>
-          {!isCollapsed && <div style={{ fontSize: '1.5rem', margin: 0, fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>✨ MisFinanzas</div>}
-          {isCollapsed && <div style={{ fontSize: '1.5rem', margin: 0, fontWeight: 900 }}>✨</div>}
+          {!isCollapsed && <div style={{ fontSize: '1.35rem', margin: 0, fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}>✨ MisFinanzas</div>}
+          {isCollapsed && <div style={{ fontSize: '1.35rem', margin: 0, fontWeight: 900 }}>✨</div>}
           <button 
             onClick={() => setIsCollapsed(!isCollapsed)} 
             style={{ 
@@ -203,10 +203,11 @@ export default function Layout() {
                   {item.icon}
                   <span>{item.name}</span>
                 </Link>
-                {isActive && item.subItems && (
-                  <div style={{ paddingLeft: '3rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem', marginTop: '0.25rem' }}>
+                {isActive && item.subItems && !isCollapsed && (
+                  <div style={{ paddingLeft: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem', marginTop: '0.25rem' }}>
                     {item.subItems.map(sub => (
-                      <a key={sub.hash} href={`${item.path}${sub.hash}`} style={{ fontSize: '0.85rem', color: '#334155', textDecoration: 'none', fontWeight: 700 }}>
+                      <a key={sub.hash} href={`${item.path}${sub.hash}`} style={{ fontSize: '0.9rem', color: '#1e293b', textDecoration: 'none', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: 'black' }} />
                         {sub.name}
                       </a>
                     ))}
