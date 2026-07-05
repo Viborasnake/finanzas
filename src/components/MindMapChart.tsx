@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import Tree from 'react-d3-tree';
-import { X, Maximize2 } from 'lucide-react';
+import { X, Maximize2, Eye, EyeOff } from 'lucide-react';
 
 interface MindMapChartProps {
   transactions: any[];
@@ -80,6 +80,7 @@ const getDynamicPathClass = ({ target }: any) => {
 export default function MindMapChart({ transactions, taxonomy }: MindMapChartProps) {
   const [zoom, setZoom] = useState(0.8);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [hideEmpty, setHideEmpty] = useState(true);
 
   // Compute totals per category
   const totals = {
@@ -94,7 +95,7 @@ export default function MindMapChart({ transactions, taxonomy }: MindMapChartPro
       const amount = Math.abs(t.amount);
       if (t.tipo_movimiento === 'Ingreso' || t.tipo_movimiento === 'Ingreso Real') {
         totals.Ingreso += amount;
-      } else {
+      } else if (t.tipo_movimiento === 'Egreso' || t.tipo_movimiento === 'Egreso Real') {
         totals.Egreso += amount;
       }
       
@@ -112,27 +113,39 @@ export default function MindMapChart({ transactions, taxonomy }: MindMapChartPro
     attributes: { amount: totals.Ingreso + totals.Egreso, rootTipo: 'Root' },
     children: Object.entries(taxonomy)
       .filter(([tipo]) => tipo === 'Ingreso' || tipo === 'Egreso')
-      .map(([tipo, principals]) => ({
-      name: tipo,
-      attributes: { rootTipo: tipo, amount: tipo === 'Ingreso' ? totals.Ingreso : totals.Egreso },
-      children: Object.entries(principals as Record<string, string[]>).map(([principal, secundarias]) => ({
-        name: principal,
-        attributes: { rootTipo: tipo, amount: totals.principales[`${tipo}-${principal}`] || 0 },
-        children: secundarias.map(sec => ({ 
-          name: sec, 
-          attributes: { rootTipo: tipo, amount: totals.secundarias[`${tipo}-${principal}-${sec}`] || 0 } 
-        }))
-      }))
-    }))
+      .map(([tipo, principals]) => {
+        const principalNodes = Object.entries(principals as Record<string, string[]>)
+          .map(([principal, secundarias]) => {
+            const secNodes = secundarias
+              .map(sec => ({ 
+                name: sec, 
+                attributes: { rootTipo: tipo, amount: totals.secundarias[`${tipo}-${principal}-${sec}`] || 0 } 
+              }))
+              .filter(sec => !hideEmpty || sec.attributes.amount > 0);
+              
+            return {
+              name: principal,
+              attributes: { rootTipo: tipo, amount: totals.principales[`${tipo}-${principal}`] || 0 },
+              children: secNodes
+            };
+          })
+          .filter(prin => !hideEmpty || prin.attributes.amount > 0);
+          
+        return {
+          name: tipo,
+          attributes: { rootTipo: tipo, amount: tipo === 'Ingreso' ? totals.Ingreso : totals.Egreso },
+          children: principalNodes
+        };
+      })
   };
 
   const treeProps = {
     data: treeData,
-    orientation: "horizontal" as const,
+    orientation: "vertical" as const,
     pathFunc: "diagonal" as const,
     pathClassFunc: getDynamicPathClass,
-    translate: { x: 100, y: isModalOpen ? window.innerHeight / 2 : 250 },
-    nodeSize: { x: 180, y: 40 },
+    translate: { x: isModalOpen ? window.innerWidth / 2 : (window.innerWidth > 800 ? 400 : 200), y: 100 },
+    nodeSize: { x: 180, y: 100 },
     zoomable: true,
     zoom: zoom,
     collapsible: true,
@@ -144,6 +157,9 @@ export default function MindMapChart({ transactions, taxonomy }: MindMapChartPro
     <div style={{ position: 'absolute', bottom: '1rem', right: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', zIndex: 10 }}>
       <button type="button" onClick={() => setZoom(z => Math.min(z + 0.2, 2))} style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '8px', padding: '0.5rem', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 900, cursor: 'pointer', boxShadow: '2px 2px 0px #000' }}>+</button>
       <button type="button" onClick={() => setZoom(z => Math.max(z - 0.2, 0.2))} style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '8px', padding: '0.5rem', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 900, cursor: 'pointer', boxShadow: '2px 2px 0px #000' }}>-</button>
+      <button type="button" onClick={() => setHideEmpty(!hideEmpty)} title={hideEmpty ? "Mostrar sin movimientos" : "Ocultar sin movimientos"} style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '8px', padding: '0.5rem', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 900, cursor: 'pointer', boxShadow: '2px 2px 0px #000' }}>
+        {hideEmpty ? <EyeOff size={20} /> : <Eye size={20} />}
+      </button>
       <button type="button" onClick={() => setIsModalOpen(!isModalOpen)} style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '8px', padding: '0.5rem', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 900, cursor: 'pointer', boxShadow: '2px 2px 0px #000' }}>
         {isModalOpen ? <X size={20} /> : <Maximize2 size={20} />}
       </button>
