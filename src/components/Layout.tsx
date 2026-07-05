@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FileSpreadsheet, Receipt, Settings, LogOut, Menu, X, ChevronDown, Check, Copy, Plus } from 'lucide-react';
+import { LayoutDashboard, FileSpreadsheet, Receipt, Settings, LogOut, Menu, X, ChevronDown, Check, Copy, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useBanks, AVAILABLE_BANKS } from '../contexts/BankContext';
 import type { Bank } from '../contexts/BankContext';
@@ -157,6 +157,7 @@ export default function Layout() {
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -166,12 +167,26 @@ export default function Layout() {
   return (
     <div className="layout">
       {/* Sidebar Desktop */}
-      <aside className="sidebar">
+      <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
         <div style={{ 
-          padding: '2rem 1.5rem 1rem', 
-          borderBottom: '2px solid black'
+          padding: isCollapsed ? '2rem 0 1rem 0' : '2rem 1.5rem 1rem', 
+          borderBottom: '2px solid black',
+          display: 'flex',
+          justifyContent: isCollapsed ? 'center' : 'space-between',
+          alignItems: 'center'
         }}>
-          <h2 style={{ fontSize: '1.5rem', margin: 0, fontWeight: 900 }}>✨ MisFinanzas</h2>
+          {!isCollapsed && <div style={{ fontSize: '1.5rem', margin: 0, fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>✨ MisFinanzas</div>}
+          {isCollapsed && <div style={{ fontSize: '1.5rem', margin: 0, fontWeight: 900 }}>✨</div>}
+          <button 
+            onClick={() => setIsCollapsed(!isCollapsed)} 
+            style={{ 
+              background: 'none', border: 'none', cursor: 'pointer', 
+              display: 'flex', alignItems: 'center', justifyContent: 'center', 
+              padding: '0.25rem' 
+            }}
+          >
+            {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+          </button>
         </div>
 
         <BankIndicator />
@@ -231,7 +246,7 @@ export default function Layout() {
       </aside>
 
       {/* Main Content */}
-      <main className="main-content">
+      <main className={`main-content ${isCollapsed ? 'collapsed' : ''}`}>
         <header className="mobile-header">
           <h2>MisFinanzas</h2>
           <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>

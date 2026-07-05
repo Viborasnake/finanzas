@@ -9,7 +9,7 @@ import { applyRules } from '../utils/classificationRules';
 import { CascadingCategorySelector } from './Transactions';
 import { useSettings } from '../contexts/SettingsContext';
 import { useBanks, AVAILABLE_BANKS } from '../contexts/BankContext';
-
+import { InitialAdjustmentManager } from '../components/InitialAdjustmentManager';
 
 
 export default function Settings() {
@@ -550,6 +550,9 @@ export default function Settings() {
             )}
           </div>
         </div>
+
+        {/* Ajuste de Inicio */}
+        <InitialAdjustmentManager />
 
         {/* Danger Zone */}
         <div className="card" style={{ position: 'relative', zIndex: 10, borderColor: 'var(--danger)' }}>

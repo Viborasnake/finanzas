@@ -15,6 +15,12 @@
   left: 0;
   top: 0;
   z-index: 10;
+  transition: width 0.3s ease;
+  overflow-x: hidden;
+}
+
+.sidebar.collapsed {
+  width: 80px;
 }
 
 .sidebar-header {
@@ -70,10 +76,40 @@
   font-weight: 800;
 }
 
+.sidebar.collapsed .nav-item {
+  padding: 1rem 0;
+  margin: 0.5rem;
+  justify-content: center;
+}
+
+.sidebar.collapsed .nav-item span {
+  display: none;
+}
+
+/* Hide Bank Indicator text when collapsed */
+.sidebar.collapsed .sidebar-header + div span {
+  display: none;
+}
+
+/* Hide submenu arrow and submenu when collapsed */
+.sidebar.collapsed .nav-item + div {
+  display: none !important;
+}
+
 .logout-btn {
   width: calc(100% - 2rem);
   color: var(--danger);
   border-radius: var(--radius-md);
+  box-sizing: border-box; /* prevent shadow overflow issues by ensuring padding is managed */
+}
+
+.sidebar.collapsed .logout-btn {
+  width: calc(100% - 1rem);
+  margin: 0.5rem;
+}
+
+.sidebar.collapsed .sidebar-footer > div:first-child {
+  display: none !important; /* Hide user email box */
 }
 
 .logout-btn:hover {
@@ -89,6 +125,11 @@
   display: flex;
   flex-direction: column;
   background-color: var(--bg-color);
+  transition: margin-left 0.3s ease;
+}
+
+.main-content.collapsed {
+  margin-left: 80px;
 }
 
 .mobile-header {
