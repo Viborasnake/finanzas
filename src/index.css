@@ -360,3 +360,9 @@ select.input {
   stroke-width: 3px;
   fill: none;
 }
+
+@media (max-width: 768px) {
+  .auth-left-col {
+    display: none !important;
+  }
+}

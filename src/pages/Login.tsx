@@ -174,59 +174,171 @@ export default function Login() {
 
   // --- Auth Step ---
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', padding: '1rem' }}>
-      <div className="card" style={{ width: '100%', maxWidth: '400px' }}>
-        <h2 style={{ textAlign: 'center', marginBottom: '1.5rem', fontSize: '2rem' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#fdfdfc' }}>
+      {/* Left Column (Marketing) */}
+      <div 
+        className="auth-left-col" 
+        style={{ 
+          flex: 1, 
+          backgroundColor: 'var(--pastel-blue)', 
+          borderRight: '4px solid black', 
+          display: 'flex', 
+          flexDirection: 'column',
+          padding: '3rem 4rem',
+          position: 'relative',
+          overflow: 'hidden'
+        }}
+      >
+        {/* Background decorative circles typical of neobrutalism/modern design */}
+        <div style={{ position: 'absolute', top: '-10%', right: '-10%', width: '400px', height: '400px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.2)' }}></div>
+        <div style={{ position: 'absolute', bottom: '-5%', left: '-10%', width: '300px', height: '300px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.2)' }}></div>
+
+        <div style={{ fontWeight: 900, fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 'auto', position: 'relative', zIndex: 10 }}>
+          <div style={{ background: 'black', color: 'white', padding: '0.2rem', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>✨</span>
+          </div>
           MisFinanzas
-        </h2>
+        </div>
         
-        {error && (
-          <div style={{ backgroundColor: 'var(--danger)', color: 'white', padding: '0.75rem', borderRadius: 'var(--radius-md)', marginBottom: '1rem', border: '2px solid black', boxShadow: '2px 2px 0px black', fontWeight: 600 }}>
-            {error}
-          </div>
-        )}
+        <div style={{ marginBottom: 'auto', maxWidth: '500px', position: 'relative', zIndex: 10 }}>
+          <h1 style={{ fontSize: '3.5rem', fontWeight: 900, lineHeight: 1.1, marginBottom: '1.5rem', letterSpacing: '-2px' }}>
+            Tu dinero bajo<br />tu control.
+          </h1>
+          <p style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '3rem', color: 'rgba(0,0,0,0.7)' }}>
+            Conectamos todas tus cartolas bancarias en un solo lugar con inteligencia artificial.
+          </p>
+          
+          <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <li style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '1rem', fontWeight: 700 }}>
+              <div style={{ background: 'transparent', border: '2px solid black', borderRadius: '50%', padding: '0.25rem', display: 'flex' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </div>
+              Categorización masiva en segundos
+            </li>
+            <li style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '1rem', fontWeight: 700 }}>
+              <div style={{ background: 'transparent', border: '2px solid black', borderRadius: '50%', padding: '0.25rem', display: 'flex' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </div>
+              Análisis de flujo de caja real
+            </li>
+            <li style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '1rem', fontWeight: 700 }}>
+              <div style={{ background: 'transparent', border: '2px solid black', borderRadius: '50%', padding: '0.25rem', display: 'flex' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </div>
+              Identifica gastos hormiga automáticamente
+            </li>
+          </ul>
+        </div>
 
-        <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div>
-            <label className="label">Correo Electrónico</label>
-            <input 
-              type="email" 
-              className="input" 
-              placeholder="tu@email.com" 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <label className="label">Contraseña</label>
-            <input 
-              type="password" 
-              className="input" 
-              placeholder="••••••••" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-          <button 
-            type="submit" 
-            className="btn btn-primary" 
-            style={{ marginTop: '0.5rem', width: '100%', fontSize: '1.125rem', padding: '0.75rem' }}
-            disabled={loading}
-          >
-            {loading ? 'Cargando...' : (isSignUp ? 'Crear Cuenta' : 'Iniciar Sesión')}
-          </button>
-        </form>
+        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(0,0,0,0.5)', position: 'relative', zIndex: 10 }}>
+          © 2026 MisFinanzas · Hecho con ❤️ en Chile
+        </div>
+      </div>
 
-        <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
-          <button 
-            onClick={() => setIsSignUp(!isSignUp)}
-            style={{ fontWeight: 600, textDecoration: 'underline' }}
-            disabled={loading}
-          >
-            {isSignUp ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate'}
-          </button>
+      {/* Right Column (Auth) */}
+      <div 
+        style={{ 
+          flex: 1, 
+          backgroundColor: '#fdfdfc', 
+          display: 'flex', 
+          flexDirection: 'column',
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          padding: '2rem' 
+        }}
+      >
+        <div style={{ width: '100%', maxWidth: '400px' }}>
+          {/* Tabs */}
+          <div style={{ display: 'flex', backgroundColor: '#fff', borderRadius: '2rem', border: '2px solid black', marginBottom: '2.5rem', padding: '0.25rem', boxShadow: '4px 4px 0px black' }}>
+            <button 
+              onClick={() => { setIsSignUp(false); setError(null); }}
+              style={{ flex: 1, padding: '0.75rem', borderRadius: '1.5rem', background: !isSignUp ? 'var(--pastel-blue)' : 'transparent', color: 'black', fontWeight: 800, fontSize: '0.875rem', cursor: 'pointer', transition: 'all 0.1s', border: !isSignUp ? '2px solid black' : '2px solid transparent' }}
+            >
+              Iniciar sesión
+            </button>
+            <button 
+              onClick={() => { setIsSignUp(true); setError(null); }}
+              style={{ flex: 1, padding: '0.75rem', borderRadius: '1.5rem', background: isSignUp ? 'var(--pastel-blue)' : 'transparent', color: 'black', fontWeight: 800, fontSize: '0.875rem', cursor: 'pointer', transition: 'all 0.1s', border: isSignUp ? '2px solid black' : '2px solid transparent' }}
+            >
+              Registrarse
+            </button>
+          </div>
+
+          {/* Form Card */}
+          <div className="card" style={{ width: '100%', padding: '2.5rem 2rem' }}>
+            <h2 style={{ fontSize: '1.5rem', marginBottom: '0.25rem', fontWeight: 900 }}>
+              {isSignUp ? 'Crear cuenta' : 'Bienvenido de nuevo'}
+            </h2>
+            <p style={{ color: '#64748b', fontWeight: 600, fontSize: '0.875rem', marginBottom: '2rem' }}>
+              {isSignUp ? 'Solo toma un minuto.' : 'Ingresa tus credenciales para continuar.'}
+            </p>
+            
+            {error && (
+              <div style={{ backgroundColor: 'var(--danger)', color: 'white', padding: '0.75rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', border: '2px solid black', boxShadow: '2px 2px 0px black', fontWeight: 600, fontSize: '0.875rem' }}>
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div>
+                <label className="label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.05em' }}>Email</label>
+                <div style={{ position: 'relative' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>
+                    <rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m2 7 10 7 10-7"></path>
+                  </svg>
+                  <input 
+                    type="email" 
+                    className="input" 
+                    placeholder="tu@email.com" 
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    style={{ paddingLeft: '3rem', width: '100%', borderRadius: '8px' }}
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.05em' }}>Contraseña</label>
+                <div style={{ position: 'relative' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                  </svg>
+                  <input 
+                    type="password" 
+                    className="input" 
+                    placeholder={isSignUp ? "Mínimo 6 caracteres" : "••••••••"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    style={{ paddingLeft: '3rem', width: '100%', borderRadius: '8px' }}
+                    required
+                    minLength={isSignUp ? 6 : undefined}
+                  />
+                </div>
+              </div>
+              <button 
+                type="submit" 
+                className="btn btn-primary" 
+                style={{ marginTop: '0.5rem', width: '100%', fontSize: '0.9rem', padding: '0.875rem', backgroundColor: 'var(--pastel-blue)', color: 'black', border: '2px solid black' }}
+                disabled={loading}
+              >
+                {loading ? 'Cargando...' : (isSignUp ? 'Crear cuenta gratis' : 'Entrar a mi cuenta')}
+              </button>
+            </form>
+          </div>
+
+          <div style={{ marginTop: '2rem', textAlign: 'center' }}>
+            <span style={{ color: '#64748b', fontWeight: 600, fontSize: '0.875rem' }}>
+              {isSignUp ? '¿Ya tienes cuenta?' : '¿No tienes cuenta?'}
+            </span>
+            {' '}
+            <button 
+              onClick={() => { setIsSignUp(!isSignUp); setError(null); }}
+              style={{ fontWeight: 800, color: 'var(--success)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
+              disabled={loading}
+            >
+              {isSignUp ? 'Inicia sesión' : 'Regístrate gratis'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
