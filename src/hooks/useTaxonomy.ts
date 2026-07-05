@@ -30,6 +30,7 @@ export const BASE_TAXONOMY: Record<string, Record<string, string[]>> = {
     'Mascotas': ['Alimento', 'Veterinario', 'Accesorios/Peluquería'],
     'Herramientas/Software': ['Herramientas/Software'],
     'Transferencias a Otras Personas': ['Familiares', 'Amigos', 'Préstamo', 'Devolución', 'Otros'],
+    'Transferencias Propias': ['Transferencias Propias'],
     'Impuestos': ['IVA', 'Renta / F22', 'PPM', 'Retención Boletas', 'Otros'],
     'Intereses y Comisiones': ['Mantención Cuenta', 'Comisiones', 'Seguro Desgravamen/Fraude', 'Intereses'],
     'Pago Tarjeta Crédito': ['Tarjeta Credito'],
