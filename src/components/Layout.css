@@ -19,7 +19,7 @@
 }
 
 .sidebar.collapsed {
-  width: 90px;
+  width: 72px;
 }
 
 .sidebar-header {
@@ -56,8 +56,6 @@
   transition: all 0.2s ease;
   border: 2px solid transparent;
   box-sizing: border-box;
-  background-clip: padding-box;
-  -webkit-appearance: none;
 }
 .nav-item span {
   white-space: nowrap;
@@ -134,7 +132,7 @@
 }
 
 .main-content.collapsed {
-  margin-left: 90px;
+  margin-left: 72px;
 }
 
 .mobile-header {
