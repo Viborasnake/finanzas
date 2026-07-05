@@ -16,6 +16,8 @@ import {
 } from 'recharts';
 import NeoDatePicker from '../components/NeoDatePicker';
 import InfoTooltip from '../components/InfoTooltip';
+import MindMapChart from '../components/MindMapChart';
+import { useTaxonomy } from '../hooks/useTaxonomy';
 
 type CategoryLevel = 'principal' | 'secundaria' | 'detalle';
 
@@ -58,6 +60,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { activeBank } = useBanks();
+  const { taxonomy } = useTaxonomy();
 
   const [activePreset, setActivePreset] = useState<string>(() => {
     return sessionStorage.getItem('finanzas_dash_preset') || 'month';
@@ -216,6 +219,14 @@ export default function Dashboard() {
       }
     };
   }, [dateRange]);
+
+  const filteredTransactions = useMemo(() => {
+    const { start, end } = dateRange;
+    return transactions.filter(t => {
+      const d = new Date(t.date);
+      return d >= start && d <= end;
+    });
+  }, [transactions, dateRange]);
 
   const stats = useMemo(() => {
     const calcForRange = (start: Date, end: Date) => {
@@ -1237,6 +1248,13 @@ export default function Dashboard() {
           {renderMainNumbers()}
           {renderAnalysisBlock()}
           {renderYearlyChart()}
+          <div className="card" style={{ marginTop: '2rem' }}>
+            <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Mapa de Flujo de Dinero</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
+              Visualiza orgánicamente cómo se distribuye tu dinero en este periodo. Los montos se calculan en base a tus movimientos filtrados.
+            </p>
+            <MindMapChart transactions={filteredTransactions} taxonomy={taxonomy} />
+          </div>
         </>
       )}
 

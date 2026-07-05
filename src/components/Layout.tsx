@@ -17,7 +17,6 @@ const navItems = [
     path: '/settings', 
     icon: <Settings size={20} />,
     subItems: [
-      { name: 'Mapa Mental', hash: '#mapa-mental' },
       { name: 'Detección (RUT)', hash: '#deteccion' },
       { name: 'Mis Categorías', hash: '#categorias' },
       { name: 'Contactos', hash: '#contactos' },

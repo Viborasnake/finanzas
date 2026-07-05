@@ -341,3 +341,22 @@ select.input {
     transform: translateY(-50%);
   }
 }
+
+/* MindMap SVG Edge Styles */
+.link-ingreso {
+  stroke: #86efac;
+  stroke-width: 3px;
+  fill: none;
+}
+
+.link-egreso {
+  stroke: #fca5a5;
+  stroke-width: 3px;
+  fill: none;
+}
+
+.link-default {
+  stroke: #cbd5e1;
+  stroke-width: 3px;
+  fill: none;
+}

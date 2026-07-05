@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, Trash2, Save, X, Maximize2 } from 'lucide-react';
+import { Plus, Trash2, Save, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { extractAndNormalizeRUT } from '../utils/rutParser';
 import type { ClassificationRule } from '../utils/classificationRules';
@@ -10,114 +9,8 @@ import { applyRules } from '../utils/classificationRules';
 import { CascadingCategorySelector } from './Transactions';
 import { useSettings } from '../contexts/SettingsContext';
 import { useBanks, AVAILABLE_BANKS } from '../contexts/BankContext';
-import Tree from 'react-d3-tree';
-import { useTaxonomy } from '../hooks/useTaxonomy';
 
-const renderCustomNodeElement = ({ nodeDatum, toggleNode }: any) => {
-  const isRoot = nodeDatum.name === 'Movimientos';
-  const isIngreso = nodeDatum.name === 'Ingreso' || nodeDatum.name === 'Ingreso Real';
-  const isEgreso = nodeDatum.name === 'Egreso' || nodeDatum.name === 'Egreso Real';
-  const rootTipo = nodeDatum.attributes?.rootTipo;
-  
-  let fill = '#e2e8f0'; // default gray
-  let stroke = '#94a3b8';
-  if (isRoot) {
-    fill = '#3b82f6'; // blue
-    stroke = '#2563eb';
-  } else if (isIngreso || rootTipo === 'Ingreso') {
-    fill = '#dcfce7'; // pastel green
-    stroke = '#22c55e';
-    if (isIngreso) { fill = '#22c55e'; stroke = '#16a34a'; }
-  } else if (isEgreso || rootTipo === 'Egreso') {
-    fill = '#fee2e2'; // pastel red
-    stroke = '#ef4444';
-    if (isEgreso) { fill = '#ef4444'; stroke = '#dc2626'; }
-  }
 
-  return (
-    <g>
-      <circle r="12" fill={fill} stroke={stroke} strokeWidth="2" onClick={toggleNode} style={{ cursor: 'pointer' }} />
-      <text 
-        fill="black" 
-        stroke="white"
-        strokeWidth="6" 
-        paintOrder="stroke fill"
-        x="18" 
-        y="-16" 
-        style={{ 
-          fontSize: isRoot || isIngreso || isEgreso ? '16px' : '14px', 
-          fontWeight: isRoot || isIngreso || isEgreso ? 800 : 500,
-          fontFamily: '"Inter", sans-serif'
-        }}
-      >
-        {nodeDatum.name}
-      </text>
-    </g>
-  );
-};
-
-function MindMap() {
-  const { taxonomy } = useTaxonomy();
-  const [zoom, setZoom] = useState(0.8);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  
-  const treeData = {
-    name: 'Movimientos',
-    children: Object.entries(taxonomy)
-      .filter(([tipo]) => tipo === 'Ingreso' || tipo === 'Egreso')
-      .map(([tipo, principals]) => ({
-      name: tipo,
-      attributes: { rootTipo: tipo },
-      children: Object.entries(principals as Record<string, string[]>).map(([principal, secundarias]) => ({
-        name: principal,
-        attributes: { rootTipo: tipo },
-        children: secundarias.map(sec => ({ name: sec, attributes: { rootTipo: tipo } }))
-      }))
-    }))
-  };
-
-  const treeProps = {
-    data: treeData,
-    orientation: "horizontal" as const,
-    pathFunc: "step" as const,
-    translate: { x: 100, y: isModalOpen ? window.innerHeight / 2 : 250 },
-    nodeSize: { x: 140, y: 35 },
-    zoomable: true,
-    zoom: zoom,
-    collapsible: true,
-    separation: { siblings: 1.2, nonSiblings: 1.5 },
-    renderCustomNodeElement: renderCustomNodeElement
-  };
-
-  const controls = (
-    <div style={{ position: 'absolute', bottom: '1rem', right: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', zIndex: 10 }}>
-      <button type="button" onClick={() => setZoom(z => Math.min(z + 0.2, 2))} style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '8px', padding: '0.5rem', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 900, cursor: 'pointer', boxShadow: '2px 2px 0px #000' }}>+</button>
-      <button type="button" onClick={() => setZoom(z => Math.max(z - 0.2, 0.2))} style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '8px', padding: '0.5rem', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 900, cursor: 'pointer', boxShadow: '2px 2px 0px #000' }}>-</button>
-      <button type="button" onClick={() => setIsModalOpen(!isModalOpen)} style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '8px', padding: '0.5rem', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 900, cursor: 'pointer', boxShadow: '2px 2px 0px #000' }}>
-        {isModalOpen ? <X size={20} /> : <Maximize2 size={20} />}
-      </button>
-    </div>
-  );
-
-  return (
-    <>
-      <div style={{ position: 'relative', width: '100%', height: '500px', border: '2px solid black', borderRadius: '8px', background: 'white', overflow: 'hidden' }}>
-        <Tree {...treeProps} />
-        {controls}
-      </div>
-      
-      {isModalOpen && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, backgroundColor: 'rgba(0,0,0,0.8)', padding: '2rem' }}>
-          <div style={{ position: 'relative', width: '100%', height: '100%', backgroundColor: 'white', borderRadius: '12px', border: '4px solid black', overflow: 'hidden', boxShadow: '8px 8px 0px rgba(0,0,0,1)' }}>
-            <Tree {...treeProps} />
-            {controls}
-          </div>
-        </div>,
-        document.body
-      )}
-    </>
-  );
-}
 
 export default function Settings() {
   
@@ -328,13 +221,7 @@ export default function Settings() {
     <div>
       <h1 style={{ fontSize: '2.5rem', marginBottom: '2rem' }}>Configuración</h1>
       
-      <div className="card" style={{ marginBottom: '2rem', maxWidth: '800px' }}>
-        <h2 id="mapa-mental" style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Mapa Mental de Categorías</h2>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
-          Visualiza cómo están interconectadas tus categorías de Ingresos y Egresos. Puedes arrastrar para moverte y hacer clic en los nodos para expandir/colapsar.
-        </p>
-        <MindMap />
-      </div>
+
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', maxWidth: '800px' }}>
         
