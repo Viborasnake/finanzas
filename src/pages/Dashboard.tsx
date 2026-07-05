@@ -6,7 +6,7 @@ import { useBanks } from '../contexts/BankContext';
 import { 
   ChevronRight, TrendingUp, TrendingDown, 
   Wallet, CreditCard, AlertTriangle, Sparkles, Activity, Search, X, Edit2,
-  ArrowUpRight, ArrowDownRight, Scale, PiggyBank
+  ArrowUpRight, ArrowDownRight, Scale, PiggyBank, Calendar
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -555,7 +555,7 @@ export default function Dashboard() {
               onClick={() => setPickerOpen(o => !o)}
               style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 1.25rem', backgroundColor: '#fff', border: '3px solid #000', borderRadius: '2rem', fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer', boxShadow: '4px 4px 0px #000', transition: 'all 0.1s' }}
             >
-              <span style={{ fontSize: '1.1rem' }}>📅</span>
+              <Calendar size={20} strokeWidth={2.5} />
               <span style={{ textTransform: 'capitalize' }}>{displayLabel}</span>
               <ChevronRight size={16} strokeWidth={3} style={{ transform: pickerOpen ? 'rotate(90deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
             </button>
@@ -714,7 +714,7 @@ export default function Dashboard() {
         <div style={{ ...neoCard, position: 'relative', overflow: 'hidden', paddingBottom: '7rem', marginBottom: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', position: 'relative', zIndex: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div style={{ backgroundColor: '#bbf7d0', padding: '0.5rem', borderRadius: '50%', border: '2px solid #000' }}>
+              <div style={{ backgroundColor: '#bbf7d0', borderRadius: '50%', border: '2px solid #000', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, width: '44px', height: '44px' }}>
                 <Wallet size={24} strokeWidth={2.5} />
               </div>
               <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: '"Montserrat", sans-serif', display: 'flex', alignItems: 'center' }}>
@@ -779,7 +779,7 @@ export default function Dashboard() {
         <div style={{ ...neoCard, position: 'relative', overflow: 'hidden', paddingBottom: '7rem', marginBottom: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', position: 'relative', zIndex: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div style={{ backgroundColor: '#fecaca', padding: '0.5rem', borderRadius: '50%', border: '2px solid #000' }}>
+              <div style={{ backgroundColor: '#fecaca', borderRadius: '50%', border: '2px solid #000', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, width: '44px', height: '44px' }}>
                 <CreditCard size={24} strokeWidth={2.5} />
               </div>
               <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: '"Montserrat", sans-serif', display: 'flex', alignItems: 'center' }}>
