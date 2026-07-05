@@ -166,11 +166,11 @@ export default function MindMapChart({ transactions, taxonomy }: MindMapChartPro
     pathFunc: "diagonal" as const,
     pathClassFunc: getDynamicPathClass,
     translate: { x: 200, y: isModalOpen ? window.innerHeight / 2 : 250 },
-    nodeSize: { x: 220, y: 70 },
+    nodeSize: { x: 200, y: 45 },
     zoomable: true,
     zoom: zoom,
     collapsible: true,
-    separation: { siblings: 1.2, nonSiblings: 1.5 },
+    separation: { siblings: 1.1, nonSiblings: 1.3 },
     renderCustomNodeElement: renderCustomNodeElement
   };
 
