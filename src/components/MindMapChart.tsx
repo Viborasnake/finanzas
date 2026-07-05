@@ -165,12 +165,12 @@ export default function MindMapChart({ transactions, taxonomy }: MindMapChartPro
     orientation: "horizontal" as const,
     pathFunc: "diagonal" as const,
     pathClassFunc: getDynamicPathClass,
-    translate: { x: 150, y: isModalOpen ? window.innerHeight / 2 : 250 },
-    nodeSize: { x: 180, y: 35 },
+    translate: { x: 200, y: isModalOpen ? window.innerHeight / 2 : 250 },
+    nodeSize: { x: 220, y: 70 },
     zoomable: true,
     zoom: zoom,
     collapsible: true,
-    separation: { siblings: 0.8, nonSiblings: 1.0 },
+    separation: { siblings: 1.2, nonSiblings: 1.5 },
     renderCustomNodeElement: renderCustomNodeElement
   };
 
