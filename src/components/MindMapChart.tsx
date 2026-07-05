@@ -141,15 +141,15 @@ export default function MindMapChart({ transactions, taxonomy }: MindMapChartPro
 
   const treeProps = {
     data: treeData,
-    orientation: "vertical" as const,
+    orientation: "horizontal" as const,
     pathFunc: "diagonal" as const,
     pathClassFunc: getDynamicPathClass,
-    translate: { x: isModalOpen ? window.innerWidth / 2 : (window.innerWidth > 800 ? 400 : 200), y: 100 },
-    nodeSize: { x: 180, y: 100 },
+    translate: { x: 150, y: isModalOpen ? window.innerHeight / 2 : 250 },
+    nodeSize: { x: 180, y: 35 },
     zoomable: true,
     zoom: zoom,
     collapsible: true,
-    separation: { siblings: 1.2, nonSiblings: 1.5 },
+    separation: { siblings: 0.8, nonSiblings: 1.0 },
     renderCustomNodeElement: renderCustomNodeElement
   };
 
