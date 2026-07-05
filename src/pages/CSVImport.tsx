@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { extractAndNormalizeRUT } from '../utils/rutParser';
 import { applyRules } from '../utils/classificationRules';
-import { useBanks } from '../contexts/BankContext';
+import { useBanks, type Bank, AVAILABLE_BANKS } from '../contexts/BankContext';
 
 interface Transaction {
   date: string;
@@ -31,6 +31,11 @@ export default function CSVImport() {
   const { classificationRules } = useSettings();
   const { activeBank, setActiveBank } = useBanks();
   const navigate = useNavigate();
+
+  type ImportStep = 'upload' | 'confirm' | 'preview';
+  const [step, setStep] = useState<ImportStep>('upload');
+  const [detectedBank, setDetectedBank] = useState<Bank | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -98,6 +103,7 @@ export default function CSVImport() {
 
         if (headerRowIndex === -1) {
           setError("No se pudo encontrar la tabla de Movimientos en el archivo Itaú.");
+          setStep('upload');
           return;
         }
 
@@ -109,6 +115,7 @@ export default function CSVImport() {
 
         if (dateIdx === -1 || descIdx === -1 || (cargosIdx === -1 && abonosIdx === -1)) {
           setError(`Faltan columnas en Itaú. Encontradas: ${headers.join(', ')}`);
+          setStep('upload');
           return;
         }
 
@@ -171,12 +178,15 @@ export default function CSVImport() {
 
         if (parsedTransactions.length === 0) {
           setError("No se encontraron transacciones válidas en el archivo Itaú.");
+          setStep('upload');
         } else {
           setData(parsedTransactions);
+          setStep('preview');
         }
       } catch (err) {
         console.error(err);
         setError("Error procesando el archivo Excel Itaú.");
+        setStep('upload');
       }
     };
     reader.readAsArrayBuffer(file);
@@ -200,6 +210,7 @@ export default function CSVImport() {
 
           if (headerIndex === -1) {
             setError("No se pudo encontrar la fila de cabeceras ('Fecha', 'Descripcion') en el archivo.");
+            setStep('upload');
             return;
           }
 
@@ -212,6 +223,7 @@ export default function CSVImport() {
 
           if (dateIdx === -1 || descIdx === -1 || (cargosIdx === -1 && abonosIdx === -1)) {
             setError(`Faltan columnas. Encontradas: ${headers.join(', ')}`);
+            setStep('upload');
             return;
           }
 
@@ -260,33 +272,77 @@ export default function CSVImport() {
 
           if (parsedTransactions.length === 0) {
             setError("No se encontraron transacciones válidas en el archivo.");
+            setStep('upload');
           } else {
             setData(parsedTransactions);
+            setStep('preview');
           }
         },
       });
   };
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
+  const detectBankFromFile = async (file: File): Promise<Bank | null> => {
+    const name = file.name.toLowerCase();
+    
+    if (name.endsWith('.pdf')) {
+      toast.error('Lectura de PDF no soportada. Por favor usa Excel, CSV o DAT.', { duration: 4000 });
+      return null;
+    }
+    if (name.endsWith('.xls') || name.endsWith('.xlsx')) return 'Itaú';
+    
+    if (name.endsWith('.dat') || name.endsWith('.csv') || name.endsWith('.txt')) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const text = (e.target?.result as string) || '';
+          const lowerText = text.toLowerCase();
+          
+          if (lowerText.includes('itau') || lowerText.includes('itaú')) resolve('Itaú');
+          else if (lowerText.includes('scotiabank') || lowerText.includes('scotia')) resolve('Scotiabank');
+          else if (lowerText.includes('bancoestado') || lowerText.includes('estado')) resolve('BancoEstado' as Bank);
+          else resolve('Scotiabank'); // default fallback for text files previously
+        };
+        reader.readAsText(file.slice(0, 1000));
+      });
+    }
+    return null;
+  };
+
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
     setError(null);
-    acceptedFiles.forEach((file) => {
-      const isExcel = file.name.toLowerCase().endsWith('.xls') || file.name.toLowerCase().endsWith('.xlsx');
-      
-      if (isExcel) {
-        if (activeBank !== 'Itaú') {
-          setActiveBank('Itaú');
-          toast.success("Cambiado automáticamente a Itaú", { duration: 2000 });
-        }
-        parseItauXls(file);
-      } else {
-        if (activeBank !== 'Scotiabank') {
-          setActiveBank('Scotiabank');
-          toast.success("Cambiado automáticamente a Scotiabank", { duration: 2000 });
-        }
-        parseCsvStandard(file);
-      }
-    });
-  }, [activeBank, setActiveBank]);
+    if (acceptedFiles.length === 0) return;
+    
+    const file = acceptedFiles[0];
+    if (file.name.toLowerCase().endsWith('.pdf')) {
+      setError('La extracción de datos desde PDF aún no está soportada. Por favor, exporta tu cartola en formato Excel (.xls, .xlsx) o CSV (.csv, .dat) desde la web de tu banco.');
+      return;
+    }
+
+    setSelectedFile(file);
+    const guessedBank = await detectBankFromFile(file);
+    setDetectedBank(guessedBank || activeBank || 'Scotiabank');
+    setStep('confirm');
+  }, [activeBank]);
+
+  const handleConfirmBank = () => {
+    if (!selectedFile || !detectedBank) return;
+    if (activeBank !== detectedBank) {
+      setActiveBank(detectedBank);
+      toast.success(`Cambiado automáticamente a ${detectedBank}`, { duration: 2000 });
+    }
+    
+    // Fake loading state for transition
+    setStep('preview');
+    if (detectedBank === 'Itaú') parseItauXls(selectedFile);
+    else parseCsvStandard(selectedFile);
+  };
+
+  const handleCancelProcess = () => {
+    setData([]);
+    setStep('upload');
+    setSelectedFile(null);
+    setError(null);
+  };
 
   const handleSave = async () => {
     if (!user) {
@@ -487,7 +543,7 @@ export default function CSVImport() {
         </div>
       )}
 
-      {!data.length ? (
+      {step === 'upload' && (
         <div 
           {...getRootProps()} 
           className="card" 
@@ -502,10 +558,10 @@ export default function CSVImport() {
             transition: 'all 0.2s ease'
           }}
         >
-          <input {...getInputProps({ accept: '.csv, .xls, .xlsx' })} />
+          <input {...getInputProps({ accept: '.csv, .xls, .xlsx, .dat, .txt' })} />
           <UploadCloud size={64} style={{ margin: '0 auto 1rem', color: isDragActive ? 'var(--primary)' : 'var(--text-secondary)' }} />
           <h3 style={{ marginBottom: '1rem', fontSize: '1.5rem' }}>
-            {isDragActive ? 'Suelta el archivo aquí...' : 'Arrastra tu cartola CSV o Excel (Itaú) aquí'}
+            {isDragActive ? 'Suelta el archivo aquí...' : 'Arrastra tu cartola CSV, Excel o DAT aquí'}
           </h3>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
             O haz clic para seleccionar un archivo desde tu computador
@@ -514,7 +570,38 @@ export default function CSVImport() {
             Seleccionar Archivo
           </button>
         </div>
-      ) : (
+      )}
+
+      {step === 'confirm' && (
+        <div className="card animate-fade-in" style={{ textAlign: 'center', padding: '4rem 2rem', border: '2px solid black', boxShadow: '4px 4px 0px black' }}>
+           <h3 style={{ fontSize: '2rem', marginBottom: '1rem', fontWeight: 900 }}>Confirma tu Banco</h3>
+           <p style={{ fontSize: '1.1rem', marginBottom: '2rem', color: 'var(--text-secondary)' }}>Hemos analizado el archivo y detectado que pertenece a:</p>
+           
+           <div style={{ marginBottom: '3rem' }}>
+             <select 
+               className="form-input" 
+               style={{ maxWidth: '300px', margin: '0 auto', fontSize: '1.25rem', textAlign: 'center', padding: '1rem', border: '2px solid black', borderRadius: '12px', boxShadow: '4px 4px 0px black', cursor: 'pointer', fontWeight: 800 }}
+               value={detectedBank || ''} 
+               onChange={(e) => setDetectedBank(e.target.value as Bank)}
+             >
+               {AVAILABLE_BANKS.map(b => (
+                 <option key={b.id} value={b.id} style={{ fontWeight: 800 }}>{b.emoji} {b.label}</option>
+               ))}
+             </select>
+           </div>
+           
+           <div style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem' }}>
+             <button className="btn btn-outline" style={{ padding: '0.8rem 2rem', fontSize: '1.1rem' }} onClick={handleCancelProcess}>
+               Cancelar
+             </button>
+             <button className="btn btn-primary" style={{ padding: '0.8rem 2rem', fontSize: '1.1rem' }} onClick={handleConfirmBank}>
+               Confirmar y Procesar
+             </button>
+           </div>
+        </div>
+      )}
+
+      {step === 'preview' && data.length > 0 && (
         <div className="card animate-fade-in">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
             <CheckCircle2 color="var(--success)" size={32} />
@@ -573,7 +660,7 @@ export default function CSVImport() {
           </div>
 
           <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-            <button className="btn btn-outline" onClick={() => setData([])} disabled={loading}>
+            <button className="btn btn-outline" onClick={handleCancelProcess} disabled={loading}>
               Cancelar
             </button>
             <button className="btn btn-primary" onClick={handleSave} disabled={loading}>
