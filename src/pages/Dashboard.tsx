@@ -404,10 +404,9 @@ export default function Dashboard() {
       transactions.forEach(t => {
         const d = new Date(t.date);
         if (d >= bStart && d <= bEnd) {
-          const isInternal = t.tipo_movimiento === 'Movimiento Interno';
           const isInvestment = t.tipo_movimiento === 'Ahorro/Inversión';
-          if (t.type === 'ingreso' && !isInternal) ing += Math.abs(t.amount);
-          if (t.type === 'egreso' && !isInternal && !isInvestment) gas += Math.abs(t.amount);
+          if (t.type === 'ingreso') ing += Math.abs(t.amount);
+          if (t.type === 'egreso' && !isInvestment) gas += Math.abs(t.amount);
         }
       });
       let label = '';
@@ -465,12 +464,11 @@ export default function Dashboard() {
       transactions.forEach(t => {
         const d = new Date(t.date);
         if (d >= start && d <= end) {
-          const isInternal = t.tipo_movimiento === 'Movimiento Interno';
           const isInvestment = t.tipo_movimiento === 'Ahorro/Inversión';
           const key = getKey(d);
           if (data[key]) {
-            if (t.type === 'ingreso' && !isInternal) data[key].Ingresos += Math.abs(t.amount);
-            if (t.type === 'egreso' && !isInternal && !isInvestment) data[key].Egresos += Math.abs(t.amount);
+            if (t.type === 'ingreso') data[key].Ingresos += Math.abs(t.amount);
+            if (t.type === 'egreso' && !isInvestment) data[key].Egresos += Math.abs(t.amount);
           }
         }
       });
@@ -484,9 +482,8 @@ export default function Dashboard() {
       transactions.forEach(t => {
         const d = new Date(t.date);
         if (d >= start && d <= end) {
-          const isInternal = t.tipo_movimiento === 'Movimiento Interno';
           const isInvestment = t.tipo_movimiento === 'Ahorro/Inversión';
-          if (t.type === 'egreso' && !isInternal && !isInvestment) {
+          if (t.type === 'egreso' && !isInvestment) {
             const catField = categoryLevel === 'detalle'
               ? (t.description || t.original_description || '').trim()
               : categoryLevel === 'principal'

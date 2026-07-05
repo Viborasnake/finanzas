@@ -305,7 +305,7 @@ export default function Transactions() {
 
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [filterCategory, setFilterCategory] = useState('all');
+
   
   const [filterPeriod, setFilterPeriod] = useState('all');
   const [viewMode, setViewMode] = useState<'individual' | 'bulk' | 'assistant'>('individual');
@@ -384,9 +384,7 @@ export default function Transactions() {
 
     const matchesType = filterType === 'all' || (filterType === 'expense' ? t.type === 'egreso' : t.type === 'ingreso');
     const matchesStatus = filterStatus === 'all' || (filterStatus === 'classified' ? !!t.tipo_movimiento : !t.tipo_movimiento);
-    const matchesCat = filterCategory === 'all' || t.tipo_movimiento === filterCategory;
-
-    return matchesSearch && matchesPeriod && matchesType && matchesStatus && matchesCat;
+    return matchesSearch && matchesPeriod && matchesType && matchesStatus;
   });
 
   const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
@@ -822,14 +820,6 @@ export default function Transactions() {
               <option value="unclassified">Por clasificar</option>
             </select>
 
-            <select className="input" style={{ width: 'auto' }} value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
-              <option value="all">Todas las categorías</option>
-              <option disabled>──────────</option>
-              <option value="Egreso">Egreso</option>
-              <option value="Ingreso">Ingreso</option>
-              <option value="Movimiento Interno">Mov. Interno</option>
-              <option value="Ahorro/Inversión">Ahorro/Inversión</option>
-            </select>
           </div>
 
           <div style={{ overflowX: 'hidden' }}>
