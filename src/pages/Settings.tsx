@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Plus, Trash2, Save, X, Maximize2 } from 'lucide-react';
@@ -105,13 +106,14 @@ function MindMap() {
         {controls}
       </div>
       
-      {isModalOpen && (
+      {isModalOpen && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 99999, backgroundColor: 'rgba(0,0,0,0.8)', padding: '2rem' }}>
           <div style={{ position: 'relative', width: '100%', height: '100%', backgroundColor: 'white', borderRadius: '12px', border: '4px solid black', overflow: 'hidden', boxShadow: '8px 8px 0px rgba(0,0,0,1)' }}>
             <Tree {...treeProps} />
             {controls}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
