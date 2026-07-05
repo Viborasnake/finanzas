@@ -807,15 +807,7 @@ export default function Transactions() {
                   {availablePeriods.years.map(y => <option key={y} value={y}>{y} completo</option>)}
                 </optgroup>
               )}
-              {availablePeriods.months.length > 0 && (
-                <optgroup label="Meses Específicos">
-                  {availablePeriods.months.map(m => {
-                    const [y, mo] = m.split('-');
-                    const dateName = new Date(parseInt(y), parseInt(mo)-1, 1).toLocaleString('es-CL', { month: 'long', year: 'numeric' });
-                    return <option key={m} value={m} style={{ textTransform: 'capitalize' }}>{dateName}</option>;
-                  })}
-                </optgroup>
-              )}
+
             </select>
 
             <select className="input" style={{ width: 'auto' }} value={filterType} onChange={e => setFilterType(e.target.value)}>
