@@ -290,6 +290,16 @@ export function CascadingCategorySelector({ initialPrincipal, initialSecundaria,
   );
 }
 
+export function delay(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+const parseLocalDate = (dateStr: string) => {
+  if (!dateStr) return new Date();
+  const [y, m, d] = dateStr.split('T')[0].split('-');
+  return new Date(parseInt(y), parseInt(m) - 1, parseInt(d), 12, 0, 0);
+};
+
 export default function Transactions() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -354,7 +364,7 @@ export default function Transactions() {
     const periods = new Set<string>();
     const years = new Set<string>();
     transactions.forEach(t => {
-      const d = new Date(t.date);
+      const d = parseLocalDate(t.date);
       years.add(d.getFullYear().toString());
       periods.add(`${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2, '0')}`);
     });
@@ -376,7 +386,7 @@ export default function Transactions() {
       normalizeText(origDesc).includes(searchLower) ||
       normalizeText(catSearchStr).includes(searchLower);
     
-    const date = new Date(t.date);
+    const date = parseLocalDate(t.date);
     const yStr = date.getFullYear().toString();
     const mStr = `${yStr}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
     const matchesPeriod = filterPeriod === 'all' || 

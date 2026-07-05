@@ -54,6 +54,12 @@ function toInputDate(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+const parseLocalDate = (dateStr: string) => {
+  if (!dateStr) return new Date();
+  const [y, m, d] = dateStr.split('T')[0].split('-');
+  return new Date(parseInt(y), parseInt(m) - 1, parseInt(d), 12, 0, 0);
+};
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -158,7 +164,7 @@ export default function Dashboard() {
   const openDetailsModal = (conceptName: string, type: 'ingreso' | 'egreso') => {
     const { start, end } = dateRange;
     const txs = transactions.filter(t => {
-      const d = new Date(t.date);
+      const d = parseLocalDate(t.date);
       return d >= start && d <= end && t.type === type;
     });
 
@@ -227,7 +233,7 @@ export default function Dashboard() {
   const filteredTransactions = useMemo(() => {
     const { start, end } = dateRange;
     return transactions.filter(t => {
-      const d = new Date(t.date);
+      const d = parseLocalDate(t.date);
       return d >= start && d <= end;
     });
   }, [transactions, dateRange]);
@@ -255,7 +261,7 @@ export default function Dashboard() {
       const recurringExpenses: Record<string, { total: number; count: number }> = {};
 
       const txs = transactions.filter(t => {
-        const d = new Date(t.date);
+        const d = parseLocalDate(t.date);
         return d >= start && d <= end;
       });
 
@@ -402,7 +408,7 @@ export default function Dashboard() {
       const bEnd = new Date(start.getTime() + (i + 1) * durationMs - 1000);
       let ing = 0, gas = 0;
       transactions.forEach(t => {
-        const d = new Date(t.date);
+        const d = parseLocalDate(t.date);
         if (d >= bStart && d <= bEnd) {
           const isInvestment = t.tipo_movimiento === 'Ahorro/Inversión';
           if (t.type === 'ingreso') ing += Math.abs(t.amount);
@@ -462,7 +468,7 @@ export default function Dashboard() {
       const data: Record<string, any> = {};
       keys.forEach(k => { data[k] = { label: labels[k], Ingresos: 0, Egresos: 0 }; });
       transactions.forEach(t => {
-        const d = new Date(t.date);
+        const d = parseLocalDate(t.date);
         if (d >= start && d <= end) {
           const isInvestment = t.tipo_movimiento === 'Ahorro/Inversión';
           const key = getKey(d);
@@ -480,7 +486,7 @@ export default function Dashboard() {
         selectedCategories.forEach((cat: string) => { data[k][cat] = 0; });
       });
       transactions.forEach(t => {
-        const d = new Date(t.date);
+        const d = parseLocalDate(t.date);
         if (d >= start && d <= end) {
           const isInvestment = t.tipo_movimiento === 'Ahorro/Inversión';
           if (t.type === 'egreso' && !isInvestment) {
@@ -1025,7 +1031,7 @@ export default function Dashboard() {
       const end = new Date(year, m + 1, 0, 23, 59, 59);
       let ing = 0, aporte = 0, gas = 0;
       transactions.forEach(t => {
-        const d = new Date(t.date);
+        const d = parseLocalDate(t.date);
         if (d >= start && d <= end) {
           const isInternal = t.tipo_movimiento === 'Movimiento Interno';
           const isInv = t.tipo_movimiento === 'Ahorro/Inversión';
