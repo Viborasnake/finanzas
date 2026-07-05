@@ -57,6 +57,9 @@
   transition: all 0.2s ease;
   border: 2px solid transparent;
 }
+.nav-item span {
+  white-space: nowrap;
+}
 .sidebar-nav .nav-item:last-child {
   border-bottom: 2px solid transparent;
 }

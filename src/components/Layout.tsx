@@ -22,6 +22,7 @@ const navItems = [
       { name: 'Contactos', hash: '#contactos' },
       { name: 'Reglas (Mapeo)', hash: '#reglas' },
       { name: 'Mis Bancos', hash: '#bancos' },
+      { name: 'Ajuste de Inicio', hash: '#ajuste' },
     ]
   },
 ];
@@ -232,27 +233,23 @@ export default function Layout() {
         </nav>
 
         <div className="sidebar-footer">
-          {user && (
+          {user && !isCollapsed && (
             <div style={{ 
-              padding: '1rem', 
-              margin: '0 1rem 0.5rem',
-              border: '2px solid black',
-              borderRadius: 'var(--radius-md)', 
+              margin: '0 1.25rem 0.5rem 1.25rem',
               fontWeight: 700, 
               fontSize: '0.85rem', 
+              color: 'var(--text-secondary)',
               overflow: 'hidden', 
               textOverflow: 'ellipsis', 
               whiteSpace: 'nowrap', 
-              backgroundColor: 'white',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem',
-              boxShadow: '4px 4px 0px black'
+              gap: '0.5rem'
             }}>
               <span style={{ fontSize: '1.25rem' }}>👤</span> {user.email}
             </div>
           )}
-          <button className="nav-item logout-btn" onClick={handleSignOut} style={{ backgroundColor: '#fecaca', color: 'black', fontWeight: 800, border: '2px solid black', boxShadow: '4px 4px 0px black' }}>
+          <button className="nav-item logout-btn" onClick={handleSignOut} style={{ backgroundColor: '#fee2e2', color: 'var(--danger)', fontWeight: 800, border: '2px solid black' }}>
             <LogOut size={20} />
             <span>Cerrar Sesión</span>
           </button>
