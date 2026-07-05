@@ -553,10 +553,11 @@ export default function Dashboard() {
       <div style={{ height: '100px', width: '100%', marginTop: '1rem', position: 'absolute', bottom: 0, left: 0, borderBottomLeftRadius: '9px', borderBottomRightRadius: '9px', overflow: 'hidden', zIndex: 0 }}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={historyData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
+            <XAxis dataKey="label" hide />
             <Tooltip 
               contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '2px solid black', borderRadius: '8px', boxShadow: '4px 4px 0px black', padding: '8px' }}
               itemStyle={{ color: 'black', fontWeight: 900, fontSize: '1.1rem' }}
-              labelStyle={{ color: '#64748b', fontWeight: 700, marginBottom: '4px', fontSize: '0.8rem' }}
+              labelStyle={{ color: '#64748b', fontWeight: 700, marginBottom: '4px', fontSize: '0.8rem', textTransform: 'capitalize' }}
               formatter={(value: any) => [`$${Number(value).toLocaleString('es-CL')}`, dataKey]}
             />
             <Area type="monotone" dataKey={dataKey} stroke="#000" strokeWidth={3} fill={fill} fillOpacity={1} />
