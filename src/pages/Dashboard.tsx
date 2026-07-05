@@ -376,7 +376,7 @@ export default function Dashboard() {
         unclassifiedCount,
         availableCats: Array.from(availableCats).sort(),
         insights: {
-          balance: (ingresos + aportePropio) - (gastosTotales + movimientoInternoEgreso),
+          balance: ingresos - gastosTotales,
           maxIncomeDesc,
           maxIncomeAmount,
           maxRecurringDesc,
@@ -668,11 +668,6 @@ export default function Dashboard() {
                 {isDeficit ? 'Déficit de ' : 'Superávit de '}
                 <span style={{ fontWeight: 900 }}>${Math.abs(balance).toLocaleString('es-CL')}</span>
               </div>
-              {stats.current.aportePropio > 0 && (
-                <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700, marginTop: '0.2rem' }}>
-                  *Incluye aportes propios
-                </div>
-              )}
             </div>
           </div>
 
