@@ -47,6 +47,10 @@ const PRESETS: { id: string; label: string; range: () => DateRange }[] = [
     const y = new Date().getFullYear();
     return { start: new Date(y, 0, 1), end: new Date(y, 11, 31, 23, 59, 59), label: y.toString() };
   }},
+  { id: 'prev_year', label: 'Año pasado', range: () => {
+    const y = new Date().getFullYear() - 1;
+    return { start: new Date(y, 0, 1), end: new Date(y, 11, 31, 23, 59, 59), label: y.toString() };
+  }},
   { id: 'all', label: 'Todo', range: () => ({ start: new Date(2000, 0, 1), end: new Date(2100, 11, 31, 23, 59, 59), label: 'Todo el tiempo' }) },
 ];
 
