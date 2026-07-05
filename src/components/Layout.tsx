@@ -107,7 +107,7 @@ function BankIndicator() {
       {/* Onboarding Modal */}
       {pendingBank && createPortal(
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-          <div style={{ backgroundColor: '#fff', border: '3px solid #000', borderRadius: '12px', padding: '1.5rem', width: '100%', maxWidth: '400px', boxShadow: '8px 8px 0px #000' }}>
+          <div style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '12px', padding: '1.5rem', width: '100%', maxWidth: '400px', boxShadow: '4px 4px 0px #000' }}>
             <h3 style={{ fontSize: '1.2rem', fontWeight: 900, marginBottom: '1rem', borderBottom: '2px solid #000', paddingBottom: '0.5rem' }}>Configurar {AVAILABLE_BANKS.find(b => b.id === pendingBank)?.label}</h3>
             <p style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '1.5rem', color: '#334155' }}>
               Estás agregando un nuevo banco. ¿Deseas importar tus categorías y reglas de clasificación desde tu banco principal o prefieres empezar desde cero?
@@ -169,10 +169,9 @@ export default function Layout() {
       <aside className="sidebar">
         <div style={{ 
           padding: '2rem 1.5rem 1rem', 
-          borderBottom: '2px solid black',
-          background: 'var(--gradient-rainbow)' 
+          borderBottom: '2px solid black'
         }}>
-          <h2 style={{ fontSize: '1.5rem', margin: 0 }}>MisFinanzas</h2>
+          <h2 style={{ fontSize: '1.5rem', margin: 0, fontWeight: 900 }}>✨ MisFinanzas</h2>
         </div>
 
         <BankIndicator />
@@ -206,22 +205,25 @@ export default function Layout() {
         <div className="sidebar-footer">
           {user && (
             <div style={{ 
-              padding: '1rem 1.5rem', 
-              borderBottom: '2px solid black', 
+              padding: '1rem', 
+              margin: '0 1rem 0.5rem',
+              border: '2px solid black',
+              borderRadius: 'var(--radius-md)', 
               fontWeight: 700, 
               fontSize: '0.85rem', 
               overflow: 'hidden', 
               textOverflow: 'ellipsis', 
               whiteSpace: 'nowrap', 
-              backgroundColor: '#bfdbfe',
+              backgroundColor: 'white',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem'
+              gap: '0.5rem',
+              boxShadow: '4px 4px 0px black'
             }}>
               <span style={{ fontSize: '1.25rem' }}>👤</span> {user.email}
             </div>
           )}
-          <button className="nav-item logout-btn" onClick={handleSignOut} style={{ backgroundColor: '#fecaca', color: 'black', fontWeight: 800 }}>
+          <button className="nav-item logout-btn" onClick={handleSignOut} style={{ backgroundColor: '#fecaca', color: 'black', fontWeight: 800, border: '2px solid black', boxShadow: '4px 4px 0px black' }}>
             <LogOut size={20} />
             <span>Cerrar Sesión</span>
           </button>

@@ -101,7 +101,7 @@ function AddTransactionModal({ onClose, onAdd, activeBank, user }: any) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyItems: 'center' }}>
-      <div style={{ background: '#fff', padding: '2rem', borderRadius: '12px', border: '3px solid #000', width: '100%', maxWidth: '400px', margin: 'auto', boxShadow: '8px 8px 0px #000' }}>
+      <div style={{ background: '#fff', padding: '2rem', borderRadius: '12px', border: '2px solid #000', width: '100%', maxWidth: '400px', margin: 'auto', boxShadow: '4px 4px 0px #000' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900 }}>Ajuste de Inicio</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={24} /></button>

@@ -509,9 +509,9 @@ export default function Dashboard() {
   // --- Styles ---
   const neoCard = {
     backgroundColor: '#fff',
-    border: '3px solid #000',
+    border: '2px solid #000',
     borderRadius: '12px',
-    boxShadow: '6px 6px 0px #000',
+    boxShadow: '4px 4px 0px #000',
     padding: '2rem',
     marginBottom: '2rem'
   };
@@ -583,7 +583,7 @@ export default function Dashboard() {
           <div ref={pickerRef} style={{ position: 'relative' }}>
             <button
               onClick={() => setPickerOpen(o => !o)}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 1.25rem', backgroundColor: '#fff', border: '3px solid #000', borderRadius: '2rem', fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer', boxShadow: '4px 4px 0px #000', transition: 'all 0.1s' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 1.25rem', backgroundColor: '#fff', border: '2px solid #000', borderRadius: '2rem', fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer', boxShadow: '4px 4px 0px #000', transition: 'all 0.1s' }}
             >
               <Calendar size={20} strokeWidth={2.5} />
               <span style={{ textTransform: 'capitalize' }}>{displayLabel}</span>
@@ -592,7 +592,7 @@ export default function Dashboard() {
 
             {/* Dropdown */}
             {pickerOpen && (
-              <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', backgroundColor: '#fff', border: '3px solid #000', borderRadius: '16px', boxShadow: '6px 6px 0px #000', zIndex: 200, minWidth: '300px' }}>
+              <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', backgroundColor: '#fff', border: '2px solid #000', borderRadius: '16px', boxShadow: '4px 4px 0px #000', zIndex: 200, minWidth: '300px' }}>
                 {/* Preset pills */}
                 <div style={{ padding: '1rem', borderBottom: '2px solid #e2e8f0' }}>
                   <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#94a3b8', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>Accesos rápidos</div>
@@ -655,7 +655,7 @@ export default function Dashboard() {
     const incomePercent = ingresos > 0 ? Math.round((maxIncomeAmount / ingresos) * 100) : 0;
 
     return (
-      <div style={{ backgroundColor: '#fff', border: '3px solid #000', borderRadius: '12px', padding: '1.5rem', boxShadow: '4px 4px 0px #000', marginBottom: '2.5rem' }}>
+      <div style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '12px', padding: '1.5rem', boxShadow: '4px 4px 0px #000', marginBottom: '2.5rem' }}>
         <h2 style={{ fontSize: '1.2rem', margin: '0 0 1rem 0', fontFamily: '"Montserrat", sans-serif', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <Sparkles fill="#fde047" color="#000" size={20} strokeWidth={2} />
           Reporte de Inteligencia
@@ -765,9 +765,9 @@ export default function Dashboard() {
           
           {totalEntradas > 0 && (
             <div style={{ position: 'relative', zIndex: 10, flex: 1, paddingBottom: '1rem' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', border: '3px solid #000', borderRadius: '8px', overflow: 'hidden', display: 'table', backgroundColor: 'rgba(255,255,255,0.9)' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', border: '2px solid #000', borderRadius: '8px', overflow: 'hidden', display: 'table', backgroundColor: 'rgba(255,255,255,0.9)' }}>
                 <thead>
-                  <tr style={{ backgroundColor: '#f1f5f9', borderBottom: '3px solid #000' }}>
+                  <tr style={{ backgroundColor: '#f1f5f9', borderBottom: '2px solid #000' }}>
                     <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 900, borderRight: '2px solid #000' }}>Concepto</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 900 }}>Monto</th>
                   </tr>
@@ -794,7 +794,7 @@ export default function Dashboard() {
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr style={{ backgroundColor: '#bbf7d0', borderTop: '3px solid #000' }}>
+                  <tr style={{ backgroundColor: '#bbf7d0', borderTop: '2px solid #000' }}>
                     <td style={{ padding: '0.75rem', fontWeight: 900, borderRight: '2px solid #000' }}>Total Entradas</td>
                     <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 900 }}>${totalEntradas.toLocaleString('es-CL')}</td>
                   </tr>
@@ -830,9 +830,9 @@ export default function Dashboard() {
           
           {totalSalidas > 0 && (
             <div style={{ position: 'relative', zIndex: 10, flex: 1, paddingBottom: '1rem' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', border: '3px solid #000', borderRadius: '8px', overflow: 'hidden', display: 'table', backgroundColor: 'rgba(255,255,255,0.9)' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', border: '2px solid #000', borderRadius: '8px', overflow: 'hidden', display: 'table', backgroundColor: 'rgba(255,255,255,0.9)' }}>
                 <thead>
-                  <tr style={{ backgroundColor: '#f1f5f9', borderBottom: '3px solid #000' }}>
+                  <tr style={{ backgroundColor: '#f1f5f9', borderBottom: '2px solid #000' }}>
                     <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 900, borderRight: '2px solid #000' }}>Concepto</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 900 }}>Monto</th>
                   </tr>
@@ -859,7 +859,7 @@ export default function Dashboard() {
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr style={{ backgroundColor: '#fecaca', borderTop: '3px solid #000' }}>
+                  <tr style={{ backgroundColor: '#fecaca', borderTop: '2px solid #000' }}>
                     <td style={{ padding: '0.75rem', fontWeight: 900, borderRight: '2px solid #000' }}>Total Salidas</td>
                     <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 900 }}>${totalSalidas.toLocaleString('es-CL')}</td>
                   </tr>
@@ -906,7 +906,7 @@ export default function Dashboard() {
             )}
           </div>
           
-          <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '0.35rem', borderRadius: '2rem', border: '3px solid #000' }}>
+          <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '0.35rem', borderRadius: '2rem', border: '2px solid #000' }}>
             {(['principal', 'secundaria', 'detalle'] as CategoryLevel[]).map((level, idx, arr) => (
               <>
                 <button
@@ -936,7 +936,7 @@ export default function Dashboard() {
                   <XAxis dataKey="label" tick={{ fill: '#000', fontSize: 11, fontWeight: 700 }} axisLine={{ stroke: '#000', strokeWidth: 2 }} tickLine={false} dy={10} />
                   <YAxis hide />
                   <Tooltip
-                    contentStyle={{ borderRadius: '8px', border: '3px solid #000', boxShadow: '4px 4px 0px #000', fontWeight: 800 }}
+                    contentStyle={{ borderRadius: '8px', border: '2px solid #000', boxShadow: '4px 4px 0px #000', fontWeight: 800 }}
                     formatter={(value: any, name: any) => ['$' + Number(value).toLocaleString('es-CL'), name]}
                   />
                   {selectedCategories.length === 0 ? (
@@ -1000,7 +1000,7 @@ export default function Dashboard() {
     if (count === 0) return null;
 
     return (
-      <div style={{ backgroundColor: '#fef08a', border: '3px solid #000', borderRadius: '12px', padding: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '2.5rem', boxShadow: '4px 4px 0px #000' }}>
+      <div style={{ backgroundColor: '#fef08a', border: '2px solid #000', borderRadius: '12px', padding: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '2.5rem', boxShadow: '4px 4px 0px #000' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ backgroundColor: '#fff', padding: '0.75rem', borderRadius: '50%', border: '2px solid #000' }}>
             <AlertTriangle color="#000" size={24} strokeWidth={2.5} />
@@ -1079,7 +1079,7 @@ export default function Dashboard() {
       const d = monthlyData.find(m => m.mes === label);
       if (!d) return null;
       return (
-        <div style={{ backgroundColor: '#fff', border: '3px solid #000', borderRadius: '10px', boxShadow: '4px 4px 0px #000', padding: '1rem', minWidth: '180px' }}>
+        <div style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '10px', boxShadow: '4px 4px 0px #000', padding: '1rem', minWidth: '180px' }}>
           <div style={{ fontWeight: 900, fontSize: '1.1rem', marginBottom: '0.75rem', textTransform: 'capitalize', borderBottom: '2px solid #000', paddingBottom: '0.25rem' }}>{label}. {year}</div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', color: '#16a34a', fontWeight: 800 }}>
             <span>Ingresos</span><span>${d.Ingresos.toLocaleString('es-CL')}</span>
@@ -1222,7 +1222,7 @@ export default function Dashboard() {
       {renderHeader()}
       
       {!activeBank ? (
-        <div style={{ padding: '4rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', backgroundColor: 'white', border: '3px solid #000', borderRadius: '12px', boxShadow: '6px 6px 0px #000' }}>
+        <div style={{ padding: '4rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', backgroundColor: 'white', border: '2px solid #000', borderRadius: '12px', boxShadow: '4px 4px 0px #000' }}>
           <h1 style={{ fontSize: '2.5rem', marginBottom: '1.5rem', fontWeight: 900 }}>¡Bienvenido a MisFinanzas! 👋</h1>
           <p style={{ fontSize: '1.1rem', color: '#64748b', maxWidth: '600px', marginBottom: '2rem', fontWeight: 500 }}>
             Para comenzar a ver tu Dashboard, necesitas configurar un banco. Dirígete a la sección de Configuración para conectar tu primer banco.
@@ -1245,7 +1245,7 @@ export default function Dashboard() {
           </div>
         </div>
       ) : transactions.length === 0 ? (
-        <div style={{ backgroundColor: 'white', textAlign: 'center', padding: '6rem 2rem', border: '3px dashed #000', borderRadius: '12px', boxShadow: '6px 6px 0px #000' }}>
+        <div style={{ backgroundColor: 'white', textAlign: 'center', padding: '6rem 2rem', border: '2px dashed #000', borderRadius: '12px', boxShadow: '4px 4px 0px #000' }}>
           <h2 style={{ fontSize: '2rem', margin: '0 0 1rem 0', fontFamily: '"Montserrat", sans-serif', fontWeight: 900 }}>Aún no tienes movimientos cargados</h2>
           <p style={{ marginBottom: '2rem', fontSize: '1.1rem', fontWeight: 600 }}>
             Importa tus cartolas bancarias para comenzar a analizar.
@@ -1272,8 +1272,8 @@ export default function Dashboard() {
       {/* Details Modal */}
       {detailsModal && detailsModal.isOpen && createPortal(
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backdropFilter: 'blur(4px)' }} onClick={() => setDetailsModal(null)}>
-          <div style={{ backgroundColor: '#fff', border: '3px solid #000', borderRadius: '12px', boxShadow: '8px 8px 0px #000', width: '100%', maxWidth: '700px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
-            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '3px solid #000', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f1f5f9', borderRadius: '9px 9px 0 0' }}>
+          <div style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '12px', boxShadow: '4px 4px 0px #000', width: '100%', maxWidth: '700px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '2px solid #000', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f1f5f9', borderRadius: '9px 9px 0 0' }}>
               <div>
                 <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: '"Montserrat", sans-serif' }}>{detailsModal.title}</h2>
                 <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 700, marginTop: '0.25rem', textTransform: 'capitalize' }}>

@@ -205,7 +205,7 @@ export default function MindMapChart({ transactions, taxonomy }: MindMapChartPro
       
       {isModalOpen && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 99999, backgroundColor: 'rgba(0,0,0,0.8)', padding: '2rem' }}>
-          <div style={{ position: 'relative', width: '100%', height: '100%', backgroundColor: '#f8fafc', borderRadius: '12px', border: '4px solid black', overflow: 'hidden', boxShadow: '8px 8px 0px rgba(0,0,0,1)' }}>
+          <div style={{ position: 'relative', width: '100%', height: '100%', backgroundColor: '#f8fafc', borderRadius: '12px', border: '2px solid black', overflow: 'hidden', boxShadow: '4px 4px 0px rgba(0,0,0,1)' }}>
             <Tree {...treeProps} />
             {controls}
           </div>

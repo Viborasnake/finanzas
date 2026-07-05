@@ -201,7 +201,7 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
   const tx = currentDuda.transaction;
 
   return (
-    <div className="card animate-fade-in" style={{ backgroundColor: 'var(--pastel-blue)', border: '4px solid black' }}>
+    <div className="card animate-fade-in" style={{ backgroundColor: 'var(--pastel-blue)', border: '2px solid black' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
         <Bot size={32} />
         <h2 style={{ margin: 0 }}>Asistente de Clasificación</h2>
@@ -215,7 +215,7 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
           Tienes un cargo de <span style={{ color: 'var(--danger)' }}>${Math.abs(tx.amount).toLocaleString('es-CL')}</span> con esta descripción:
         </p>
         
-        <div style={{ padding: '1rem', backgroundColor: '#f1f5f9', borderLeft: '4px solid black', fontFamily: 'monospace', fontSize: '1.25rem', marginBottom: '1.5rem', fontWeight: 700 }}>
+        <div style={{ padding: '1rem', backgroundColor: '#f1f5f9', borderLeft: '2px solid black', fontFamily: 'monospace', fontSize: '1.25rem', marginBottom: '1.5rem', fontWeight: 700 }}>
           {tx.description}
         </div>
 

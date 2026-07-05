@@ -6,7 +6,7 @@
 
 .sidebar {
   width: 250px;
-  background-color: var(--bg-color);
+  background-color: var(--pastel-blue);
   border-right: 2px solid var(--border-color);
   display: flex;
   flex-direction: column;
@@ -37,44 +37,50 @@
 
 .sidebar-footer {
   padding: 0;
-  border-top: 2px solid var(--border-color);
 }
 
 .nav-item {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 1.25rem 1.5rem;
+  padding: 1rem 1.25rem;
+  margin: 0.5rem 1rem;
+  border-radius: var(--radius-md);
   color: var(--text-primary);
   font-weight: 600;
   transition: all 0.2s ease;
-  border-bottom: 2px solid var(--border-color);
+  border: 2px solid transparent;
 }
 .sidebar-nav .nav-item:last-child {
-  border-bottom: none;
+  border-bottom: 2px solid transparent;
 }
 .sidebar-footer .nav-item {
-  border-bottom: none;
+  margin-bottom: 1rem;
 }
 
 .nav-item:hover {
-  background-color: var(--primary-light);
+  background-color: rgba(255,255,255,0.5);
 }
 
 .nav-item.active {
-  background-color: var(--primary);
-  color: white;
+  background-color: white;
+  color: black;
+  border: 2px solid black;
+  box-shadow: 4px 4px 0px black;
+  font-weight: 800;
 }
 
 .logout-btn {
-  width: 100%;
+  width: calc(100% - 2rem);
   color: var(--danger);
-  border-radius: 0; /* Flat bottom */
+  border-radius: var(--radius-md);
 }
 
 .logout-btn:hover {
   background-color: var(--danger);
   color: white;
+  border: 2px solid black;
+  box-shadow: 4px 4px 0px black;
 }
 
 .main-content {

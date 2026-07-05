@@ -118,7 +118,7 @@ export default function Login() {
                   style={{
                     display: 'flex', alignItems: 'center', gap: '1rem',
                     padding: '1rem 1.25rem',
-                    border: `3px solid ${isSelected ? '#000' : '#e2e8f0'}`,
+                    border: `2px solid ${isSelected ? '#000' : '#e2e8f0'}`,
                     borderRadius: '12px',
                     backgroundColor: isSelected ? '#f8fafc' : '#fff',
                     cursor: 'pointer',
@@ -213,7 +213,7 @@ export default function Login() {
         style={{ 
           flex: 1, 
           backgroundColor: 'var(--pastel-blue)', 
-          borderRight: '4px solid black', 
+          borderRight: '2px solid black', 
           display: 'flex', 
           flexDirection: 'column',
           padding: '3rem 4rem',
