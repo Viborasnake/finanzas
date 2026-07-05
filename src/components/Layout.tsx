@@ -168,7 +168,7 @@ export default function Layout() {
   return (
     <div className="layout">
       {/* Sidebar Desktop */}
-      <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`} style={{ position: 'relative' }}>
+      <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
         {/* Collapse Button */}
         <button 
           onClick={() => setIsCollapsed(!isCollapsed)} 
