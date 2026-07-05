@@ -107,8 +107,17 @@ export default function MindMapChart({ transactions, taxonomy }: MindMapChartPro
     }
     
     if (assignedRoot) {
-      const catP = t.categoria_principal || 'Sin Clasificar';
-      const catS = t.categoria_secundaria || 'Sin Clasificar';
+      const isInternal = t.tipo_movimiento === 'Movimiento Interno' || 
+                         t.categoria_secundaria === 'Transferencias Propias' || 
+                         t.categoria_secundaria === 'Transferencia personal';
+
+      const catP = isInternal 
+        ? (assignedRoot === 'Ingreso' ? 'Ingreso Propio' : 'Egreso Propio')
+        : (t.categoria_principal || 'Sin Clasificar');
+        
+      const catS = isInternal
+        ? t.categoria_secundaria
+        : (t.categoria_secundaria || 'Sin Clasificar');
       
       const prinKey = `${assignedRoot}-${catP}`;
       const secKey = `${prinKey}-${catS}`;

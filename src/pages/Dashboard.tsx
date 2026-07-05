@@ -165,10 +165,12 @@ export default function Dashboard() {
     let filtered: any[] = [];
     if (type === 'ingreso') {
       filtered = txs.filter(t => {
-        const isInternal = t.tipo_movimiento === 'Movimiento Interno';
+        const isInternal = t.tipo_movimiento === 'Movimiento Interno' || 
+                           t.categoria_secundaria === 'Transferencias Propias' || 
+                           t.categoria_secundaria === 'Transferencia personal';
         const catP = t.categoria_principal?.toLowerCase() || '';
         
-        if (conceptName === 'Aporte Propio') return isInternal;
+        if (conceptName === 'Ingreso Propio') return isInternal;
         if (isInternal) return false;
         
         if (conceptName === 'Sueldo') return catP.includes('sueldo');
@@ -178,11 +180,13 @@ export default function Dashboard() {
       });
     } else {
       filtered = txs.filter(t => {
-        const isInternal = t.tipo_movimiento === 'Movimiento Interno';
+        const isInternal = t.tipo_movimiento === 'Movimiento Interno' || 
+                           t.categoria_secundaria === 'Transferencias Propias' || 
+                           t.categoria_secundaria === 'Transferencia personal';
         const isInv = t.tipo_movimiento === 'Ahorro/Inversión';
         const catP = t.categoria_principal || 'Sin Clasificar';
         
-        if (conceptName === 'Movimiento Interno') return isInternal;
+        if (conceptName === 'Egreso Propio') return isInternal;
         if (isInternal || isInv) return false;
         
         if (conceptName === 'Otros Egresos') {
@@ -256,7 +260,9 @@ export default function Dashboard() {
       });
 
       txs.forEach(t => {
-        const isInternal = t.tipo_movimiento === 'Movimiento Interno';
+        const isInternal = t.tipo_movimiento === 'Movimiento Interno' || 
+                           t.categoria_secundaria === 'Transferencias Propias' || 
+                           t.categoria_secundaria === 'Transferencia personal';
         const isInvestment = t.tipo_movimiento === 'Ahorro/Inversión';
         const isUnclassified = !t.categoria_principal || t.categoria_principal === 'Sin Clasificar';
 
@@ -711,7 +717,7 @@ export default function Dashboard() {
       { name: 'Sueldo', value: c.sueldo },
       { name: 'Honorarios', value: c.honorarios },
       { name: 'Otros Ingresos', value: c.ingresosOtros },
-      { name: 'Aporte Propio', value: c.aportePropio, isGray: true }
+      { name: 'Ingreso Propio', value: c.aportePropio, isGray: true }
     ];
 
     // Expense Logic
@@ -725,7 +731,7 @@ export default function Dashboard() {
     const expenseData: { name: string; value: number; isGray?: boolean }[] = [
       ...top3.map(cat => ({ name: cat.name, value: cat.amount })),
       ...(totalOtros > 0 ? [{ name: 'Otros Egresos', value: totalOtros }] : []),
-      { name: 'Movimiento Interno', value: c.movimientoInternoEgreso, isGray: true }
+      { name: 'Egreso Propio', value: c.movimientoInternoEgreso, isGray: true }
     ];
 
     return (
