@@ -48,7 +48,11 @@ function AddTransactionModal({ onClose, onAdd, activeBank, user }: any) {
         if (tx.raw_data) {
           const saldoKey = Object.keys(tx.raw_data).find(k => k.toLowerCase() === 'saldo' || k.toLowerCase().includes('saldo'));
           if (saldoKey) {
-            let currentSaldo = parseFloat(String(tx.raw_data[saldoKey]).replace(/[^0-9.-]/g, ''));
+            const val = tx.raw_data[saldoKey];
+            const cleanStr = String(val).replace(/[^0-9,-]/g, '');
+            const num = parseFloat(cleanStr.replace(',', '.'));
+            let currentSaldo = isNaN(num) ? 0 : num;
+            
             if (!isNaN(currentSaldo)) {
               const saldoAnterior = tx.type === 'ingreso' ? currentSaldo - tx.amount : currentSaldo + tx.amount;
               setSuggestion({ 
@@ -303,8 +307,7 @@ export default function Transactions() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
   
-  const [filterYear, setFilterYear] = useState('all');
-  const [filterMonth, setFilterMonth] = useState('all');
+  const [filterPeriod, setFilterPeriod] = useState('all');
   const [viewMode, setViewMode] = useState<'individual' | 'bulk' | 'assistant'>('individual');
   const [bulkSearchTerm, setBulkSearchTerm] = useState('');
   const [bulkFilterMode, setBulkFilterMode] = useState<string>('unclassified');
@@ -347,9 +350,18 @@ export default function Transactions() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
 
-  const availableYears = useMemo(() => {
-    const years = new Set(transactions.map(t => new Date(t.date).getFullYear()));
-    return Array.from(years).sort((a, b) => b - a);
+  const availablePeriods = useMemo(() => {
+    const periods = new Set<string>();
+    const years = new Set<string>();
+    transactions.forEach(t => {
+      const d = new Date(t.date);
+      years.add(d.getFullYear().toString());
+      periods.add(`${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2, '0')}`);
+    });
+    return {
+      years: Array.from(years).sort().reverse(),
+      months: Array.from(periods).sort().reverse()
+    };
   }, [transactions]);
 
   const filteredTransactions = transactions.filter(t => {
@@ -365,14 +377,16 @@ export default function Transactions() {
       normalizeText(catSearchStr).includes(searchLower);
     
     const date = new Date(t.date);
-    const matchesYear = filterYear === 'all' || date.getFullYear().toString() === filterYear;
-    const matchesMonth = filterMonth === 'all' || (date.getMonth() + 1).toString() === filterMonth;
+    const yStr = date.getFullYear().toString();
+    const mStr = `${yStr}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+    const matchesPeriod = filterPeriod === 'all' || 
+                          (filterPeriod.length === 4 ? yStr === filterPeriod : mStr === filterPeriod);
 
     const matchesType = filterType === 'all' || (filterType === 'expense' ? t.type === 'egreso' : t.type === 'ingreso');
     const matchesStatus = filterStatus === 'all' || (filterStatus === 'classified' ? !!t.tipo_movimiento : !t.tipo_movimiento);
     const matchesCat = filterCategory === 'all' || t.tipo_movimiento === filterCategory;
 
-    return matchesSearch && matchesYear && matchesMonth && matchesType && matchesStatus && matchesCat;
+    return matchesSearch && matchesPeriod && matchesType && matchesStatus && matchesCat;
   });
 
   const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
@@ -778,14 +792,22 @@ export default function Transactions() {
               />
             </div>
             
-            <select className="input" style={{ width: 'auto' }} value={filterYear} onChange={e => setFilterYear(e.target.value)}>
-              <option value="all">Todos los años</option>
-              {availableYears.map(y => <option key={y} value={y.toString()}>{y}</option>)}
-            </select>
-            
-            <select className="input" style={{ width: 'auto' }} value={filterMonth} onChange={e => setFilterMonth(e.target.value)}>
-              <option value="all">Todos los meses</option>
-              {Array.from({length: 12}, (_, i) => <option key={i+1} value={(i+1).toString()}>{new Date(2000, i, 1).toLocaleString('es-CL', { month: 'long' })}</option>)}
+            <select className="input" style={{ width: 'auto' }} value={filterPeriod} onChange={e => setFilterPeriod(e.target.value)}>
+              <option value="all">Todo el tiempo</option>
+              {availablePeriods.years.length > 0 && (
+                <optgroup label="Por Año">
+                  {availablePeriods.years.map(y => <option key={y} value={y}>{y} completo</option>)}
+                </optgroup>
+              )}
+              {availablePeriods.months.length > 0 && (
+                <optgroup label="Meses Específicos">
+                  {availablePeriods.months.map(m => {
+                    const [y, mo] = m.split('-');
+                    const dateName = new Date(parseInt(y), parseInt(mo)-1, 1).toLocaleString('es-CL', { month: 'long', year: 'numeric' });
+                    return <option key={m} value={m} style={{ textTransform: 'capitalize' }}>{dateName}</option>;
+                  })}
+                </optgroup>
+              )}
             </select>
 
             <select className="input" style={{ width: 'auto' }} value={filterType} onChange={e => setFilterType(e.target.value)}>

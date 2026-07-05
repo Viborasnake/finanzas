@@ -11,8 +11,20 @@ import './Layout.css';
 const navItems = [
   { name: 'Dashboard', path: '/', icon: <LayoutDashboard size={20} /> },
   { name: 'Transacciones', path: '/transactions', icon: <Receipt size={20} /> },
-  { name: 'Importar CSV', path: '/import', icon: <FileSpreadsheet size={20} /> },
-  { name: 'Configuración', path: '/settings', icon: <Settings size={20} /> },
+  { name: 'Importar Cartola', path: '/import', icon: <FileSpreadsheet size={20} /> },
+  { 
+    name: 'Configuración', 
+    path: '/settings', 
+    icon: <Settings size={20} />,
+    subItems: [
+      { name: 'Mapa Mental', hash: '#mapa-mental' },
+      { name: 'Detección (RUT)', hash: '#deteccion' },
+      { name: 'Mis Categorías', hash: '#categorias' },
+      { name: 'Contactos', hash: '#contactos' },
+      { name: 'Reglas (Mapeo)', hash: '#reglas' },
+      { name: 'Mis Bancos', hash: '#bancos' },
+    ]
+  },
 ];
 
 function BankIndicator() {
@@ -170,14 +182,24 @@ export default function Layout() {
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
-              <Link 
-                key={item.path} 
-                to={item.path} 
-                className={`nav-item ${isActive ? 'active' : ''}`}
-              >
-                {item.icon}
-                <span>{item.name}</span>
-              </Link>
+              <div key={item.path}>
+                <Link 
+                  to={item.path} 
+                  className={`nav-item ${isActive ? 'active' : ''}`}
+                >
+                  {item.icon}
+                  <span>{item.name}</span>
+                </Link>
+                {isActive && item.subItems && (
+                  <div style={{ paddingLeft: '3rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem', marginTop: '0.25rem' }}>
+                    {item.subItems.map(sub => (
+                      <a key={sub.hash} href={`${item.path}${sub.hash}`} style={{ fontSize: '0.85rem', color: '#334155', textDecoration: 'none', fontWeight: 700 }}>
+                        {sub.name}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
             )
           })}
         </nav>
@@ -220,17 +242,29 @@ export default function Layout() {
         {isMobileMenuOpen && (
           <nav className="mobile-nav">
             <BankIndicator />
-            {navItems.map((item) => (
-              <Link 
-                key={item.path} 
-                to={item.path} 
-                className="nav-item"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                {item.icon}
-                <span>{item.name}</span>
-              </Link>
-            ))}
+            {navItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+              <div key={item.path}>
+                <Link 
+                  to={item.path} 
+                  className={`nav-item ${isActive ? 'active' : ''}`}
+                  onClick={() => !item.subItems && setIsMobileMenuOpen(false)}
+                >
+                  {item.icon}
+                  <span>{item.name}</span>
+                </Link>
+                {isActive && item.subItems && (
+                  <div style={{ paddingLeft: '3rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem', marginTop: '0.25rem' }}>
+                    {item.subItems.map(sub => (
+                      <a key={sub.hash} href={`${item.path}${sub.hash}`} onClick={() => setIsMobileMenuOpen(false)} style={{ fontSize: '0.9rem', color: '#334155', textDecoration: 'none', fontWeight: 700 }}>
+                        {sub.name}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )})}
             
             <div style={{ marginTop: 'auto', borderTop: '2px solid black' }}>
               {user && (

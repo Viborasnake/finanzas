@@ -38,7 +38,9 @@ const renderCustomNodeElement = ({ nodeDatum, toggleNode }: any) => {
       <circle r="12" fill={fill} stroke={stroke} strokeWidth="2" onClick={toggleNode} style={{ cursor: 'pointer' }} />
       <text 
         fill="black" 
-        strokeWidth="0" 
+        stroke="white"
+        strokeWidth="6" 
+        paintOrder="stroke fill"
         x="18" 
         y="-16" 
         style={{ 
@@ -55,6 +57,7 @@ const renderCustomNodeElement = ({ nodeDatum, toggleNode }: any) => {
 
 function MindMap() {
   const { taxonomy } = useTaxonomy();
+  const [zoom, setZoom] = useState(0.8);
   
   const treeData = {
     name: 'Movimientos',
@@ -72,7 +75,7 @@ function MindMap() {
   };
 
   return (
-    <div style={{ width: '100%', height: '500px', border: '2px solid black', borderRadius: '8px', background: 'white', overflow: 'hidden' }}>
+    <div style={{ position: 'relative', width: '100%', height: '500px', border: '2px solid black', borderRadius: '8px', background: 'white', overflow: 'hidden' }}>
       <Tree 
         data={treeData} 
         orientation="horizontal" 
@@ -80,10 +83,15 @@ function MindMap() {
         translate={{ x: 100, y: 250 }} 
         nodeSize={{ x: 140, y: 35 }}
         zoomable={true}
+        zoom={zoom}
         collapsible={true}
         separation={{ siblings: 1.2, nonSiblings: 1.5 }}
         renderCustomNodeElement={renderCustomNodeElement}
       />
+      <div style={{ position: 'absolute', bottom: '1rem', right: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', zIndex: 10 }}>
+        <button type="button" onClick={() => setZoom(z => Math.min(z + 0.2, 2))} style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '8px', padding: '0.5rem', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 900, cursor: 'pointer', boxShadow: '2px 2px 0px #000' }}>+</button>
+        <button type="button" onClick={() => setZoom(z => Math.max(z - 0.2, 0.2))} style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '8px', padding: '0.5rem', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 900, cursor: 'pointer', boxShadow: '2px 2px 0px #000' }}>-</button>
+      </div>
     </div>
   );
 }
@@ -298,7 +306,7 @@ export default function Settings() {
       <h1 style={{ fontSize: '2.5rem', marginBottom: '2rem' }}>Configuración</h1>
       
       <div className="card" style={{ marginBottom: '2rem', maxWidth: '800px' }}>
-        <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Mapa Mental de Categorías</h2>
+        <h2 id="mapa-mental" style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Mapa Mental de Categorías</h2>
         <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
           Visualiza cómo están interconectadas tus categorías de Ingresos y Egresos. Puedes arrastrar para moverte y hacer clic en los nodos para expandir/colapsar.
         </p>
@@ -309,7 +317,7 @@ export default function Settings() {
         
         {/* Identificación (RUT) */}
         <div className="card">
-          <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Detección Automática (Tu RUT)</h2>
+          <h2 id="deteccion" style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Detección Automática (Tu RUT)</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
             Ingresa tu RUT para que el sistema reconozca automáticamente las transferencias entre tus propias cuentas y no las sume como Egreso o Ingreso.
           </p>
@@ -396,7 +404,7 @@ export default function Settings() {
 
         {/* Categorías Personalizadas */}
         <div className="card">
-          <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Mis Categorías (Personalizadas)</h2>
+          <h2 id="categorias" style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Mis Categorías (Personalizadas)</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
             Agrega nuevas categorías para organizar tus movimientos. Estas se sumarán a la lista base que ya trae la aplicación.
           </p>
@@ -461,7 +469,7 @@ export default function Settings() {
 
         {/* Contactos Frecuentes */}
         <div className="card">
-          <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Contactos Conocidos</h2>
+          <h2 id="contactos" style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Contactos Conocidos</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
             Agrega RUTs de amigos o familiares. Cuando importes, el sistema clasificará automáticamente los traspasos a ellos como "Transferencias a Otras Personas".
           </p>
@@ -513,7 +521,7 @@ export default function Settings() {
 
         {/* Classification Rules */}
         <div className="card" style={{ position: 'relative', zIndex: 10 }}>
-          <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Reglas de Auto-Clasificación (Mapeo)</h2>
+          <h2 id="reglas" style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Reglas de Auto-Clasificación (Mapeo)</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
             Define qué texto debe estar en la glosa (descripción) de una transacción para asignarle automáticamente una categoría. Las reglas se aplican al importar.
           </p>
@@ -566,7 +574,7 @@ export default function Settings() {
 
         {/* Bank Management */}
         <div className="card" style={{ position: 'relative', zIndex: 9 }}>
-          <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Mis Bancos</h2>
+          <h2 id="bancos" style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Mis Bancos</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
             Administra los bancos que tienes conectados y define cuál es el banco principal para tus reportes globales.
           </p>
