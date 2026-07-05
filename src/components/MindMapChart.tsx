@@ -91,52 +91,73 @@ export default function MindMapChart({ transactions, taxonomy }: MindMapChartPro
   };
 
   transactions.forEach(t => {
-    if (t.tipo_movimiento) {
-      const amount = Math.abs(t.amount);
-      if (t.tipo_movimiento === 'Ingreso' || t.tipo_movimiento === 'Ingreso Real') {
-        totals.Ingreso += amount;
-      } else if (t.tipo_movimiento === 'Egreso' || t.tipo_movimiento === 'Egreso Real') {
+    const amount = Math.abs(t.amount);
+    const isInvestment = t.tipo_movimiento === 'Ahorro/Inversión';
+    
+    let assignedRoot: 'Ingreso' | 'Egreso' | null = null;
+    
+    if (t.type === 'ingreso') {
+      totals.Ingreso += amount;
+      assignedRoot = 'Ingreso';
+    } else {
+      if (!isInvestment) {
         totals.Egreso += amount;
+        assignedRoot = 'Egreso';
       }
+    }
+    
+    if (assignedRoot) {
+      const catP = t.categoria_principal || 'Sin Clasificar';
+      const catS = t.categoria_secundaria || 'Sin Clasificar';
       
-      const tipoBase = (t.tipo_movimiento === 'Ingreso' || t.tipo_movimiento === 'Ingreso Real') ? 'Ingreso' : 'Egreso';
-      const prinKey = `${tipoBase}-${t.categoria_principal}`;
-      const secKey = `${prinKey}-${t.categoria_secundaria}`;
+      const prinKey = `${assignedRoot}-${catP}`;
+      const secKey = `${prinKey}-${catS}`;
       
       totals.principales[prinKey] = (totals.principales[prinKey] || 0) + amount;
       totals.secundarias[secKey] = (totals.secundarias[secKey] || 0) + amount;
     }
   });
 
+  const buildNodes = (tipo: 'Ingreso' | 'Egreso') => {
+    const taxPrincipals = taxonomy[tipo] || {};
+    const principalNames = new Set([
+      ...Object.keys(taxPrincipals),
+      ...Object.keys(totals.principales).filter(k => k.startsWith(`${tipo}-`)).map(k => k.substring(tipo.length + 1))
+    ]);
+    
+    const principalNodes = Array.from(principalNames).map(prinName => {
+      const taxSecundarias = taxPrincipals[prinName] || [];
+      const secNames = new Set([
+        ...taxSecundarias,
+        ...Object.keys(totals.secundarias).filter(k => k.startsWith(`${tipo}-${prinName}-`)).map(k => k.substring(tipo.length + prinName.length + 2))
+      ]);
+      
+      const secNodes = Array.from(secNames).map(secName => ({
+        name: secName,
+        attributes: { rootTipo: tipo, amount: totals.secundarias[`${tipo}-${prinName}-${secName}`] || 0 }
+      })).filter(sec => !hideEmpty || sec.attributes.amount > 0);
+      
+      return {
+        name: prinName,
+        attributes: { rootTipo: tipo, amount: totals.principales[`${tipo}-${prinName}`] || 0 },
+        children: secNodes
+      };
+    }).filter(prin => !hideEmpty || prin.attributes.amount > 0);
+    
+    return {
+      name: tipo,
+      attributes: { rootTipo: tipo, amount: totals[tipo] },
+      children: principalNodes
+    };
+  };
+
   const treeData = {
     name: 'Movimientos',
     attributes: { amount: totals.Ingreso + totals.Egreso, rootTipo: 'Root' },
-    children: Object.entries(taxonomy)
-      .filter(([tipo]) => tipo === 'Ingreso' || tipo === 'Egreso')
-      .map(([tipo, principals]) => {
-        const principalNodes = Object.entries(principals as Record<string, string[]>)
-          .map(([principal, secundarias]) => {
-            const secNodes = secundarias
-              .map(sec => ({ 
-                name: sec, 
-                attributes: { rootTipo: tipo, amount: totals.secundarias[`${tipo}-${principal}-${sec}`] || 0 } 
-              }))
-              .filter(sec => !hideEmpty || sec.attributes.amount > 0);
-              
-            return {
-              name: principal,
-              attributes: { rootTipo: tipo, amount: totals.principales[`${tipo}-${principal}`] || 0 },
-              children: secNodes
-            };
-          })
-          .filter(prin => !hideEmpty || prin.attributes.amount > 0);
-          
-        return {
-          name: tipo,
-          attributes: { rootTipo: tipo, amount: tipo === 'Ingreso' ? totals.Ingreso : totals.Egreso },
-          children: principalNodes
-        };
-      })
+    children: [
+      buildNodes('Ingreso'),
+      buildNodes('Egreso')
+    ]
   };
 
   const treeProps = {
