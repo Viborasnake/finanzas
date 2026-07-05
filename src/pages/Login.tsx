@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../services/supabase';
 import { useNavigate } from 'react-router-dom';
@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useBanks, AVAILABLE_BANKS } from '../contexts/BankContext';
 import type { Bank } from '../contexts/BankContext';
 
-type Step = 'auth' | 'bank_setup';
+type Step = 'auth' | 'bank_setup' | 'verify_email';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -22,11 +22,20 @@ export default function Login() {
   
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { addBank, setMainBankAndSave } = useBanks();
+  const { addBank, setMainBankAndSave, connectedBanks, loading: banksLoading } = useBanks();
 
-  // If already logged in and not in setup, redirect
+  // If already logged in and not in setup, redirect or show bank setup
+  useEffect(() => {
+    if (user && step === 'auth' && !banksLoading) {
+      if (connectedBanks.length === 0) {
+        setStep('bank_setup');
+      } else {
+        navigate('/', { replace: true });
+      }
+    }
+  }, [user, step, banksLoading, connectedBanks, navigate]);
+
   if (user && step === 'auth') {
-    navigate('/', { replace: true });
     return null;
   }
 
@@ -49,8 +58,8 @@ export default function Login() {
       if (isSignUp) {
         const { error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
-        // Move to bank setup step
-        setStep('bank_setup');
+        // Move to verify email step
+        setStep('verify_email');
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -166,6 +175,29 @@ export default function Login() {
             style={{ width: '100%', fontSize: '0.875rem', fontWeight: 600, color: '#64748b', background: 'none', border: 'none', cursor: 'pointer' }}
           >
             Omitir por ahora
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // --- Verify Email Step ---
+  if (step === 'verify_email') {
+    return (
+      <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#fdfdfc', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+        <div className="card" style={{ width: '100%', maxWidth: '420px', textAlign: 'center', padding: '3rem 2rem' }}>
+          <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>✉️</div>
+          <h2 style={{ fontSize: '2rem', fontWeight: 900, marginBottom: '1rem', letterSpacing: '-1px' }}>Revisa tu correo</h2>
+          <p style={{ color: '#64748b', fontWeight: 600, fontSize: '1rem', marginBottom: '2rem', lineHeight: 1.6 }}>
+            Te hemos enviado un enlace de confirmación a <strong>{email}</strong>. 
+            Haz clic en él para validar tu cuenta y comenzar a usar MisFinanzas.
+          </p>
+          <button
+            onClick={() => setStep('auth')}
+            className="btn btn-outline"
+            style={{ width: '100%', padding: '0.875rem', fontSize: '1rem', border: '2px solid black' }}
+          >
+            Volver al inicio
           </button>
         </div>
       </div>
