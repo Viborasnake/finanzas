@@ -20,7 +20,7 @@
 }
 
 .sidebar.collapsed {
-  width: 80px;
+  width: 90px;
 }
 
 .sidebar-header {
@@ -56,6 +56,7 @@
   font-weight: 600;
   transition: all 0.2s ease;
   border: 2px solid transparent;
+  box-sizing: border-box;
 }
 .nav-item span {
   white-space: nowrap;
@@ -90,7 +91,7 @@
 }
 
 /* Hide Bank Indicator text when collapsed */
-.sidebar.collapsed .sidebar-header + div span {
+.sidebar.collapsed .bank-indicator-text {
   display: none;
 }
 
@@ -132,7 +133,7 @@
 }
 
 .main-content.collapsed {
-  margin-left: 80px;
+  margin-left: 90px;
 }
 
 .mobile-header {

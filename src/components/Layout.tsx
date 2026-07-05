@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FileSpreadsheet, Receipt, Settings, LogOut, Menu, X, ChevronDown, Check, Copy, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, FileSpreadsheet, Receipt, Settings, LogOut, Menu, X, ChevronDown, Check, Copy, Plus, ChevronLeft, ChevronRight, User as UserIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useBanks, AVAILABLE_BANKS } from '../contexts/BankContext';
 import type { Bank } from '../contexts/BankContext';
@@ -54,11 +54,11 @@ function BankIndicator() {
         style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'none', border: 'none', cursor: connectedBanks.length > 1 ? 'pointer' : 'default', padding: 0 }}
       >
         <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: activeBankInfo ? '#22c55e' : '#94a3b8', border: '1.5px solid #000', flexShrink: 0 }} />
-        <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#000', textTransform: 'uppercase', letterSpacing: '0.05em', flex: 1, textAlign: 'left' }}>
+        <span className="bank-indicator-text" style={{ fontSize: '0.72rem', fontWeight: 800, color: '#000', textTransform: 'uppercase', letterSpacing: '0.05em', flex: 1, textAlign: 'left' }}>
           {activeBankInfo ? activeBankInfo.label : 'Sin banco'}
         </span>
         {connectedBanks.length > 1 && (
-          <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#555', backgroundColor: 'rgba(0,0,0,0.08)', borderRadius: '4px', padding: '0 4px' }}>
+          <span className="bank-indicator-text" style={{ fontSize: '0.65rem', fontWeight: 700, color: '#555', backgroundColor: 'rgba(0,0,0,0.08)', borderRadius: '4px', padding: '0 4px' }}>
             {connectedBanks.length}
           </span>
         )}
@@ -246,7 +246,10 @@ export default function Layout() {
               alignItems: 'center',
               gap: '0.5rem'
             }}>
-              <span style={{ fontSize: '1.25rem' }}>👤</span> {user.email}
+              <div style={{ backgroundColor: '#e2e8f0', color: 'black', borderRadius: '50%', padding: '0.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <UserIcon size={14} strokeWidth={2.5} />
+              </div>
+              {user.email}
             </div>
           )}
           <button className="nav-item logout-btn" onClick={handleSignOut} style={{ backgroundColor: '#fee2e2', color: 'var(--danger)', fontWeight: 800, border: '2px solid black' }}>
