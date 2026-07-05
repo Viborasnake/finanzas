@@ -69,7 +69,7 @@ function BankIndicator() {
 
       {/* Dropdown */}
       {open && (
-        <div style={{ position: 'absolute', left: '0.75rem', right: '0.75rem', top: 'calc(100% + 4px)', backgroundColor: '#fff', border: '2px solid #000', borderRadius: '12px', boxShadow: '4px 4px 0px #000', zIndex: 100, overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', left: '0.75rem', minWidth: '200px', top: 'calc(100% + 4px)', backgroundColor: '#fff', border: '2px solid #000', borderRadius: '12px', boxShadow: '4px 4px 0px #000', zIndex: 100, overflow: 'hidden' }}>
           
           {/* Connected banks */}
           {connectedBanks.length > 0 && (
@@ -168,12 +168,36 @@ export default function Layout() {
   return (
     <div className="layout">
       {/* Sidebar Desktop */}
-      <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
+      <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`} style={{ position: 'relative' }}>
+        {/* Collapse Button */}
+        <button 
+          onClick={() => setIsCollapsed(!isCollapsed)} 
+          style={{ 
+            position: 'absolute',
+            top: '50%',
+            right: '-14px',
+            transform: 'translateY(-50%)',
+            width: '28px',
+            height: '28px',
+            backgroundColor: 'white',
+            border: '2px solid black',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            zIndex: 50,
+            boxShadow: '2px 2px 0px black'
+          }}
+        >
+          {isCollapsed ? <ChevronRight size={16} strokeWidth={3} /> : <ChevronLeft size={16} strokeWidth={3} />}
+        </button>
+
         <div style={{ 
           padding: isCollapsed ? '2rem 0 1rem 0' : '2rem 1rem 1rem', 
           borderBottom: '2px solid black',
           display: 'flex',
-          justifyContent: isCollapsed ? 'center' : 'space-between',
+          justifyContent: 'center',
           alignItems: 'center'
         }}>
           {!isCollapsed && (
@@ -191,16 +215,6 @@ export default function Layout() {
               </div>
             </div>
           )}
-          <button 
-            onClick={() => setIsCollapsed(!isCollapsed)} 
-            style={{ 
-              background: 'none', border: 'none', cursor: 'pointer', 
-              display: 'flex', alignItems: 'center', justifyContent: 'center', 
-              padding: '0.25rem' 
-            }}
-          >
-            {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
-          </button>
         </div>
 
         <BankIndicator />
