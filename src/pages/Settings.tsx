@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, Trash2, Save, X } from 'lucide-react';
+import { Plus, Trash2, Save, X, Maximize2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { extractAndNormalizeRUT } from '../utils/rutParser';
 import type { ClassificationRule } from '../utils/classificationRules';
@@ -58,6 +58,7 @@ const renderCustomNodeElement = ({ nodeDatum, toggleNode }: any) => {
 function MindMap() {
   const { taxonomy } = useTaxonomy();
   const [zoom, setZoom] = useState(0.8);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   
   const treeData = {
     name: 'Movimientos',
@@ -74,25 +75,45 @@ function MindMap() {
     }))
   };
 
-  return (
-    <div style={{ position: 'relative', width: '100%', height: '500px', border: '2px solid black', borderRadius: '8px', background: 'white', overflow: 'hidden' }}>
-      <Tree 
-        data={treeData} 
-        orientation="horizontal" 
-        pathFunc="step" 
-        translate={{ x: 100, y: 250 }} 
-        nodeSize={{ x: 140, y: 35 }}
-        zoomable={true}
-        zoom={zoom}
-        collapsible={true}
-        separation={{ siblings: 1.2, nonSiblings: 1.5 }}
-        renderCustomNodeElement={renderCustomNodeElement}
-      />
-      <div style={{ position: 'absolute', bottom: '1rem', right: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', zIndex: 10 }}>
-        <button type="button" onClick={() => setZoom(z => Math.min(z + 0.2, 2))} style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '8px', padding: '0.5rem', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 900, cursor: 'pointer', boxShadow: '2px 2px 0px #000' }}>+</button>
-        <button type="button" onClick={() => setZoom(z => Math.max(z - 0.2, 0.2))} style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '8px', padding: '0.5rem', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 900, cursor: 'pointer', boxShadow: '2px 2px 0px #000' }}>-</button>
-      </div>
+  const treeProps = {
+    data: treeData,
+    orientation: "horizontal" as const,
+    pathFunc: "step" as const,
+    translate: { x: 100, y: isModalOpen ? window.innerHeight / 2 : 250 },
+    nodeSize: { x: 140, y: 35 },
+    zoomable: true,
+    zoom: zoom,
+    collapsible: true,
+    separation: { siblings: 1.2, nonSiblings: 1.5 },
+    renderCustomNodeElement: renderCustomNodeElement
+  };
+
+  const controls = (
+    <div style={{ position: 'absolute', bottom: '1rem', right: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', zIndex: 10 }}>
+      <button type="button" onClick={() => setZoom(z => Math.min(z + 0.2, 2))} style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '8px', padding: '0.5rem', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 900, cursor: 'pointer', boxShadow: '2px 2px 0px #000' }}>+</button>
+      <button type="button" onClick={() => setZoom(z => Math.max(z - 0.2, 0.2))} style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '8px', padding: '0.5rem', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 900, cursor: 'pointer', boxShadow: '2px 2px 0px #000' }}>-</button>
+      <button type="button" onClick={() => setIsModalOpen(!isModalOpen)} style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '8px', padding: '0.5rem', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 900, cursor: 'pointer', boxShadow: '2px 2px 0px #000' }}>
+        {isModalOpen ? <X size={20} /> : <Maximize2 size={20} />}
+      </button>
     </div>
+  );
+
+  return (
+    <>
+      <div style={{ position: 'relative', width: '100%', height: '500px', border: '2px solid black', borderRadius: '8px', background: 'white', overflow: 'hidden' }}>
+        <Tree {...treeProps} />
+        {controls}
+      </div>
+      
+      {isModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, backgroundColor: 'rgba(0,0,0,0.8)', padding: '2rem' }}>
+          <div style={{ position: 'relative', width: '100%', height: '100%', backgroundColor: 'white', borderRadius: '12px', border: '4px solid black', overflow: 'hidden', boxShadow: '8px 8px 0px rgba(0,0,0,1)' }}>
+            <Tree {...treeProps} />
+            {controls}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
