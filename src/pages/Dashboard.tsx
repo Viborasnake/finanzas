@@ -712,7 +712,7 @@ export default function Dashboard() {
     const p = stats.prev;
 
     // Income Logic
-    const totalEntradas = c.ingresos + c.aportePropio;
+    const totalEntradas = c.ingresos;
     const incomeData: { name: string; value: number; isGray?: boolean }[] = [
       { name: 'Sueldo', value: c.sueldo },
       { name: 'Honorarios', value: c.honorarios },
@@ -726,7 +726,7 @@ export default function Dashboard() {
     const others = sorted.slice(3).reduce((acc, curr) => acc + curr.amount, 0);
     const sinClasificarAmount = c.topCatsPrincipal.find(x => x.name === 'Sin Clasificar')?.amount || 0;
     const totalOtros = others + sinClasificarAmount;
-    const totalSalidas = top3.reduce((a, b) => a + b.amount, 0) + totalOtros + c.movimientoInternoEgreso;
+    const totalSalidas = top3.reduce((a, b) => a + b.amount, 0) + totalOtros;
     
     const expenseData: { name: string; value: number; isGray?: boolean }[] = [
       ...top3.map(cat => ({ name: cat.name, value: cat.amount })),
@@ -1036,10 +1036,14 @@ export default function Dashboard() {
             if (isInternal) aporte += Math.abs(t.amount);
             else ing += Math.abs(t.amount);
           }
-          if (t.type === 'egreso' && !isInv) gas += Math.abs(t.amount);
+          if (t.type === 'egreso') {
+            if (isInternal) { /* internal egresos should be tracked if we want, but right now we just ignore them in real gas */ }
+            else if (!isInv) gas += Math.abs(t.amount);
+          }
         }
       });
-      const totalIng = ing + aporte;
+      // totalIng should ONLY be real income for the KPIs
+      const totalIng = ing;
       monthlyData.push({
         mes: new Date(year, m, 1).toLocaleString('es-CL', { month: 'short' }),
         mesIdx: m,
