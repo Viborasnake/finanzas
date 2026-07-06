@@ -1,4 +1,5 @@
 import { useCallback, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useDropzone } from 'react-dropzone';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
@@ -865,8 +866,8 @@ export default function CSVImport() {
         </div>
       )}
 
-      {showPasswordModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}>
+      {showPasswordModal && createPortal(
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, backdropFilter: 'blur(4px)' }}>
           <div className="card animate-fade-in" style={{ width: '90%', maxWidth: '400px', padding: '2rem', border: '3px solid black', boxShadow: '6px 6px 0px black', backgroundColor: 'white', borderRadius: '12px', textAlign: 'left' }}>
             <h3 style={{ fontSize: '1.5rem', marginTop: 0, marginBottom: '1rem', fontWeight: 900 }}>Archivo Protegido</h3>
             <p style={{ fontSize: '0.95rem', marginBottom: '1.5rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
@@ -906,7 +907,8 @@ export default function CSVImport() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
