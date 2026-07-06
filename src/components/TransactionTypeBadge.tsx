@@ -17,7 +17,7 @@ export function TransactionTypeBadge({ type }: TransactionTypeBadgeProps) {
         fontWeight: 800, fontSize: '0.75rem', border: '2px solid #16a34a',
         boxShadow: '2px 2px 0px #16a34a'
       }}>
-        <ArrowUpCircle size={16} strokeWidth={3} />
+        <ArrowDownCircle size={16} strokeWidth={3} />
       </div>
     );
   }
@@ -31,7 +31,7 @@ export function TransactionTypeBadge({ type }: TransactionTypeBadgeProps) {
         fontWeight: 800, fontSize: '0.75rem', border: '2px solid #dc2626',
         boxShadow: '2px 2px 0px #dc2626'
       }}>
-        <ArrowDownCircle size={16} strokeWidth={3} />
+        <ArrowUpCircle size={16} strokeWidth={3} />
       </div>
     );
   }
