@@ -143,6 +143,9 @@
   padding: 1rem 1.5rem;
   background-color: var(--bg-color);
   border-bottom: 2px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  z-index: 1100;
 }
 
 .mobile-header h2 {
@@ -171,7 +174,7 @@
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .sidebar {
     display: none;
   }
@@ -186,6 +189,112 @@
   
   .mobile-nav {
     display: flex;
+    flex-direction: column;
+    position: fixed;
+    inset: 0;
+    padding-top: 80px;
+    padding-bottom: 2rem;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    background-color: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(12px);
+    z-index: 1000;
+    overflow-y: auto;
+  }
+  
+  .mobile-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    color: var(--text-primary);
+    text-decoration: none;
+    font-weight: 800;
+    font-size: 1.05rem;
+    border-radius: 16px;
+    margin-bottom: 0.5rem;
+    background-color: var(--bg-color);
+    border: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  
+  .mobile-nav-item.active {
+    background-color: #000;
+    color: #fff;
+    box-shadow: 4px 4px 0px var(--primary);
+  }
+  
+  .mobile-nav-item .icon-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .mobile-sub-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.5rem 1rem 1rem 3.5rem;
+  }
+  
+  .mobile-sub-nav a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+  
+  .mobile-nav-footer {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding-top: 2rem;
+    border-top: 2px solid #e2e8f0;
+  }
+  
+  .mobile-user-profile {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background-color: #eff6ff;
+    border-radius: 16px;
+    border: 2px solid #bfdbfe;
+  }
+  
+  .mobile-user-profile .avatar {
+    width: 40px;
+    height: 40px;
+    background-color: #bfdbfe;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .mobile-user-profile .email {
+    font-weight: 800;
+    font-size: 0.9rem;
+    color: #1e3a8a;
+    word-break: break-all;
+  }
+  
+  .mobile-logout-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    width: 100%;
+    background-color: #fef2f2;
+    color: #b91c1c;
+    border: 2px solid #fecaca;
+    border-radius: 16px;
+    font-weight: 800;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
   }
   
   .page-container {

@@ -45,7 +45,7 @@ const PRESETS: { id: string; label: string; range: () => DateRange }[] = [
   }},
   { id: 'year', label: 'Este año', range: () => {
     const y = new Date().getFullYear();
-    return { start: new Date(y, 0, 1), end: new Date(y, 11, 31, 23, 59, 59), label: y.toString() };
+    return { start: new Date(y, 0, 1), end: new Date(), label: y.toString() };
   }},
   { id: 'prev_year', label: 'Año pasado', range: () => {
     const y = new Date().getFullYear() - 1;
@@ -596,7 +596,7 @@ export default function Dashboard() {
 
             {/* Dropdown */}
             {pickerOpen && (
-              <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', backgroundColor: '#fff', border: '2px solid #000', borderRadius: '16px', boxShadow: '4px 4px 0px #000', zIndex: 200, minWidth: '300px' }}>
+              <div className="date-popover" style={{ position: 'absolute', top: 'calc(100% + 8px)', backgroundColor: '#fff', border: '2px solid #000', borderRadius: '16px', boxShadow: '4px 4px 0px #000', zIndex: 200, minWidth: '300px' }}>
                 {/* Preset pills */}
                 <div style={{ padding: '1rem', borderBottom: '2px solid #e2e8f0' }}>
                   <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#94a3b8', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>Accesos rápidos</div>
@@ -670,7 +670,7 @@ export default function Dashboard() {
           {/* Balance Insight */}
           <div style={{ padding: '1rem', backgroundColor: isDeficit ? '#fef2f2' : '#f0fdf4', border: '2px solid #000', borderRadius: '8px', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
             <Activity size={20} style={{ color: isDeficit ? '#ef4444' : '#22c55e', marginTop: '0.2rem', flexShrink: 0 }} />
-            <div>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.25rem' }}>Balance Actual</div>
               <div style={{ fontSize: '1rem', fontWeight: 600 }}>
                 {isDeficit ? 'Déficit de ' : 'Superávit de '}
@@ -688,9 +688,9 @@ export default function Dashboard() {
           {maxIncomeAmount > 0 && (
             <div style={{ padding: '1rem', backgroundColor: '#eff6ff', border: '2px solid #000', borderRadius: '8px', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
               <Wallet size={20} style={{ color: '#3b82f6', marginTop: '0.2rem', flexShrink: 0 }} />
-              <div>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.25rem' }}>Motor de Ingresos</div>
-                <div style={{ fontSize: '1rem', fontWeight: 600 }}>
+                <div style={{ fontSize: '1rem', fontWeight: 600, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                   <span style={{ fontWeight: 900 }}>{incomePercent}%</span> proviene de "{maxIncomeDesc}"
                 </div>
               </div>
@@ -701,9 +701,9 @@ export default function Dashboard() {
           {maxRecurringTotal > 0 && (
             <div style={{ padding: '1rem', backgroundColor: '#fefce8', border: '2px solid #000', borderRadius: '8px', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
               <Search size={20} style={{ color: '#eab308', marginTop: '0.2rem', flexShrink: 0 }} />
-              <div>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.25rem' }}>Flujo de Capital Detectado</div>
-                <div style={{ fontSize: '1rem', fontWeight: 600 }}>
+                <div style={{ fontSize: '1rem', fontWeight: 600, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                   <span style={{ fontWeight: 900 }}>${maxRecurringTotal.toLocaleString('es-CL')}</span> acumulado en "{maxRecurringDesc}"
                 </div>
               </div>

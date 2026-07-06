@@ -484,7 +484,7 @@ export default function Transactions() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+      <div className="header-container">
         <div>
           <h1 style={{ margin: '0 0 1rem 0', fontSize: '2.5rem' }}>Transacciones</h1>
           {uncatCount > 0 && (
@@ -494,22 +494,22 @@ export default function Transactions() {
           )}
         </div>
         
-        <div style={{ display: 'flex', backgroundColor: 'white', border: '2px solid black', borderRadius: '2rem', overflow: 'hidden', boxShadow: '4px 4px 0px black' }}>
+        <div className="responsive-tabs">
           <button 
             onClick={() => setViewMode('individual')}
-            style={{ padding: '0.75rem 1.5rem', border: 'none', background: viewMode === 'individual' ? 'black' : 'transparent', color: viewMode === 'individual' ? 'white' : 'black', fontWeight: 800, fontSize: '1rem', cursor: 'pointer', transition: 'all 0.1s' }}
+            className={viewMode === 'individual' ? 'active' : ''}
           >
             Lista Individual
           </button>
           <button 
             onClick={() => setViewMode('bulk')}
-            style={{ padding: '0.75rem 1.5rem', border: 'none', background: viewMode === 'bulk' ? 'black' : 'transparent', color: viewMode === 'bulk' ? 'white' : 'black', fontWeight: 800, fontSize: '1rem', cursor: 'pointer', transition: 'all 0.1s', borderLeft: '2px solid black' }}
+            className={viewMode === 'bulk' ? 'active' : ''}
           >
             Categorización Masiva ✨
           </button>
           <button 
             onClick={() => setViewMode('assistant')}
-            style={{ padding: '0.75rem 1.5rem', border: 'none', background: viewMode === 'assistant' ? 'black' : 'transparent', color: viewMode === 'assistant' ? 'white' : 'black', fontWeight: 800, fontSize: '1rem', cursor: 'pointer', transition: 'all 0.1s', borderLeft: '2px solid black' }}
+            className={viewMode === 'assistant' ? 'active' : ''}
           >
             Asistente Inteligente 🤖
           </button>
@@ -527,8 +527,8 @@ export default function Transactions() {
             Agrupamos las transacciones que tienen la misma descripción original para que las categorices todas con un solo clic.
           </p>
 
-          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-            <div style={{ position: 'relative', flex: 1, minWidth: '250px', maxWidth: '400px' }}>
+          <div className="filter-bar" style={{ marginBottom: '1.5rem' }}>
+            <div style={{ position: 'relative', flex: 1, width: '100%' }}>
               <Search size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
               <input 
                 type="text" 
@@ -543,7 +543,7 @@ export default function Transactions() {
               value={bulkFilterMode} 
               onChange={e => setBulkFilterMode(e.target.value)}
               className="input" 
-              style={{ backgroundColor: 'white', width: 'auto', fontWeight: 600 }}
+              style={{ backgroundColor: 'white', width: '100%', flex: 1, fontWeight: 600 }}
             >
               <option value="unclassified">Solo Sin Clasificar</option>
               <option value="all">Todas las transacciones</option>
@@ -555,18 +555,18 @@ export default function Transactions() {
             </select>
           </div>
 
-          <table className="responsive-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', backgroundColor: 'white', border: '2px solid black', borderRadius: 'var(--radius-sm)' }}>
-            <thead style={{ backgroundColor: 'black', color: 'white' }}>
+          <table className="responsive-table">
+            <thead>
               <tr>
-                <th style={{ padding: '1rem', fontWeight: 800 }}>Descripción Base</th>
-                <th style={{ padding: '1rem', fontWeight: 800 }}>Cant.</th>
-                <th style={{ padding: '1rem', fontWeight: 800 }}>Monto Acumulado</th>
-                <th style={{ padding: '1rem', fontWeight: 800 }}>Clasificar como...</th>
+                <th>Descripción Base</th>
+                <th>Cant.</th>
+                <th>Monto Acumulado</th>
+                <th>Clasificar como...</th>
               </tr>
             </thead>
             <tbody>
               {bulkGroups.map((group) => (
-                <tr key={`${group.name}-${group.type}`} style={{ borderBottom: '2px solid black' }}>
+                <tr key={`${group.name}-${group.type}`}>
                   <td data-label="Descripción" style={{ padding: '1rem', fontWeight: 700 }}>
                     {group.name}
                     <span style={{ 
@@ -635,8 +635,8 @@ export default function Transactions() {
       {viewMode === 'individual' && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           {/* Header filtros */}
-          <div style={{ padding: '1.5rem', backgroundColor: '#f1f5f9', borderBottom: '2px solid black', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            <div style={{ flex: 1, minWidth: '150px', position: 'relative' }}>
+          <div className="filter-bar" style={{ padding: '1.5rem', backgroundColor: '#f1f5f9', borderBottom: '2px solid black' }}>
+            <div style={{ flex: 1, width: '100%', position: 'relative' }}>
               <Search size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
               <input 
                 type="text" 
@@ -651,7 +651,7 @@ export default function Transactions() {
               />
             </div>
             
-            <select className="input" style={{ width: 'auto' }} value={filterPeriod} onChange={e => setFilterPeriod(e.target.value)}>
+            <select className="input" style={{ width: '100%', flex: 1 }} value={filterPeriod} onChange={e => setFilterPeriod(e.target.value)}>
               <option value="all">Todo el tiempo</option>
               {availablePeriods.years.length > 0 && (
                 <optgroup label="Por Año">
@@ -661,13 +661,13 @@ export default function Transactions() {
 
             </select>
 
-            <select className="input" style={{ width: 'auto' }} value={filterType} onChange={e => setFilterType(e.target.value)}>
+            <select className="input" style={{ width: '100%', flex: 1 }} value={filterType} onChange={e => setFilterType(e.target.value)}>
               <option value="all">Ingresos y Egresos</option>
               <option value="expense">Solo Egresos</option>
               <option value="income">Solo Ingresos</option>
             </select>
             
-            <select className="input" style={{ width: 'auto' }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+            <select className="input" style={{ width: '100%', flex: 1 }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
               <option value="all">Todas las transacciones</option>
               <option value="classified">Clasificadas</option>
               <option value="unclassified">Por clasificar</option>
@@ -675,14 +675,14 @@ export default function Transactions() {
 
           </div>
 
-          <div style={{ overflowX: 'hidden' }}>
-            <table className="responsive-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '100%' }}>
-              <thead style={{ backgroundColor: 'black', color: 'white' }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="responsive-table">
+              <thead>
                 <tr>
-                  <th style={{ padding: '1rem', fontWeight: 800 }}>Fecha</th>
-                  <th style={{ padding: '1rem', fontWeight: 800, width: '30%' }}>Descripción (Editable)</th>
-                  <th style={{ padding: '1rem', fontWeight: 800 }}>Monto</th>
-                  <th style={{ padding: '1rem', fontWeight: 800, width: '40%' }}>Clasificación</th>
+                  <th>Fecha</th>
+                  <th style={{ width: '30%' }}>Descripción (Editable)</th>
+                  <th>Monto</th>
+                  <th style={{ width: '40%' }}>Clasificación</th>
                 </tr>
               </thead>
               <tbody>
@@ -691,7 +691,7 @@ export default function Transactions() {
                   const rawDesc = tx.raw_data ? tx.raw_data[rawDescKey] : '';
 
                   return (
-                    <tr key={tx.id} style={{ borderBottom: '2px solid black', backgroundColor: i % 2 === 0 ? 'white' : 'rgba(0,0,0,0.02)' }} className="table-row">
+                    <tr key={tx.id} style={{ backgroundColor: i % 2 === 0 ? 'white' : 'rgba(0,0,0,0.02)' }} className="table-row">
                       <td data-label="Fecha" style={{ padding: '1rem', fontWeight: 600 }}>{tx.date}</td>
                       <td data-label="Descripción" style={{ padding: '1rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'transparent', border: '1px solid transparent' }} className="editable-cell">

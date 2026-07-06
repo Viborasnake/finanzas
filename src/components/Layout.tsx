@@ -284,24 +284,26 @@ export default function Layout() {
         
         {/* Mobile Navigation */}
         {isMobileMenuOpen && (
-          <nav className="mobile-nav">
-            <BankIndicator />
+          <nav className="mobile-nav animate-fade-in">
+            <div style={{ padding: '0 0.5rem', marginBottom: '1rem' }}>
+              <BankIndicator />
+            </div>
             {navItems.map((item) => {
               const isActive = location.pathname === item.path;
               return (
               <div key={item.path}>
                 <Link 
                   to={item.path} 
-                  className={`nav-item ${isActive ? 'active' : ''}`}
+                  className={`mobile-nav-item ${isActive ? 'active' : ''}`}
                   onClick={() => !item.subItems && setIsMobileMenuOpen(false)}
                 >
-                  {item.icon}
+                  <div className="icon-container">{item.icon}</div>
                   <span>{item.name}</span>
                 </Link>
                 {isActive && item.subItems && (
-                  <div style={{ paddingLeft: '3rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem', marginTop: '0.25rem' }}>
+                  <div className="mobile-sub-nav">
                     {item.subItems.map(sub => (
-                      <a key={sub.hash} href={`${item.path}${sub.hash}`} onClick={() => setIsMobileMenuOpen(false)} style={{ fontSize: '0.9rem', color: '#334155', textDecoration: 'none', fontWeight: 700 }}>
+                      <a key={sub.hash} href={`${item.path}${sub.hash}`} onClick={() => setIsMobileMenuOpen(false)}>
                         {sub.name}
                       </a>
                     ))}
@@ -310,25 +312,20 @@ export default function Layout() {
               </div>
             )})}
             
-            <div style={{ marginTop: 'auto', borderTop: '2px solid black' }}>
+            <div className="mobile-nav-footer">
               {user && (
-                <div style={{ 
-                  padding: '1rem 1.5rem', 
-                  borderBottom: '2px solid black', 
-                  fontWeight: 700, 
-                  fontSize: '0.85rem', 
-                  backgroundColor: '#bfdbfe',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem'
-                }}>
-                  <span style={{ fontSize: '1.25rem' }}>👤</span> {user.email}
+                <div className="mobile-user-profile">
+                  <div className="avatar">
+                    <span style={{ fontSize: '1.2rem' }}>👤</span>
+                  </div>
+                  <div className="user-info">
+                    <span className="email">{user.email}</span>
+                  </div>
                 </div>
               )}
               <button 
-                className="nav-item logout-btn" 
+                className="mobile-logout-btn" 
                 onClick={() => { setIsMobileMenuOpen(false); handleSignOut(); }} 
-                style={{ backgroundColor: '#fecaca', color: 'black', fontWeight: 800 }}
               >
                 <LogOut size={20} />
                 <span>Cerrar Sesión</span>

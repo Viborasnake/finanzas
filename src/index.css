@@ -277,68 +277,225 @@ select.input {
   box-shadow: 2px 2px 0px #000;
 }
 
-/* Mobile Responsiveness */
-@media (max-width: 768px) {
+/* Mobile First Base Styles */
+.flex-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+.flex-stack > * {
+  width: 100%;
+}
+
+.responsive-tabs {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--surface-color);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+}
+
+.responsive-tabs button {
+  padding: 0.75rem 1rem;
+  border: none;
+  border-bottom: var(--border-width) solid var(--border-color);
+  background: transparent;
+  color: var(--text-primary);
+  font-weight: 800;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.1s;
+  text-align: center;
+}
+.responsive-tabs button:last-child {
+  border-bottom: none;
+}
+.responsive-tabs button.active {
+  background: var(--text-primary);
+  color: var(--surface-color);
+}
+
+/* Responsive Table - Mobile First Clean Grid View */
+.responsive-table {
+  width: 100%;
+}
+
+.responsive-table table, 
+.responsive-table thead, 
+.responsive-table tbody, 
+.responsive-table th, 
+.responsive-table td {
+  display: block;
+  width: 100%;
+}
+
+.responsive-table thead tr {
+  position: absolute;
+  top: -9999px;
+  left: -9999px;
+}
+
+.responsive-table tr {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: 
+    "date amount"
+    "desc desc"
+    "category category";
+  padding: 1rem;
+  gap: 0.25rem 0.5rem;
+  margin-bottom: 1rem;
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--radius-md);
+  background-color: var(--surface-color);
+  box-shadow: var(--shadow-sm);
+}
+
+.responsive-table td {
+  border: none;
+  padding: 0;
+  text-align: left;
+  min-height: auto;
+}
+
+/* Transactions Table Grid Mapping */
+.responsive-table td[data-label="Fecha"] {
+  grid-area: date;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+.responsive-table td[data-label="Monto"] {
+  grid-area: amount;
+  text-align: right;
+}
+.responsive-table td[data-label="Descripción"] {
+  grid-area: desc;
+}
+.responsive-table td[data-label="Clasificación"],
+.responsive-table td[data-label="Tipo"] {
+  grid-area: category;
+  margin-top: 0.5rem;
+}
+
+/* Bulk Categorization Table Grid Mapping */
+.responsive-table td[data-label="Cant."] {
+  grid-area: date;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.responsive-table td[data-label="Acumulado"] {
+  grid-area: amount;
+  text-align: right;
+}
+.responsive-table td[data-label="Clasificar"] {
+  grid-area: category;
+  margin-top: 0.5rem;
+}
+
+.date-popover {
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 90vw;
+}
+
+.filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.header-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: stretch;
+  margin-bottom: 2rem;
+}
+
+/* Tablet and Desktop Styles */
+@media (min-width: 1024px) {
   .flex-stack {
-    flex-direction: column !important;
-    align-items: stretch !important;
+    flex-direction: row;
+    align-items: center;
   }
-  
   .flex-stack > * {
-    width: 100% !important;
+    width: auto;
   }
 
-  /* Responsive Table - Card View */
-  .responsive-table table, 
-  .responsive-table thead, 
-  .responsive-table tbody, 
-  .responsive-table th, 
-  .responsive-table td, 
-  .responsive-table tr {
-    display: block;
-    width: 100% !important;
-    min-width: 0 !important;
+  .header-container {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-end;
   }
-  
+
+  .filter-bar {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .responsive-tabs {
+    flex-direction: row;
+    border-radius: 2rem;
+  }
+  .responsive-tabs button {
+    border-bottom: none;
+    border-left: var(--border-width) solid var(--border-color);
+    font-size: 1rem;
+    padding: 0.75rem 1.5rem;
+  }
+  .responsive-tabs button:first-child {
+    border-left: none;
+  }
+
+  .date-popover {
+    left: auto;
+    right: 0;
+    transform: none;
+    max-width: none;
+  }
+
+  /* Restore Table Display */
+  .responsive-table table {
+    display: table;
+    border-collapse: collapse;
+  }
+  .responsive-table thead {
+    display: table-header-group;
+  }
   .responsive-table thead tr {
-    position: absolute;
-    top: -9999px;
-    left: -9999px;
+    position: static;
+    display: table-row;
+    background-color: var(--text-primary);
+    color: var(--surface-color);
   }
-  
-  .responsive-table tr {
-    margin-bottom: 1rem;
-    border: 2px solid var(--border-color) !important;
-    border-radius: var(--radius-md);
-    background-color: var(--surface-color) !important;
-    box-shadow: 2px 2px 0px 0px #000;
-  }
-  
-  .responsive-table td {
-    border: none !important;
-    border-bottom: 1px solid #e2e8f0 !important;
-    position: relative;
-    padding: 0.75rem 1rem 0.75rem 40% !important;
-    text-align: right !important;
-    min-height: 3rem;
-  }
-  
-  .responsive-table td:last-child {
-    border-bottom: none !important;
-  }
-  
-  .responsive-table td::before {
-    content: attr(data-label);
-    position: absolute;
-    left: 1rem;
-    width: 35%;
-    padding-right: 10px;
-    white-space: nowrap;
+  .responsive-table th {
+    display: table-cell;
+    padding: 1rem;
     text-align: left;
     font-weight: 800;
-    color: var(--text-secondary);
-    top: 50%;
-    transform: translateY(-50%);
+  }
+  .responsive-table tbody {
+    display: table-row-group;
+  }
+  .responsive-table tr {
+    display: table-row;
+    margin-bottom: 0;
+    border: none;
+    border-bottom: var(--border-width) solid var(--border-color);
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .responsive-table td {
+    display: table-cell;
+    text-align: left;
+    padding: 1rem;
+    border-bottom: none;
+  }
+  .responsive-table td[data-label] {
+    margin-top: 0;
   }
 }
 

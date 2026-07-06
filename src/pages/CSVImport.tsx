@@ -11,6 +11,11 @@ import toast from 'react-hot-toast';
 import { extractAndNormalizeRUT } from '../utils/rutParser';
 import { applyRules } from '../utils/classificationRules';
 import { useBanks, type Bank, AVAILABLE_BANKS } from '../contexts/BankContext';
+import * as pdfjsLib from 'pdfjs-dist';
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import { cleanRut } from '../utils/rutParser';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 interface Transaction {
   date: string;
@@ -281,12 +286,185 @@ export default function CSVImport() {
       });
   };
 
+  const parseMachPdf = async (file: File) => {
+    try {
+      setLoading(true);
+      const arrayBuffer = await file.arrayBuffer();
+      let pdf;
+      
+      const tryPassword = async (pwd?: string) => {
+        return await pdfjsLib.getDocument({ data: arrayBuffer, password: pwd }).promise;
+      };
+
+      try {
+        pdf = await tryPassword();
+      } catch (err: any) {
+        if (err.name === 'PasswordException') {
+          let success = false;
+          
+          if (myRut) {
+            const cleaned = cleanRut(myRut);
+            const password = cleaned.slice(0, -1);
+            try {
+              pdf = await tryPassword(password);
+              success = true;
+            } catch (passErr: any) {
+              if (passErr.name !== 'PasswordException') throw passErr;
+            }
+          }
+
+          if (!success) {
+            const manualPwd = window.prompt("El PDF está protegido. Ingresa la contraseña (para MACH suele ser tu RUT sin puntos, guión ni dígito verificador, ej: 17673553):");
+            if (manualPwd) {
+              try {
+                pdf = await tryPassword(manualPwd);
+                success = true;
+              } catch (passErr: any) {
+                if (passErr.name === 'PasswordException') {
+                   setError("Contraseña incorrecta.");
+                   setStep('upload');
+                   setLoading(false);
+                   return;
+                }
+                throw passErr;
+              }
+            } else {
+              setError("Se requiere contraseña para abrir el PDF.");
+              setStep('upload');
+              setLoading(false);
+              return;
+            }
+          }
+        } else {
+          throw err;
+        }
+      }
+
+      if (!pdf) return;
+
+      const parsedTransactions: Transaction[] = [];
+
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        
+        let egresoX = -1;
+        let ingresoX = -1;
+        
+        for (const item of textContent.items as any[]) {
+           const str = item.str.trim();
+           if (str === 'Egreso') egresoX = item.transform[4];
+           if (str === 'Ingreso') ingresoX = item.transform[4];
+        }
+
+        const items = (textContent.items as any[]).map(item => ({
+          str: item.str,
+          x: item.transform[4],
+          y: item.transform[5],
+        })).sort((a, b) => {
+          if (Math.abs(a.y - b.y) > 4) {
+             return b.y - a.y;
+          }
+          return a.x - b.x;
+        });
+
+        const lines: any[][] = [];
+        let currentLine: any[] = [];
+        let lastY = -1;
+        
+        for (const item of items) {
+           if (!item.str.trim() && item.str !== ' ') continue;
+           
+           if (lastY === -1 || Math.abs(item.y - lastY) > 4) {
+              if (currentLine.length > 0) lines.push(currentLine);
+              currentLine = [item];
+              lastY = item.y;
+           } else {
+              currentLine.push(item);
+           }
+        }
+        if (currentLine.length > 0) lines.push(currentLine);
+
+        for (const lineItems of lines) {
+           const firstItem = lineItems[0];
+           const dateMatch = firstItem.str.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+           if (!dateMatch) continue;
+
+           const dateStr = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
+           
+           let amountItem = null;
+           for (let i = lineItems.length - 1; i >= 0; i--) {
+              if (lineItems[i].str.includes('$') || /^[0-9\.]+$/.test(lineItems[i].str.trim())) {
+                 amountItem = lineItems[i];
+                 break;
+              }
+           }
+           
+           if (!amountItem) continue;
+
+           const amountStr = amountItem.str.replace(/[^0-9]/g, '');
+           const amount = parseFloat(amountStr);
+           if (isNaN(amount) || amount === 0) continue;
+
+           let type: 'ingreso' | 'egreso' = 'egreso';
+           if (egresoX !== -1 && ingresoX !== -1) {
+              const distToEgreso = Math.abs(amountItem.x - egresoX);
+              const distToIngreso = Math.abs(amountItem.x - ingresoX);
+              type = distToIngreso < distToEgreso ? 'ingreso' : 'egreso';
+           } else {
+              const fullText = lineItems.map(i => i.str).join(' ').toLowerCase();
+              if (fullText.includes('reembolso') || fullText.includes('abono')) {
+                 type = 'ingreso';
+              } else if (fullText.includes('compra')) {
+                 type = 'egreso';
+              } else {
+                 if (amountItem.x > 450) type = 'ingreso'; 
+              }
+           }
+
+           let description = '';
+           for (let i = 1; i < lineItems.length; i++) {
+              const item = lineItems[i];
+              if (item === amountItem) continue;
+              const s = item.str.trim();
+              if (!s || s === '1' || s === 'CLP' || s === '$') continue;
+              description += (description ? ' ' : '') + s;
+           }
+
+           description = description.replace(/^\s*-\s*/, '').trim();
+
+           parsedTransactions.push({
+             date: dateStr,
+             description: description,
+             original_description: description,
+             amount,
+             type,
+             raw_data: { fullLine: lineItems.map(i => i.str).join(' ') }
+           });
+        }
+      }
+
+      if (parsedTransactions.length === 0) {
+        setError("No se encontraron transacciones en el PDF. Asegúrate de que es una cartola válida.");
+        setStep('upload');
+      } else {
+        setData(parsedTransactions);
+        setStep('preview');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError("Error procesando el PDF: " + (err.message || 'Error desconocido'));
+      setStep('upload');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const detectBankFromFile = async (file: File): Promise<Bank | null> => {
     const name = file.name.toLowerCase();
     
     if (name.endsWith('.pdf')) {
-      toast.error('Lectura de PDF no soportada. Por favor usa Excel, CSV o DAT.', { duration: 4000 });
-      return null;
+      return 'Mach'; // Por defecto asumimos que es MACH para los PDFs
     }
     if (name.endsWith('.xls') || name.endsWith('.xlsx')) return 'Itaú';
     
@@ -314,10 +492,6 @@ export default function CSVImport() {
     if (acceptedFiles.length === 0) return;
     
     const file = acceptedFiles[0];
-    if (file.name.toLowerCase().endsWith('.pdf')) {
-      setError('La extracción de datos desde PDF aún no está soportada. Por favor, exporta tu cartola en formato Excel (.xls, .xlsx) o CSV (.csv, .dat) desde la web de tu banco.');
-      return;
-    }
 
     setSelectedFile(file);
     const guessedBank = await detectBankFromFile(file);
@@ -332,10 +506,13 @@ export default function CSVImport() {
       toast.success(`Cambiado automáticamente a ${detectedBank}`, { duration: 2000 });
     }
     
-    // Fake loading state for transition
-    setStep('preview');
-    if (detectedBank === 'Itaú') parseItauXls(selectedFile);
-    else parseCsvStandard(selectedFile);
+    if (selectedFile.name.toLowerCase().endsWith('.pdf')) {
+      parseMachPdf(selectedFile);
+    } else {
+      setStep('preview');
+      if (detectedBank === 'Itaú') parseItauXls(selectedFile);
+      else parseCsvStandard(selectedFile);
+    }
   };
 
   const handleCancelProcess = () => {
@@ -528,7 +705,8 @@ export default function CSVImport() {
       'text/csv': ['.csv'],
       'application/vnd.ms-excel': ['.xls'],
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-      'application/octet-stream': ['.dat']
+      'application/octet-stream': ['.dat'],
+      'application/pdf': ['.pdf']
     },
     multiple: false
   });
@@ -559,10 +737,10 @@ export default function CSVImport() {
             transition: 'all 0.2s ease'
           }}
         >
-          <input {...getInputProps({ accept: '.csv, .xls, .xlsx, .dat, .txt' })} />
+          <input {...getInputProps({ accept: '.csv, .xls, .xlsx, .dat, .txt, .pdf' })} />
           <UploadCloud size={64} style={{ margin: '0 auto 1rem', color: isDragActive ? 'var(--primary)' : 'var(--text-secondary)' }} />
           <h3 style={{ marginBottom: '1rem', fontSize: '1.5rem' }}>
-            {isDragActive ? 'Suelta el archivo aquí...' : 'Arrastra tu cartola CSV, Excel o DAT aquí'}
+            {isDragActive ? 'Suelta el archivo aquí...' : 'Arrastra tu cartola CSV, Excel, DAT o PDF aquí'}
           </h3>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
             O haz clic para seleccionar un archivo desde tu computador
@@ -592,11 +770,11 @@ export default function CSVImport() {
            </div>
            
            <div style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem' }}>
-             <button className="btn btn-outline" style={{ padding: '0.8rem 2rem', fontSize: '1.1rem' }} onClick={handleCancelProcess}>
+             <button className="btn btn-outline" style={{ padding: '0.8rem 2rem', fontSize: '1.1rem' }} onClick={handleCancelProcess} disabled={loading}>
                Cancelar
              </button>
-             <button className="btn btn-primary" style={{ padding: '0.8rem 2rem', fontSize: '1.1rem' }} onClick={handleConfirmBank}>
-               Confirmar y Procesar
+             <button className="btn btn-primary" style={{ padding: '0.8rem 2rem', fontSize: '1.1rem' }} onClick={handleConfirmBank} disabled={loading}>
+               {loading ? 'Procesando...' : 'Confirmar y Procesar'}
              </button>
            </div>
         </div>
@@ -614,20 +792,20 @@ export default function CSVImport() {
           </p>
 
           <div style={{ maxHeight: '400px', overflowY: 'auto', border: '2px solid black', borderRadius: 'var(--radius-sm)' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', position: 'relative' }}>
-              <thead style={{ backgroundColor: 'var(--primary-light)', borderBottom: '2px solid black', position: 'sticky', top: 0, zIndex: 10 }}>
+            <table className="responsive-table">
+              <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                 <tr>
-                  <th style={{ padding: '0.75rem 1rem', borderRight: '2px solid black', fontWeight: 700 }}>Fecha</th>
-                  <th style={{ padding: '0.75rem 1rem', borderRight: '2px solid black', fontWeight: 700 }}>Descripción (Clic para editar)</th>
-                  <th style={{ padding: '0.75rem 1rem', borderRight: '2px solid black', fontWeight: 700 }}>Tipo</th>
-                  <th style={{ padding: '0.75rem 1rem', fontWeight: 700 }}>Monto</th>
+                  <th>Fecha</th>
+                  <th>Descripción (Clic para editar)</th>
+                  <th>Tipo</th>
+                  <th>Monto</th>
                 </tr>
               </thead>
               <tbody>
                 {data.map((row, i) => (
-                  <tr key={i} style={{ borderBottom: i < data.length - 1 ? '2px solid black' : 'none' }}>
-                    <td style={{ padding: '0.75rem 1rem', borderRight: '2px solid black' }}>{row.date}</td>
-                    <td style={{ padding: '0', borderRight: '2px solid black', position: 'relative' }}>
+                  <tr key={i}>
+                    <td data-label="Fecha">{row.date}</td>
+                    <td data-label="Descripción" style={{ padding: '0', position: 'relative' }}>
                       <input 
                         type="text" 
                         value={row.description}
@@ -646,12 +824,12 @@ export default function CSVImport() {
                       />
                       <Edit2 size={14} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.3, pointerEvents: 'none' }} />
                     </td>
-                    <td style={{ padding: '0.75rem 1rem', borderRight: '2px solid black' }}>
+                    <td data-label="Tipo">
                       <span className={row.type === 'ingreso' ? 'badge badge-success' : 'badge badge-danger'}>
                         {row.type === 'ingreso' ? 'Abono' : 'Cargo'}
                       </span>
                     </td>
-                    <td style={{ padding: '0.75rem 1rem', fontWeight: 600 }}>
+                    <td data-label="Monto" style={{ fontWeight: 600 }}>
                       ${row.amount.toLocaleString('es-CL')}
                     </td>
                   </tr>
