@@ -633,7 +633,12 @@ export default function Transactions() {
       )}
       
       {viewMode === 'individual' && (
-        <div className="card" style={{ backgroundColor: 'var(--pastel-yellow)' }}>
+        <div className="card">
+          <h2 style={{ marginTop: 0 }}>Lista de Transacciones</h2>
+          <p style={{ fontWeight: 500, marginBottom: '2rem' }}>
+            Revisa, edita los alias y clasifica cada uno de tus movimientos bancarios.
+          </p>
+
           {/* Header filtros */}
           <div className="filter-bar" style={{ marginBottom: '1.5rem' }}>
             <div style={{ flex: 1, width: '100%', position: 'relative' }}>
@@ -674,13 +679,13 @@ export default function Transactions() {
           </div>
 
           <div style={{ overflowX: 'auto' }}>
-            <table className="responsive-table">
+            <table className="responsive-table" style={{ width: '100%', tableLayout: 'fixed' }}>
               <thead>
                 <tr>
-                  <th>Fecha</th>
-                  <th style={{ width: '30%' }}>Descripción (Editable)</th>
-                  <th>Monto</th>
-                  <th style={{ width: '40%' }}>Clasificación</th>
+                  <th style={{ width: '120px' }}>Fecha</th>
+                  <th>Descripción (Editable)</th>
+                  <th style={{ width: '120px' }}>Monto</th>
+                  <th style={{ width: '310px' }}>Clasificación</th>
                 </tr>
               </thead>
               <tbody>
