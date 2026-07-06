@@ -633,9 +633,9 @@ export default function Transactions() {
       )}
       
       {viewMode === 'individual' && (
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="card" style={{ backgroundColor: 'var(--pastel-yellow)' }}>
           {/* Header filtros */}
-          <div className="filter-bar" style={{ padding: '1.5rem', backgroundColor: '#f1f5f9', borderBottom: '2px solid black' }}>
+          <div className="filter-bar" style={{ marginBottom: '1.5rem' }}>
             <div style={{ flex: 1, width: '100%', position: 'relative' }}>
               <Search size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
               <input 
@@ -647,32 +647,30 @@ export default function Transactions() {
                   setSearchTerm(e.target.value);
                   setSearchParams(e.target.value ? { search: e.target.value } : {});
                 }}
-                style={{ width: '100%', paddingLeft: '3rem' }}
+                style={{ width: '100%', paddingLeft: '3rem', backgroundColor: 'white' }}
               />
             </div>
             
-            <select className="input" style={{ width: '100%', flex: 1 }} value={filterPeriod} onChange={e => setFilterPeriod(e.target.value)}>
+            <select className="input" style={{ width: '100%', flex: 1, backgroundColor: 'white', fontWeight: 600 }} value={filterPeriod} onChange={e => setFilterPeriod(e.target.value)}>
               <option value="all">Todo el tiempo</option>
               {availablePeriods.years.length > 0 && (
                 <optgroup label="Por Año">
                   {availablePeriods.years.map(y => <option key={y} value={y}>{y} completo</option>)}
                 </optgroup>
               )}
-
             </select>
 
-            <select className="input" style={{ width: '100%', flex: 1 }} value={filterType} onChange={e => setFilterType(e.target.value)}>
+            <select className="input" style={{ width: '100%', flex: 1, backgroundColor: 'white', fontWeight: 600 }} value={filterType} onChange={e => setFilterType(e.target.value)}>
               <option value="all">Ingresos y Egresos</option>
               <option value="expense">Solo Egresos</option>
               <option value="income">Solo Ingresos</option>
             </select>
             
-            <select className="input" style={{ width: '100%', flex: 1 }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+            <select className="input" style={{ width: '100%', flex: 1, backgroundColor: 'white', fontWeight: 600 }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
               <option value="all">Todas las transacciones</option>
               <option value="classified">Clasificadas</option>
               <option value="unclassified">Por clasificar</option>
             </select>
-
           </div>
 
           <div style={{ overflowX: 'auto' }}>
@@ -738,7 +736,7 @@ export default function Transactions() {
           </div>
 
           {totalPages > 1 && (
-            <div style={{ padding: '1rem', borderTop: '2px solid black', display: 'flex', justifyContent: 'center', gap: '1rem', alignItems: 'center' }}>
+            <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'center', gap: '1rem', alignItems: 'center' }}>
               <button 
                 className="btn btn-outline" 
                 disabled={currentPage === 1}
