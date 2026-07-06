@@ -300,6 +300,7 @@ export default function CSVImport() {
           if (lowerText.includes('itau') || lowerText.includes('itaú')) resolve('Itaú');
           else if (lowerText.includes('scotiabank') || lowerText.includes('scotia')) resolve('Scotiabank');
           else if (lowerText.includes('bancoestado') || lowerText.includes('estado')) resolve('BancoEstado' as Bank);
+          else if (lowerText.includes('mach')) resolve('Mach');
           else resolve('Scotiabank'); // default fallback for text files previously
         };
         reader.readAsText(file.slice(0, 1000));
