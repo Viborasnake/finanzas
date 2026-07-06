@@ -42,6 +42,12 @@ export default function CSVImport() {
   const [detectedBank, setDetectedBank] = useState<Bank | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
+  // Password Decryption States
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [pdfFileToDecrypt, setPdfFileToDecrypt] = useState<File | null>(null);
+  const [pdfPasswordInput, setPdfPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+
   useEffect(() => {
     if (user) {
       const fetchData = async () => {
@@ -286,9 +292,16 @@ export default function CSVImport() {
       });
   };
 
-  const parseMachPdf = async (file: File) => {
+  const handlePasswordSubmit = () => {
+    if (!pdfFileToDecrypt) return;
+    parseMachPdf(pdfFileToDecrypt, pdfPasswordInput);
+  };
+
+  const parseMachPdf = async (file: File, manualPassword?: string) => {
     try {
       setLoading(true);
+      setError(null);
+      setPasswordError(null);
       const arrayBuffer = await file.arrayBuffer();
       let pdf;
       
@@ -297,16 +310,20 @@ export default function CSVImport() {
       };
 
       try {
-        pdf = await tryPassword();
+        if (manualPassword) {
+          pdf = await tryPassword(manualPassword);
+        } else {
+          pdf = await tryPassword();
+        }
       } catch (err: any) {
         if (err.name === 'PasswordException') {
           let success = false;
           
-          if (myRut) {
+          if (!manualPassword && myRut) {
             const cleaned = cleanRut(myRut);
-            const password = cleaned.slice(0, -1);
+            const autoPassword = cleaned.slice(0, -1);
             try {
-              pdf = await tryPassword(password);
+              pdf = await tryPassword(autoPassword);
               success = true;
             } catch (passErr: any) {
               if (passErr.name !== 'PasswordException') throw passErr;
@@ -314,26 +331,13 @@ export default function CSVImport() {
           }
 
           if (!success) {
-            const manualPwd = window.prompt("El PDF está protegido. Ingresa la contraseña (para MACH suele ser tu RUT sin puntos, guión ni dígito verificador, ej: 17673553):");
-            if (manualPwd) {
-              try {
-                pdf = await tryPassword(manualPwd);
-                success = true;
-              } catch (passErr: any) {
-                if (passErr.name === 'PasswordException') {
-                   setError("Contraseña incorrecta.");
-                   setStep('upload');
-                   setLoading(false);
-                   return;
-                }
-                throw passErr;
-              }
-            } else {
-              setError("Se requiere contraseña para abrir el PDF.");
-              setStep('upload');
-              setLoading(false);
-              return;
+            setPdfFileToDecrypt(file);
+            setShowPasswordModal(true);
+            if (manualPassword) {
+              setPasswordError("Contraseña incorrecta. Por favor, intenta de nuevo.");
             }
+            setLoading(false);
+            return;
           }
         } else {
           throw err;
@@ -341,6 +345,10 @@ export default function CSVImport() {
       }
 
       if (!pdf) return;
+
+      setShowPasswordModal(false);
+      setPasswordError(null);
+      setPdfPasswordInput('');
 
       const parsedTransactions: Transaction[] = [];
 
@@ -797,20 +805,20 @@ export default function CSVImport() {
           </p>
 
           <div style={{ maxHeight: '400px', overflowY: 'auto', border: '2px solid black', borderRadius: 'var(--radius-sm)' }}>
-            <table className="responsive-table">
+            <table className="responsive-table" style={{ width: '100%', tableLayout: 'fixed' }}>
               <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                 <tr>
-                  <th>Fecha</th>
+                  <th style={{ width: '120px' }}>Fecha</th>
                   <th>Descripción (Clic para editar)</th>
-                  <th>Tipo</th>
-                  <th>Monto</th>
+                  <th style={{ width: '90px' }}>Tipo</th>
+                  <th style={{ width: '110px' }}>Monto</th>
                 </tr>
               </thead>
               <tbody>
                 {data.map((row, i) => (
                   <tr key={i}>
                     <td data-label="Fecha">{row.date}</td>
-                    <td data-label="Descripción" style={{ padding: '0', position: 'relative' }}>
+                    <td data-label="Descripción" style={{ padding: '0', position: 'relative', overflow: 'hidden' }}>
                       <input 
                         type="text" 
                         value={row.description}
@@ -818,13 +826,16 @@ export default function CSVImport() {
                         onBlur={() => handleDescriptionBlur(i)}
                         style={{ 
                           width: '100%', 
-                          padding: '0.75rem 1rem', 
+                          padding: '0.75rem 2rem 0.75rem 1rem', 
                           border: 'none', 
                           background: 'transparent',
                           fontWeight: row.description !== row.original_description ? 700 : 500,
                           color: row.description !== row.original_description ? 'var(--primary)' : 'inherit',
                           outline: 'none',
-                          cursor: 'text'
+                          cursor: 'text',
+                          textOverflow: 'ellipsis',
+                          overflow: 'hidden',
+                          whiteSpace: 'nowrap'
                         }}
                       />
                       <Edit2 size={14} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.3, pointerEvents: 'none' }} />
@@ -850,6 +861,50 @@ export default function CSVImport() {
             <button className="btn btn-primary" onClick={handleSave} disabled={loading}>
               {loading ? 'Guardando...' : 'Guardar en Base de Datos'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {showPasswordModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}>
+          <div className="card animate-fade-in" style={{ width: '90%', maxWidth: '400px', padding: '2rem', border: '3px solid black', boxShadow: '6px 6px 0px black', backgroundColor: 'white', borderRadius: '12px', textAlign: 'left' }}>
+            <h3 style={{ fontSize: '1.5rem', marginTop: 0, marginBottom: '1rem', fontWeight: 900 }}>Archivo Protegido</h3>
+            <p style={{ fontSize: '0.95rem', marginBottom: '1.5rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+              Este PDF está protegido por contraseña. Para cartolas de MACH, la clave es tu RUT sin puntos, guión ni dígito verificador (ej: 17673553).
+            </p>
+            {passwordError && (
+              <div style={{ color: 'var(--danger)', fontWeight: 700, marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#fee2e2', borderRadius: '8px', border: '2px solid black', fontSize: '0.9rem' }}>
+                {passwordError}
+              </div>
+            )}
+            <input 
+              type="password" 
+              placeholder="Ej: 17673553" 
+              className="form-input" 
+              style={{ width: '100%', padding: '0.8rem 1rem', border: '2px solid black', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '1.1rem', fontWeight: 700, outline: 'none' }}
+              value={pdfPasswordInput}
+              onChange={(e) => setPdfPasswordInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handlePasswordSubmit();
+              }}
+              autoFocus
+            />
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+              <button 
+                className="btn btn-outline" 
+                onClick={() => { setShowPasswordModal(false); setStep('upload'); }}
+                disabled={loading}
+              >
+                Cancelar
+              </button>
+              <button 
+                className="btn btn-primary" 
+                onClick={handlePasswordSubmit}
+                disabled={loading || !pdfPasswordInput.trim()}
+              >
+                {loading ? 'Validando...' : 'Desbloquear'}
+              </button>
+            </div>
           </div>
         </div>
       )}
