@@ -293,7 +293,7 @@ export default function CSVImport() {
       let pdf;
       
       const tryPassword = async (pwd?: string) => {
-        return await pdfjsLib.getDocument({ data: arrayBuffer, password: pwd }).promise;
+        return await pdfjsLib.getDocument({ data: arrayBuffer.slice(0), password: pwd }).promise;
       };
 
       try {
