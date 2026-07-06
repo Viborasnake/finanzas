@@ -351,14 +351,17 @@ export default function CSVImport() {
         let egresoX = -1;
         let ingresoX = -1;
         
-        for (const item of textContent.items as any[]) {
-           const str = item.str.trim();
+        const rawItems = Array.isArray(textContent.items) ? textContent.items : Array.from(textContent.items || []);
+        
+        for (let k = 0; k < rawItems.length; k++) {
+           const item = rawItems[k] as any;
+           const str = (item.str || '').trim();
            if (str === 'Egreso') egresoX = item.transform[4];
            if (str === 'Ingreso') ingresoX = item.transform[4];
         }
 
-        const items = (textContent.items as any[]).map(item => ({
-          str: item.str,
+        const items = rawItems.map((item: any) => ({
+          str: item.str || '',
           x: item.transform[4],
           y: item.transform[5],
         })).sort((a, b) => {
@@ -372,7 +375,8 @@ export default function CSVImport() {
         let currentLine: any[] = [];
         let lastY = -1;
         
-        for (const item of items) {
+        for (let k = 0; k < items.length; k++) {
+           const item = items[k];
            if (!item.str.trim() && item.str !== ' ') continue;
            
            if (lastY === -1 || Math.abs(item.y - lastY) > 4) {
@@ -385,7 +389,8 @@ export default function CSVImport() {
         }
         if (currentLine.length > 0) lines.push(currentLine);
 
-        for (const lineItems of lines) {
+        for (let l = 0; l < lines.length; l++) {
+           const lineItems = lines[l];
            const firstItem = lineItems[0];
            const dateMatch = firstItem.str.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
            if (!dateMatch) continue;
@@ -412,7 +417,7 @@ export default function CSVImport() {
               const distToIngreso = Math.abs(amountItem.x - ingresoX);
               type = distToIngreso < distToEgreso ? 'ingreso' : 'egreso';
            } else {
-              const fullText = lineItems.map(i => i.str).join(' ').toLowerCase();
+              const fullText = lineItems.map((i: any) => i.str).join(' ').toLowerCase();
               if (fullText.includes('reembolso') || fullText.includes('abono')) {
                  type = 'ingreso';
               } else if (fullText.includes('compra')) {
@@ -439,7 +444,7 @@ export default function CSVImport() {
              original_description: description,
              amount,
              type,
-             raw_data: { fullLine: lineItems.map(i => i.str).join(' ') }
+             raw_data: { fullLine: lineItems.map((i: any) => i.str).join(' ') }
            });
         }
       }
