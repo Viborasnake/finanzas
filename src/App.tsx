@@ -8,12 +8,13 @@ import CSVImport from './pages/CSVImport';
 import Transactions from './pages/Transactions';
 import Settings from './pages/Settings';
 import MigrationAudit from './pages/MigrationAudit';
+import AdminDashboard from './pages/AdminDashboard';
 
 import { useEffect } from 'react';
 import { supabase } from './services/supabase';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, isPaused, signOut } = useAuth();
   
   useEffect(() => {
     if (user) {
@@ -119,6 +120,24 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!user) {
     return <Navigate to="/login" replace />;
   }
+
+  if (isPaused) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#fdfdfc', padding: '2rem', textAlign: 'center' }}>
+        <div className="card animate-fade-in" style={{ maxWidth: '400px', border: '3px solid black', boxShadow: '6px 6px 0px black', padding: '2rem', borderRadius: '12px', backgroundColor: 'white' }}>
+          <span style={{ fontSize: '3rem' }}>🔒</span>
+          <h2 style={{ fontSize: '1.75rem', margin: '1rem 0', fontWeight: 900 }}>Cuenta Pausada</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontWeight: 600, lineHeight: 1.5 }}>
+            Tu acceso a la plataforma ha sido temporalmente suspendido por el administrador. Ponte en contacto con soporte si crees que esto es un error.
+          </p>
+          <button className="btn btn-outline" style={{ width: '100%', border: '2px solid black' }} onClick={signOut}>
+            Cerrar Sesión
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return <>{children}</>;
 }
 
@@ -160,6 +179,7 @@ function App() {
           <Route path="transactions" element={<Transactions />} />
           <Route path="settings" element={<Settings />} />
           <Route path="audit" element={<MigrationAudit />} />
+          <Route path="admin" element={<AdminDashboard />} />
         </Route>
       </Routes>
     </Router>

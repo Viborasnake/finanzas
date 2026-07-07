@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FileSpreadsheet, Receipt, Settings, LogOut, Menu, X, ChevronDown, Check, Copy, Plus, ChevronLeft, ChevronRight, User as UserIcon } from 'lucide-react';
+import { LayoutDashboard, FileSpreadsheet, Receipt, Settings, LogOut, Menu, X, ChevronDown, Check, Copy, Plus, ChevronLeft, ChevronRight, User as UserIcon, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useBanks, AVAILABLE_BANKS } from '../contexts/BankContext';
 import type { Bank } from '../contexts/BankContext';
@@ -160,6 +160,15 @@ export default function Layout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  const menuItems = [...navItems];
+  if (user && user.email === 'viborasnake@gmail.com') {
+    menuItems.push({
+      name: 'Administración',
+      path: '/admin',
+      icon: <Shield size={20} />
+    });
+  }
+
   const handleSignOut = async () => {
     await signOut();
     navigate('/login');
@@ -220,7 +229,7 @@ export default function Layout() {
         <BankIndicator />
         
         <nav className="sidebar-nav">
-          {navItems.map((item) => {
+          {menuItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <div key={item.path}>
@@ -288,7 +297,7 @@ export default function Layout() {
             <div style={{ padding: '0 0.5rem', marginBottom: '1rem' }}>
               <BankIndicator />
             </div>
-            {navItems.map((item) => {
+            {menuItems.map((item) => {
               const isActive = location.pathname === item.path;
               return (
               <div key={item.path}>
