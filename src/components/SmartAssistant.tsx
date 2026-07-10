@@ -61,7 +61,7 @@ function extractContactName(description: string) {
 export default function SmartAssistant({ transactions, onRefresh }: SmartAssistantProps) {
   const { user } = useAuth();
   const { classificationRules, saveClassificationRules } = useSettings();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [saving, setSaving] = useState(false);
 
