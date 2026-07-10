@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
@@ -6,6 +6,7 @@ import { Check, Lightbulb, RefreshCw, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { applyRules } from '../utils/classificationRules';
 import { extractAndNormalizeRUT } from '../utils/rutParser';
+import { CascadingCategorySelector } from '../pages/Transactions';
 
 interface SmartAssistantProps {
   transactions: any[];
@@ -64,6 +65,12 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
   const [loading, setLoading] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [overrideProposal, setOverrideProposal] = useState<Proposal | null>(null);
+
+  // Reset override when suggestion changes
+  useEffect(() => {
+    setOverrideProposal(null);
+  }, [currentIndex]);
 
 
 
@@ -189,12 +196,14 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
   const applySuggestion = async (suggestion: Suggestion, options: { persistRule?: boolean } = {}) => {
     if (!user) return;
     setSaving(true);
+    const effectiveProposal = overrideProposal || suggestion.proposal;
+    const effectiveSuggestion = { ...suggestion, proposal: effectiveProposal };
     try {
-      if (options.persistRule) await saveRule(suggestion);
+      if (options.persistRule) await saveRule(effectiveSuggestion);
 
       const { error } = await supabase
         .from('transactions')
-        .update(suggestion.proposal)
+        .update(effectiveProposal)
         .eq('user_id', user.id)
         .in('id', suggestion.ids);
 
@@ -366,22 +375,20 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
             </p>
           </div>
 
-          {/* Columna derecha: propuesta */}
+          {/* Columna derecha: propuesta editable */}
           <div style={{ padding: '1.25rem 1.5rem', background: '#f9fafb' }}>
-            <p style={{ margin: '0 0 0.75rem', fontSize: '0.72rem', fontWeight: 700, color: '#888', textTransform: 'uppercase' }}>Clasificar como</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-              <div style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 600 }}>Tipo de movimiento</div>
-              <div style={{ fontSize: '0.9rem', fontWeight: 700, background: 'white', border: '1.5px solid black', borderRadius: 8, padding: '0.35rem 0.75rem', display: 'inline-block' }}>
-                {current.proposal.tipo_movimiento}
-              </div>
-              <div style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 600, marginTop: '0.25rem' }}>Categoría</div>
-              <div style={{ fontSize: '0.9rem', fontWeight: 700, background: 'white', border: '1.5px solid black', borderRadius: 8, padding: '0.35rem 0.75rem', display: 'inline-block' }}>
-                {current.proposal.categoria_principal}
-                {current.proposal.categoria_secundaria && current.proposal.categoria_secundaria !== current.proposal.categoria_principal && (
-                  <span style={{ color: '#6b7280', fontWeight: 500 }}> › {current.proposal.categoria_secundaria}</span>
-                )}
-              </div>
-            </div>
+            <p style={{ margin: '0 0 0.75rem', fontSize: '0.72rem', fontWeight: 700, color: '#888', textTransform: 'uppercase' }}>
+              Clasificar como {overrideProposal && <span style={{ color: '#d97706' }}>✏️ Modificado</span>}
+            </p>
+            <CascadingCategorySelector
+              key={`${current.id}-${currentIndex}`}
+              initialPrincipal={overrideProposal?.categoria_principal ?? current.proposal.categoria_principal}
+              initialSecundaria={overrideProposal?.categoria_secundaria ?? current.proposal.categoria_secundaria}
+              contextDescription={current.description}
+              onSave={(tipo: string, principal: string, secundaria: string) => {
+                setOverrideProposal({ tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria });
+              }}
+            />
           </div>
         </div>
 
