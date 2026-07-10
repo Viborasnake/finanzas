@@ -337,6 +337,7 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
             <div className="assistant-facts">
               <span>{current.count} {current.count === 1 ? 'movimiento' : 'movimientos'}</span>
               <span className={current.type === 'ingreso' ? 'fact-ingreso' : 'fact-egreso'}>
+                {current.type === 'ingreso' ? '↑ INGRESO' : '↓ EGRESO'} &nbsp;
                 {current.type === 'ingreso' ? '+' : '-'}${current.total.toLocaleString('es-CL')}
               </span>
             </div>
