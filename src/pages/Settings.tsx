@@ -703,7 +703,7 @@ export default function Settings() {
         </CollapsibleSection>
 
         {/* Categorías Personalizadas */}
-        <CollapsibleSection id="categorias" icon={Tags} title="Mis Categorías" subtitle="Categorías personalizadas para este banco" description="Agrega nuevas categorías para organizar tus movimientos. Estas se sumarán a la lista base que ya trae la aplicación." defaultCollapsed={true}>
+        <CollapsibleSection id="categorias" icon={Tags} title="Mis Categorías" subtitle="Categorías personalizadas compartidas entre todos tus bancos" description="Agrega nuevas categorías para organizar tus movimientos. Estas se sumarán a la lista base que ya trae la aplicación." defaultCollapsed={true}>
 
           <form className="settings-grid-form" onSubmit={handleAddCustomCategory}>
             <div>

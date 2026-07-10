@@ -63,8 +63,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const [fixedExpenses, setFixedExpenses] = useState<FixedExpense[]>([]);
   const [loadingSettings, setLoadingSettings] = useState(true);
 
-  // Derivamos las categorías del banco activo
-  const customCategories: CustomCategory[] = activeBank ? ((allCustomCategories[activeBank] || []) as CustomCategory[]) : [];
+  // Las categorías ahora son transversales (globales) para todos los bancos
+  const customCategories: CustomCategory[] = (allCustomCategories['__global'] || []) as CustomCategory[];
 
   const loadSettings = useCallback(async () => {
     if (!user) return;
@@ -78,8 +78,31 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         .maybeSingle();
 
       const cats = settingsData?.custom_categories || {};
-      setAllCustomCategories(cats);
-      setFixedExpenses(Array.isArray(cats[FIXED_EXPENSES_KEY]) ? cats[FIXED_EXPENSES_KEY] : []);
+      
+      // Migrate all existing bank categories into a single transversal list
+      const globalCatsMap = new Map();
+      Object.keys(cats).forEach(key => {
+        if (key !== FIXED_EXPENSES_KEY) {
+          (cats[key] || []).forEach((c: CustomCategory) => {
+            const id = `${c.tipo}-${c.principal}`;
+            if (!globalCatsMap.has(id)) {
+              globalCatsMap.set(id, { ...c });
+            } else {
+              const existing = globalCatsMap.get(id);
+              const mergedSecundarias = Array.from(new Set([...existing.secundarias, ...c.secundarias]));
+              existing.secundarias = mergedSecundarias;
+            }
+          });
+        }
+      });
+      
+      const newAllCats = {
+        [FIXED_EXPENSES_KEY]: Array.isArray(cats[FIXED_EXPENSES_KEY]) ? cats[FIXED_EXPENSES_KEY] : [],
+        '__global': Array.from(globalCatsMap.values())
+      };
+
+      setAllCustomCategories(newAllCats);
+      setFixedExpenses(newAllCats[FIXED_EXPENSES_KEY]);
 
       // 2. Cargar Rules para el banco activo si existe
       if (activeBank) {
@@ -136,13 +159,13 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     loadSettings();
   }, [loadSettings]);
 
-  const saveCustomCategories = async (cats: CustomCategory[], targetBank?: string) => {
-    const bankToSave = targetBank || activeBank;
-    if (!user || !bankToSave) return;
+  const saveCustomCategories = async (cats: CustomCategory[]) => {
+    if (!user) return;
     
+    // Al guardar, mantenemos los gastos fijos y sobrescribimos todo lo demás en __global
     const newAllCats = {
-      ...allCustomCategories,
-      [bankToSave]: cats
+      [FIXED_EXPENSES_KEY]: allCustomCategories[FIXED_EXPENSES_KEY] || [],
+      '__global': cats
     };
     
     setAllCustomCategories(newAllCats);
@@ -208,11 +231,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const copySettingsFromBank = async (sourceBank: string, targetBank: string) => {
     if (!user) return;
     
-    // 1. Copy categories
-    const sourceCats = allCustomCategories[sourceBank] || [];
-    await saveCustomCategories(sourceCats, targetBank);
-
-    // 2. Fetch and copy rules
+    // 1. Fetch and copy rules (Categories are now transversal)
     const { data: rulesData } = await supabase
       .from('classification_rules')
       .select('*')
