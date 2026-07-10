@@ -420,7 +420,7 @@ export default function Transactions() {
 
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
-
+  const [filterBank, setFilterBank] = useState('all');
   
   const [filterPeriod, setFilterPeriod] = useState('all');
   const [viewMode, setViewMode] = useState<'individual' | 'bulk' | 'assistant'>('individual');
@@ -549,7 +549,8 @@ export default function Transactions() {
 
     const matchesType = filterType === 'all' || (filterType === 'expense' ? t.type === 'egreso' : t.type === 'ingreso');
     const matchesStatus = filterStatus === 'all' || (filterStatus === 'classified' ? !!t.tipo_movimiento : !t.tipo_movimiento);
-    return matchesSearch && matchesPeriod && matchesType && matchesStatus;
+    const matchesBank = filterBank === 'all' || t.bank === filterBank;
+    return matchesSearch && matchesPeriod && matchesType && matchesStatus && matchesBank;
   });
 
   const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
@@ -1024,6 +1025,16 @@ export default function Transactions() {
               <option value="classified">Clasificadas</option>
               <option value="unclassified">Por clasificar</option>
             </select>
+            
+            {connectedBanks.length > 1 && (
+              <select className="input" value={filterBank} onChange={e => setFilterBank(e.target.value)}>
+                <option value="all">Todos los bancos</option>
+                {connectedBanks.map(b => {
+                  const meta = getBankMeta(b);
+                  return <option key={b} value={b}>{meta.label}</option>;
+                })}
+              </select>
+            )}
           </div>
 
           <div className="transactions-table-wrap">
@@ -1031,7 +1042,7 @@ export default function Transactions() {
               <thead>
                 <tr>
                   <th style={{ width: '110px' }}>Fecha</th>
-                  {isConsolidated && <th style={{ width: '140px' }}>Banco</th>}
+                  {connectedBanks.length > 1 && <th style={{ width: '140px' }}>Banco</th>}
                   <th>Descripción (Editable)</th>
                   <th style={{ width: '140px' }}>Monto</th>
                   <th style={{ width: '360px' }}>Clasificación</th>
@@ -1046,7 +1057,7 @@ export default function Transactions() {
                   return (
                     <tr key={tx.id} style={{ backgroundColor: i % 2 === 0 ? 'white' : 'rgba(0,0,0,0.02)' }} className="table-row">
                       <td data-label="Fecha" style={{ padding: '1rem', fontWeight: 600 }}>{tx.date}</td>
-                      {isConsolidated && (
+                      {connectedBanks.length > 1 && (
                         <td data-label="Banco" style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.55rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#fff', boxShadow: '1px 1px 0 #000', fontSize: '0.72rem', fontWeight: 900 }}>
                             <span style={{ width: '9px', height: '9px', borderRadius: '50%', backgroundColor: bank.color, border: '1.5px solid #000', flexShrink: 0 }} />

@@ -38,7 +38,7 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
 
   const { user } = useAuth();
   const { classificationRules } = useSettings();
-  const { activeBank, setActiveBank } = useBanks();
+  const { activeBank, setActiveBank, addBank, connectedBanks } = useBanks();
 
   type ImportStep = 'upload' | 'confirm' | 'preview';
   const [step, setStep] = useState<ImportStep>('upload');
@@ -493,7 +493,6 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
       if (!pdf) return;
 
       const parsedTransactions: Transaction[] = [];
-      const regex = /^(\d{2}\/\d{2}\/\d{4})\s+\d{2}:\d{2}:\d{2}\s+(.+?)\s*\$\s*([\d\.\,]+)\s*\$\s*([\d\.\,]+)\s*\$\s*([\d\.\,]+)$/;
 
       for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
         const page = await pdf.getPage(pageNum);
@@ -531,17 +530,19 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
 
         for (let l = 0; l < lines.length; l++) {
            const lineItems = lines[l];
-           const fullText = lineItems.map((i: any) => i.str).join(' ').replace(/\s+/g, ' ').trim();
+           const fullText = lineItems.map((i: any) => i.str).join(' ').replace(/\s+/g, ' ').replace(/\s*\/\s*/g, '/').replace(/\s*\-\s*/g, '-').trim();
            
+           const regex = /^(\d{2}[/\-\.]\d{2}[/\-\.]\d{2,4})(?:\s+\d{2}:\d{2}:\d{2})?\s+(.+?)\s*(?:\$\s*)?([\d\.\,]+)\s*(?:\$\s*)?([\d\.\,]+)\s*(?:\$\s*)?([\d\.\,]+)$/;
            const match = fullText.match(regex);
            if (!match) continue;
 
-           const dateMatch = match[1].match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+           const dateMatch = match[1].match(/^(\d{2})[/\-\.](\d{2})[/\-\.](\d{2,4})/);
            if (!dateMatch) continue;
-           const dateStr = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
+           let year = dateMatch[3];
+           if (year.length === 2) year = '20' + year;
+           const dateStr = `${year}-${dateMatch[2]}-${dateMatch[1]}`;
            
-           const descAndSerie = match[2].trim();
-           let description = descAndSerie;
+           const description = match[2].trim();
 
            const cargo = parseFloat(match[3].replace(/\./g, '').replace(/,/g, '.'));
            const abono = parseFloat(match[4].replace(/\./g, '').replace(/,/g, '.'));
@@ -591,6 +592,18 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
     
     if (name.endsWith('.pdf')) {
       if (name.includes('consorcio')) return 'Consorcio';
+      if (name.includes('mach')) return 'Mach';
+      
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
+        const page = await pdf.getPage(1);
+        const textContent = await page.getTextContent();
+        const fullText = textContent.items.map((i: any) => i.str).join(' ').toLowerCase();
+        if (fullText.includes('consorcio')) return 'Consorcio';
+      } catch (e) {
+        // Ignore error, might be password protected (Mach)
+      }
       return 'Mach'; // Por defecto asumimos que es MACH para los PDFs
     }
     if (name.endsWith('.xls') || name.endsWith('.xlsx')) return 'Itaú';
@@ -626,8 +639,18 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
     setStep('confirm');
   }, [activeBank]);
 
-  const handleConfirmBank = () => {
+  const handleConfirmBank = async () => {
     if (!selectedFile || !detectedBank) return;
+    
+    if (!connectedBanks.includes(detectedBank)) {
+      try {
+        await addBank(detectedBank);
+        toast.success(`${detectedBank} ha sido agregado a tus bancos`, { duration: 2000 });
+      } catch (e) {
+        console.error('Error auto-adding bank:', e);
+      }
+    }
+
     if (activeBank !== detectedBank) {
       setActiveBank(detectedBank);
       toast.success(`Cambiado automáticamente a ${detectedBank}`, { duration: 2000 });
