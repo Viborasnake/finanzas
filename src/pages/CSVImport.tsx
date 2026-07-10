@@ -565,6 +565,7 @@ export default function CSVImport() {
         .from('transactions')
         .select('date, amount, raw_data')
         .eq('user_id', user.id)
+        .eq('bank', activeBank)
         .gte('date', minDateStr)
         .lte('date', maxDateStr);
 

@@ -3,6 +3,7 @@ import { supabase } from '../services/supabase';
 import { useAuth } from './AuthContext';
 
 export type Bank = 'BancoEstado' | 'Scotiabank' | 'Itaú' | 'Mach';
+export type DashboardBankScope = Bank | 'all';
 
 export const AVAILABLE_BANKS: { id: Bank; label: string; color: string; emoji: string }[] = [
   // { id: 'BancoEstado', label: 'BancoEstado', color: '#e63946', emoji: '🏦' },
@@ -14,8 +15,10 @@ export const AVAILABLE_BANKS: { id: Bank; label: string; color: string; emoji: s
 interface BankContextType {
   connectedBanks: Bank[];
   activeBank: Bank | null;
+  dashboardScope: DashboardBankScope;
   mainBank: Bank | null;
   setActiveBank: (bank: Bank) => void;
+  setDashboardScope: (scope: DashboardBankScope) => void;
   addBank: (bank: Bank) => Promise<void>;
   removeBank: (bank: Bank) => Promise<void>;
   setMainBankAndSave: (bank: Bank) => Promise<void>;
@@ -25,8 +28,10 @@ interface BankContextType {
 const BankContext = createContext<BankContextType>({
   connectedBanks: [],
   activeBank: null,
+  dashboardScope: 'all',
   mainBank: null,
   setActiveBank: () => {},
+  setDashboardScope: () => {},
   addBank: async () => {},
   removeBank: async () => {},
   setMainBankAndSave: async () => {},
@@ -39,6 +44,7 @@ export const BankProvider = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();
   const [connectedBanks, setConnectedBanks] = useState<Bank[]>([]);
   const [activeBank, setActiveBankState] = useState<Bank | null>(null);
+  const [dashboardScope, setDashboardScopeState] = useState<DashboardBankScope>('all');
   const [mainBank, setMainBankState] = useState<Bank | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -66,10 +72,19 @@ export const BankProvider = ({ children }: { children: React.ReactNode }) => {
       setMainBankState(main);
       
       const savedActive = localStorage.getItem(`finanzas_active_bank_${currentUser.id}`) as Bank | null;
+      const savedDashboardScope = localStorage.getItem(`finanzas_dashboard_scope_${currentUser.id}`) as DashboardBankScope | null;
       if (savedActive && banks.includes(savedActive)) {
         setActiveBankState(savedActive);
       } else {
         setActiveBankState(main || banks[0] || null);
+      }
+
+      if (savedDashboardScope === 'all' && banks.length > 1) {
+        setDashboardScopeState('all');
+      } else if (savedDashboardScope && banks.includes(savedDashboardScope as Bank)) {
+        setDashboardScopeState(savedDashboardScope);
+      } else {
+        setDashboardScopeState(banks.length > 1 ? 'all' : (main || banks[0] || 'all'));
       }
     } catch (e) {
       console.error('Error loading banks:', e);
@@ -102,6 +117,7 @@ export const BankProvider = ({ children }: { children: React.ReactNode }) => {
     if (!mainBank) {
       setMainBankState(bank);
       setActiveBankState(bank);
+      setDashboardScopeState(bank);
     }
     await saveBanks(updated, newMain);
   };
@@ -112,6 +128,9 @@ export const BankProvider = ({ children }: { children: React.ReactNode }) => {
     setConnectedBanks(updated);
     setMainBankState(newMain);
     if (activeBank === bank) setActiveBankState(newMain);
+    if (dashboardScope === bank || (dashboardScope === 'all' && updated.length <= 1)) {
+      setDashboardScopeState(updated.length > 1 ? 'all' : (newMain || updated[0] || 'all'));
+    }
     await saveBanks(updated, newMain);
   };
 
@@ -128,8 +147,16 @@ export const BankProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const setDashboardScope = (scope: DashboardBankScope) => {
+    setDashboardScopeState(scope);
+    if (scope !== 'all') setActiveBank(scope);
+    if (user) {
+      localStorage.setItem(`finanzas_dashboard_scope_${user.id}`, scope);
+    }
+  };
+
   return (
-    <BankContext.Provider value={{ connectedBanks, activeBank, mainBank, setActiveBank, addBank, removeBank, setMainBankAndSave, loading }}>
+    <BankContext.Provider value={{ connectedBanks, activeBank, dashboardScope, mainBank, setActiveBank, setDashboardScope, addBank, removeBank, setMainBankAndSave, loading }}>
       {children}
     </BankContext.Provider>
   );

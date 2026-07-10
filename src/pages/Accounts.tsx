@@ -1,0 +1,508 @@
+import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
+import { Calendar, CalendarCheck, CheckCircle2, ChevronLeft, ChevronRight, Settings, X } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { supabase } from '../services/supabase';
+import { useAuth } from '../contexts/AuthContext';
+import { AVAILABLE_BANKS, useBanks } from '../contexts/BankContext';
+import { useSettings } from '../contexts/SettingsContext';
+import { CascadingCategorySelector } from './Transactions';
+
+const parseLocalDate = (dateStr: string) => {
+  if (!dateStr) return new Date();
+  const [y, m, d] = dateStr.split('T')[0].split('-');
+  return new Date(parseInt(y), parseInt(m) - 1, parseInt(d), 12, 0, 0);
+};
+
+const normalizeText = (value: any) => String(value || '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+  .trim();
+
+const getTransactionAmount = (tx: any) => Math.abs(Number(tx.amount || 0));
+
+const fmtDate = (d: Date | null) => d
+  ? d.toLocaleDateString('es-CL', { day: '2-digit', month: 'short' })
+  : 'Sin historial';
+
+const monthRange = (base: Date) => ({
+  start: new Date(base.getFullYear(), base.getMonth(), 1),
+  end: new Date(base.getFullYear(), base.getMonth() + 1, 0, 23, 59, 59),
+  label: base.toLocaleString('es-CL', { month: 'long', year: 'numeric' })
+});
+
+const fetchAllBankTransactions = async (userId: string, bank: string) => {
+  const pageSize = 1000;
+  let from = 0;
+  const rows: any[] = [];
+
+  while (true) {
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('bank', bank)
+      .order('date', { ascending: true })
+      .range(from, from + pageSize - 1);
+
+    if (error) throw error;
+    rows.push(...(data || []));
+    if (!data || data.length < pageSize) break;
+    from += pageSize;
+  }
+
+  return rows;
+};
+
+export default function Accounts() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { fixedExpenses } = useSettings();
+  const { activeBank, connectedBanks, dashboardScope } = useBanks();
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [month, setMonth] = useState(() => new Date());
+  const [selectedStatusId, setSelectedStatusId] = useState<string | null>(null);
+
+  const isConsolidated = dashboardScope === 'all' && connectedBanks.length > 1;
+  const banks = isConsolidated ? connectedBanks : (activeBank ? [activeBank] : []);
+  const bankLabel = isConsolidated
+    ? 'Todos los bancos'
+    : (AVAILABLE_BANKS.find(bank => bank.id === activeBank)?.label || 'Sin banco');
+  const range = useMemo(() => monthRange(month), [month]);
+
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      if (!user || banks.length === 0) {
+        setTransactions([]);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const results = await Promise.all(
+          banks.map(async bank => {
+            const rows = await fetchAllBankTransactions(user.id, bank);
+            return rows.map(tx => ({ ...tx, bank: tx.bank || bank }));
+          })
+        );
+        const rows = results.flat();
+        rows.sort((a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime());
+        setTransactions(rows);
+      } catch (error) {
+        console.error('Error fetching fixed expenses transactions:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTransactions();
+  }, [user, activeBank, dashboardScope, connectedBanks.join('|')]);
+
+  const statuses = useMemo(() => {
+    const descriptionText = (tx: any) => normalizeText([
+      tx.description,
+      tx.original_description,
+      tx.raw_data ? Object.values(tx.raw_data).join(' ') : ''
+    ].filter(Boolean).join(' '));
+
+    const categoryTokenMatches = (categoryPath: string, itemValue: any) => {
+      const itemNorm = normalizeText(itemValue);
+      if (!itemNorm) return true;
+      return categoryPath.split('|').some(part => {
+        const partNorm = normalizeText(part);
+        return partNorm === itemNorm || partNorm.includes(itemNorm) || itemNorm.includes(partNorm);
+      });
+    };
+
+    const matchesLinkedCategory = (tx: any, item: any) => {
+      if (!item.categoria_principal) return false;
+      const categoryPath = [
+        tx.tipo_movimiento,
+        tx.categoria_principal,
+        tx.categoria_secundaria,
+        tx.category_tipo,
+        tx.category_principal,
+        tx.category_secundaria
+      ].filter(Boolean).join('|');
+
+      const linkedCategoryMatches = categoryTokenMatches(categoryPath, item.categoria_principal)
+        && categoryTokenMatches(categoryPath, item.categoria_secundaria);
+      if (linkedCategoryMatches) return true;
+
+      const desc = descriptionText(tx);
+      const descTokens = desc.split(/[^a-z0-9]+/).filter(Boolean);
+      const nameTokens = normalizeText(item.name).split(/[^a-z0-9]+/).filter(token => token.length >= 3);
+      const nameMatches = nameTokens.length > 0 && nameTokens.some(token => descTokens.includes(token));
+      const keywordMatches = normalizeText(item.keyword) && desc.includes(normalizeText(item.keyword));
+      return Boolean(nameMatches || keywordMatches);
+    };
+
+    return fixedExpenses.map(item => {
+      const configured = Boolean(item.categoria_principal);
+      const matching = transactions
+        .filter(tx => matchesLinkedCategory(tx, item))
+        .sort((a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime());
+
+      const currentPayments = matching.filter(tx => {
+        const d = parseLocalDate(tx.date);
+        return d >= range.start && d <= range.end;
+      });
+      const previousPayment = matching.find(tx => parseLocalDate(tx.date) < range.start);
+      const previousPayments = matching
+        .filter(tx => parseLocalDate(tx.date) < range.start)
+        .slice(0, 8);
+      const monthlyTrace = Array.from({ length: 8 }, (_, index) => {
+        const monthStart = new Date(range.start.getFullYear(), range.start.getMonth() - index, 1);
+        const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0, 23, 59, 59);
+        const payments = matching.filter(tx => {
+          const d = parseLocalDate(tx.date);
+          return d >= monthStart && d <= monthEnd;
+        });
+
+        return {
+          key: `${monthStart.getFullYear()}-${monthStart.getMonth()}`,
+          label: monthStart.toLocaleString('es-CL', { month: 'long', year: 'numeric' }),
+          payments,
+          total: payments.reduce((acc, tx) => acc + getTransactionAmount(tx), 0)
+        };
+      });
+
+      const paidAmount = currentPayments.reduce((acc, tx) => acc + getTransactionAmount(tx), 0);
+      const paidDate = currentPayments[0] ? parseLocalDate(currentPayments[0].date) : null;
+      const previousDate = previousPayment ? parseLocalDate(previousPayment.date) : null;
+      const previousAmount = previousPayment ? getTransactionAmount(previousPayment) : 0;
+      const referenceDate = paidDate || previousDate;
+      const estimatedDate = referenceDate
+        ? new Date(range.start.getFullYear(), range.start.getMonth(), Math.min(referenceDate.getDate(), new Date(range.start.getFullYear(), range.start.getMonth() + 1, 0).getDate()), 12, 0, 0)
+        : null;
+
+      return {
+        item,
+        configured,
+        paid: currentPayments.length > 0,
+        paymentCount: currentPayments.length,
+        paidAmount,
+        paidDate,
+        currentPayments,
+        previousPayments,
+        monthlyTrace,
+        previousDate,
+        previousAmount,
+        estimatedDate
+      };
+    });
+  }, [fixedExpenses, transactions, range.start, range.end]);
+
+  const paidCount = statuses.filter(status => status.paid).length;
+  const unconfiguredCount = statuses.filter(status => !status.configured).length;
+  const pendingCount = statuses.filter(status => status.configured && !status.paid).length;
+  const selectedStatus = selectedStatusId ? statuses.find(status => status.item.id === selectedStatusId) : null;
+
+  const shiftMonth = (delta: number) => {
+    setMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + delta, 1));
+  };
+
+  const handleCategorizeTransaction = async (txId: string, tipo: string | null, principal: string | null, secundaria: string | null) => {
+    const prev = transactions;
+    setTransactions(current => current.map(tx => tx.id === txId
+      ? { ...tx, tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria }
+      : tx
+    ));
+
+    const { error } = await supabase
+      .from('transactions')
+      .update({ tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria })
+      .eq('id', txId);
+
+    if (error) {
+      setTransactions(prev);
+      toast.error('No pude actualizar la categoría');
+      return;
+    }
+
+    toast.success('Movimiento corregido');
+  };
+
+  return (
+    <div style={{ maxWidth: '1180px', margin: '0 auto', padding: '2rem 1rem 4rem' }}>
+      <div className="header-container" style={{ marginBottom: '2rem' }}>
+        <div>
+          <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.45rem' }}>
+            <CalendarCheck size={34} strokeWidth={2.7} />
+            Cuentas
+          </h1>
+          <p style={{ margin: 0, color: '#64748b', fontWeight: 750, fontSize: '1.05rem' }}>
+            Control de gastos fijos por categoría vinculada para {bankLabel}.
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <button className="btn btn-outline" type="button" onClick={() => shiftMonth(-1)} style={{ padding: '0.65rem' }}>
+            <ChevronLeft size={20} />
+          </button>
+          <div style={{ border: '2px solid #000', borderRadius: '999px', boxShadow: '3px 3px 0 #000', padding: '0.65rem 1rem', fontWeight: 900, minWidth: '170px', textAlign: 'center', textTransform: 'capitalize' }}>
+            {range.label}
+          </div>
+          <button className="btn btn-outline" type="button" onClick={() => shiftMonth(1)} style={{ padding: '0.65rem' }}>
+            <ChevronRight size={20} />
+          </button>
+          <button className="btn btn-primary" type="button" onClick={() => navigate('/settings#gastos-fijos')}>
+            <Settings size={18} />
+            Configurar
+          </button>
+        </div>
+      </div>
+
+      <section style={{ border: '2px solid #000', borderRadius: '12px', boxShadow: '4px 4px 0 #000', backgroundColor: '#fff', padding: '1.25rem' }}>
+        <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
+          <span style={{ padding: '0.45rem 0.8rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#dcfce7', fontWeight: 900 }}>{paidCount} pagados</span>
+          <span style={{ padding: '0.45rem 0.8rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#fee2e2', fontWeight: 900 }}>{pendingCount} pendientes</span>
+          {unconfiguredCount > 0 && (
+            <span style={{ padding: '0.45rem 0.8rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#fef9c3', fontWeight: 900 }}>{unconfiguredCount} por vincular</span>
+          )}
+        </div>
+
+        {loading ? (
+          <div className="skeleton" style={{ height: '220px' }} />
+        ) : fixedExpenses.length === 0 ? (
+          <div className="settings-empty">
+            <p style={{ marginTop: 0, fontWeight: 800 }}>Aún no tienes cuentas creadas.</p>
+            <button className="btn btn-primary" type="button" onClick={() => navigate('/settings#gastos-fijos')}>
+              Crear cuentas
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: '1rem' }}>
+            {statuses.map(status => {
+              const bg = !status.configured ? '#fefce8' : status.paid ? '#f0fdf4' : '#fff1f2';
+              const label = !status.configured ? 'Vincular' : status.paid ? 'Pagado' : 'Pendiente';
+              const labelBg = !status.configured ? '#fde047' : status.paid ? '#86efac' : '#fca5a5';
+              const category = status.item.categoria_principal
+                ? `${status.item.categoria_principal}${status.item.categoria_secundaria ? ` > ${status.item.categoria_secundaria}` : ''}`
+                : 'Falta vincular categoría';
+
+              return (
+                <article
+                  key={status.item.id}
+                  onClick={() => setSelectedStatusId(status.item.id)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') setSelectedStatusId(status.item.id);
+                  }}
+                  title={`Ver pagos asociados a ${status.item.name}`}
+                  style={{ border: '2px solid #000', borderRadius: '10px', boxShadow: '3px 3px 0 #000', backgroundColor: bg, padding: '1rem', minHeight: '190px', display: 'flex', flexDirection: 'column', gap: '0.8rem', cursor: 'pointer' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.7rem' }}>
+                    <span style={{ width: '34px', height: '34px', border: '2px solid #000', borderRadius: '9px', backgroundColor: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {status.paid ? <CheckCircle2 size={20} fill="#22c55e" color="#000" /> : <Calendar size={19} strokeWidth={2.5} />}
+                    </span>
+                    <div style={{ minWidth: 0 }}>
+                      <strong style={{ display: 'block', fontSize: '1.05rem', lineHeight: 1.2 }}>{status.item.name}</strong>
+                      <span style={{ color: '#475569', fontSize: '0.78rem', fontWeight: 800, overflowWrap: 'anywhere' }}>{category}</span>
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 'auto' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.6rem', alignItems: 'end' }}>
+                      <div>
+                        <div style={{ color: '#64748b', fontWeight: 900, fontSize: '0.7rem', textTransform: 'uppercase' }}>{status.paid ? 'Pagado el' : 'Fecha estimada'}</div>
+                        <div style={{ fontWeight: 950, fontSize: '1.08rem' }}>{fmtDate(status.paid ? status.paidDate : status.estimatedDate)}</div>
+                        {status.paid && (
+                          <div style={{ color: '#15803d', fontWeight: 900, fontSize: '0.82rem' }}>
+                            ${status.paidAmount.toLocaleString('es-CL')} {status.paymentCount > 1 ? `· ${status.paymentCount} pagos` : ''}
+                          </div>
+                        )}
+                      </div>
+                      <span style={{ justifySelf: 'end', padding: '0.28rem 0.6rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: labelBg, fontWeight: 900, fontSize: '0.75rem' }}>
+                        {label}
+                      </span>
+                    </div>
+
+                    <div style={{ marginTop: '0.65rem', paddingTop: '0.65rem', borderTop: '1.5px solid rgba(0,0,0,0.12)', color: '#475569', fontWeight: 850, fontSize: '0.78rem', lineHeight: 1.35 }}>
+                      Pago anterior:{' '}
+                      {status.previousDate
+                        ? `${fmtDate(status.previousDate)} · $${status.previousAmount.toLocaleString('es-CL')}`
+                        : 'Sin registro'}
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {selectedStatus && createPortal(
+        <div
+          onClick={() => setSelectedStatusId(null)}
+          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(3px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+        >
+          <div
+            onClick={(event) => event.stopPropagation()}
+            style={{ width: '100%', maxWidth: '760px', maxHeight: '86vh', overflow: 'auto', backgroundColor: '#fff', border: '2px solid #000', borderRadius: '12px', boxShadow: '5px 5px 0 #000' }}
+          >
+            <div style={{ position: 'sticky', top: 0, backgroundColor: '#f8fafc', borderBottom: '2px solid #000', padding: '1rem 1.2rem', display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'flex-start', zIndex: 1 }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Detalle: {selectedStatus.item.name}</h2>
+                <p style={{ margin: '0.35rem 0 0', color: '#64748b', fontWeight: 800, textTransform: 'capitalize' }}>
+                  {range.label} · {selectedStatus.item.categoria_principal
+                    ? `${selectedStatus.item.categoria_principal}${selectedStatus.item.categoria_secundaria ? ` > ${selectedStatus.item.categoria_secundaria}` : ''}`
+                    : 'Sin categoria vinculada'}
+                </p>
+              </div>
+              <button
+                className="btn"
+                type="button"
+                onClick={() => setSelectedStatusId(null)}
+                style={{ padding: '0.45rem', border: 'none', boxShadow: 'none', background: 'transparent' }}
+                title="Cerrar"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div style={{ padding: '1.2rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 190px), 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
+                <div style={{ border: '2px solid #000', borderRadius: '9px', padding: '0.85rem', backgroundColor: selectedStatus.paid ? '#f0fdf4' : '#fff1f2' }}>
+                  <div style={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 900, textTransform: 'uppercase' }}>Estado periodo</div>
+                  <strong>{selectedStatus.paid ? 'Pagado' : 'Pendiente'}</strong>
+                </div>
+                <div style={{ border: '2px solid #000', borderRadius: '9px', padding: '0.85rem', backgroundColor: '#f8fafc' }}>
+                  <div style={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 900, textTransform: 'uppercase' }}>Pagos encontrados</div>
+                  <strong>{selectedStatus.currentPayments.length}</strong>
+                </div>
+                <div style={{ border: '2px solid #000', borderRadius: '9px', padding: '0.85rem', backgroundColor: '#f8fafc' }}>
+                  <div style={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 900, textTransform: 'uppercase' }}>Monto periodo</div>
+                  <strong>${selectedStatus.paidAmount.toLocaleString('es-CL')}</strong>
+                </div>
+              </div>
+
+              <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem' }}>Pagos asociados del periodo</h3>
+              {selectedStatus.currentPayments.length === 0 ? (
+                <div style={{ border: '2px dashed #cbd5e1', borderRadius: '9px', padding: '1rem', backgroundColor: '#f8fafc', color: '#64748b', fontWeight: 800, marginBottom: '1.2rem' }}>
+                  No encontré movimientos asociados a esta cuenta en el periodo seleccionado.
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto', marginBottom: '1.2rem' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#f1f5f9' }}>
+                        <th style={{ padding: '0.7rem', textAlign: 'left', borderBottom: '2px solid #cbd5e1' }}>Fecha</th>
+                        <th style={{ padding: '0.7rem', textAlign: 'left', borderBottom: '2px solid #cbd5e1' }}>Banco</th>
+                        <th style={{ padding: '0.7rem', textAlign: 'left', borderBottom: '2px solid #cbd5e1' }}>Descripcion</th>
+                        <th style={{ padding: '0.7rem', textAlign: 'right', borderBottom: '2px solid #cbd5e1' }}>Monto</th>
+                        <th style={{ padding: '0.7rem', textAlign: 'left', borderBottom: '2px solid #cbd5e1' }}>Corregir</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedStatus.currentPayments.map((tx: any) => (
+                        <tr key={tx.id}>
+                          <td style={{ padding: '0.7rem', borderBottom: '1px solid #e2e8f0', fontWeight: 800 }}>{tx.date}</td>
+                          <td style={{ padding: '0.7rem', borderBottom: '1px solid #e2e8f0', fontWeight: 800 }}>{tx.bank || 'Sin banco'}</td>
+                          <td style={{ padding: '0.7rem', borderBottom: '1px solid #e2e8f0' }}>{tx.description || tx.original_description || 'Sin descripcion'}</td>
+                          <td style={{ padding: '0.7rem', borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 900, color: '#dc2626' }}>${getTransactionAmount(tx).toLocaleString('es-CL')}</td>
+                          <td style={{ padding: '0.7rem', borderBottom: '1px solid #e2e8f0', minWidth: '220px' }}>
+                            <CascadingCategorySelector
+                              initialPrincipal={tx.categoria_principal}
+                              initialSecundaria={tx.categoria_secundaria}
+                              contextDescription={tx.description || tx.original_description}
+                              onSave={(tipo: any, principal: any, secundaria: any) => handleCategorizeTransaction(tx.id, tipo, principal, secundaria)}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem' }}>Revision mensual</h3>
+              <div style={{ display: 'grid', gap: '0.55rem', marginBottom: '1.2rem' }}>
+                {selectedStatus.monthlyTrace.map((month: any) => (
+                  <div
+                    key={month.key}
+                    style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 1fr) auto', gap: '0.75rem', alignItems: 'center', border: '2px solid #000', borderRadius: '9px', padding: '0.65rem 0.75rem', backgroundColor: month.payments.length > 0 ? '#f0fdf4' : '#fff1f2' }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <strong style={{ textTransform: 'capitalize' }}>{month.label}</strong>
+                      <div style={{ color: '#64748b', fontWeight: 750, fontSize: '0.78rem' }}>
+                        {month.payments.length > 0
+                          ? month.payments.map((tx: any) => `${tx.date} · ${tx.description || 'Sin descripcion'}`).join(' / ')
+                          : 'Sin movimiento detectado'}
+                      </div>
+                      {month.payments.length > 0 && (
+                        <div style={{ display: 'grid', gap: '0.35rem', marginTop: '0.5rem' }}>
+                          {month.payments.map((tx: any) => (
+                            <div key={tx.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(210px, auto)', gap: '0.5rem', alignItems: 'center' }}>
+                              <span style={{ fontSize: '0.76rem', color: '#334155', fontWeight: 800, overflowWrap: 'anywhere' }}>
+                                {tx.date} · {tx.description || tx.original_description || 'Sin descripcion'}
+                              </span>
+                              <CascadingCategorySelector
+                                initialPrincipal={tx.categoria_principal}
+                                initialSecundaria={tx.categoria_secundaria}
+                                contextDescription={tx.description || tx.original_description}
+                                onSave={(tipo: any, principal: any, secundaria: any) => handleCategorizeTransaction(tx.id, tipo, principal, secundaria)}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <span style={{ fontWeight: 950, color: month.payments.length > 0 ? '#15803d' : '#dc2626' }}>
+                      {month.payments.length > 0 ? `$${month.total.toLocaleString('es-CL')}` : 'Pendiente'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem' }}>Historial usado para estimar</h3>
+              {selectedStatus.previousPayments.length === 0 ? (
+                <div style={{ border: '2px dashed #cbd5e1', borderRadius: '9px', padding: '1rem', backgroundColor: '#f8fafc', color: '#64748b', fontWeight: 800 }}>
+                  Sin pagos anteriores asociados.
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#f1f5f9' }}>
+                        <th style={{ padding: '0.7rem', textAlign: 'left', borderBottom: '2px solid #cbd5e1' }}>Fecha</th>
+                        <th style={{ padding: '0.7rem', textAlign: 'left', borderBottom: '2px solid #cbd5e1' }}>Banco</th>
+                        <th style={{ padding: '0.7rem', textAlign: 'left', borderBottom: '2px solid #cbd5e1' }}>Descripcion</th>
+                        <th style={{ padding: '0.7rem', textAlign: 'right', borderBottom: '2px solid #cbd5e1' }}>Monto</th>
+                        <th style={{ padding: '0.7rem', textAlign: 'left', borderBottom: '2px solid #cbd5e1' }}>Corregir</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedStatus.previousPayments.map((tx: any) => (
+                        <tr key={tx.id}>
+                          <td style={{ padding: '0.7rem', borderBottom: '1px solid #e2e8f0', fontWeight: 800 }}>{tx.date}</td>
+                          <td style={{ padding: '0.7rem', borderBottom: '1px solid #e2e8f0', fontWeight: 800 }}>{tx.bank || 'Sin banco'}</td>
+                          <td style={{ padding: '0.7rem', borderBottom: '1px solid #e2e8f0' }}>{tx.description || tx.original_description || 'Sin descripcion'}</td>
+                          <td style={{ padding: '0.7rem', borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 900, color: '#dc2626' }}>${getTransactionAmount(tx).toLocaleString('es-CL')}</td>
+                          <td style={{ padding: '0.7rem', borderBottom: '1px solid #e2e8f0', minWidth: '220px' }}>
+                            <CascadingCategorySelector
+                              initialPrincipal={tx.categoria_principal}
+                              initialSecundaria={tx.categoria_secundaria}
+                              contextDescription={tx.description || tx.original_description}
+                              onSave={(tipo: any, principal: any, secundaria: any) => handleCategorizeTransaction(tx.id, tipo, principal, secundaria)}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}

@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import CSVImport from './pages/CSVImport';
 import Transactions from './pages/Transactions';
+import Accounts from './pages/Accounts';
 import Settings from './pages/Settings';
 import MigrationAudit from './pages/MigrationAudit';
 import AdminDashboard from './pages/AdminDashboard';
@@ -177,6 +178,7 @@ function App() {
           <Route index element={<Dashboard />} />
           <Route path="import" element={<CSVImport />} />
           <Route path="transactions" element={<Transactions />} />
+          <Route path="accounts" element={<Accounts />} />
           <Route path="settings" element={<Settings />} />
           <Route path="audit" element={<MigrationAudit />} />
           <Route path="admin" element={<AdminDashboard />} />

@@ -17,11 +17,22 @@ export interface ClassificationRule {
   categoria_secundaria: string;
 }
 
+export interface FixedExpense {
+  id: string;
+  name: string;
+  tipo_movimiento: string | null;
+  categoria_principal: string | null;
+  categoria_secundaria: string | null;
+  keyword?: string;
+}
+
 interface SettingsContextType {
   customCategories: CustomCategory[];
   saveCustomCategories: (cats: CustomCategory[], targetBank?: string) => Promise<void>;
   classificationRules: ClassificationRule[];
   saveClassificationRules: (rules: ClassificationRule[], targetBank?: string) => Promise<void>;
+  fixedExpenses: FixedExpense[];
+  saveFixedExpenses: (items: FixedExpense[]) => Promise<void>;
   loadingSettings: boolean;
   copySettingsFromBank: (sourceBank: string, targetBank: string) => Promise<void>;
 }
@@ -31,9 +42,13 @@ const SettingsContext = createContext<SettingsContextType>({
   saveCustomCategories: async () => {},
   classificationRules: [],
   saveClassificationRules: async () => {},
+  fixedExpenses: [],
+  saveFixedExpenses: async () => {},
   loadingSettings: true,
   copySettingsFromBank: async () => {},
 });
+
+const FIXED_EXPENSES_KEY = '__fixed_expenses';
 
 export const useSettings = () => useContext(SettingsContext);
 
@@ -42,13 +57,14 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const { activeBank } = useBanks();
   
   // Guardamos el JSONB completo de user_settings: { [bankName]: CustomCategory[] }
-  const [allCustomCategories, setAllCustomCategories] = useState<Record<string, CustomCategory[]>>({});
+  const [allCustomCategories, setAllCustomCategories] = useState<Record<string, any[]>>({});
   
   const [classificationRules, setClassificationRules] = useState<ClassificationRule[]>([]);
+  const [fixedExpenses, setFixedExpenses] = useState<FixedExpense[]>([]);
   const [loadingSettings, setLoadingSettings] = useState(true);
 
   // Derivamos las categorías del banco activo
-  const customCategories = activeBank ? (allCustomCategories[activeBank] || []) : [];
+  const customCategories: CustomCategory[] = activeBank ? ((allCustomCategories[activeBank] || []) as CustomCategory[]) : [];
 
   const loadSettings = useCallback(async () => {
     if (!user) return;
@@ -63,6 +79,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
       const cats = settingsData?.custom_categories || {};
       setAllCustomCategories(cats);
+      setFixedExpenses(Array.isArray(cats[FIXED_EXPENSES_KEY]) ? cats[FIXED_EXPENSES_KEY] : []);
 
       // 2. Cargar Rules para el banco activo si existe
       if (activeBank) {
@@ -141,6 +158,28 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     }
   };
 
+  const saveFixedExpenses = async (items: FixedExpense[]) => {
+    if (!user) return;
+
+    const newAllCats = {
+      ...allCustomCategories,
+      [FIXED_EXPENSES_KEY]: items
+    };
+
+    setFixedExpenses(items);
+    setAllCustomCategories(newAllCats);
+
+    const { data } = await supabase.from('user_settings').select('user_id').eq('user_id', user.id).maybeSingle();
+
+    if (data) {
+      const { error } = await supabase.from('user_settings').update({ custom_categories: newAllCats }).eq('user_id', user.id);
+      if (error) console.error('Error updating fixed expenses:', error);
+    } else {
+      const { error } = await supabase.from('user_settings').insert({ user_id: user.id, custom_categories: newAllCats });
+      if (error) console.error('Error inserting fixed expenses:', error);
+    }
+  };
+
   const saveClassificationRules = async (rules: ClassificationRule[], targetBank?: string) => {
     const bankToSave = targetBank || activeBank;
     if (!user || !bankToSave) return;
@@ -198,6 +237,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       saveCustomCategories, 
       classificationRules, 
       saveClassificationRules,
+      fixedExpenses,
+      saveFixedExpenses,
       loadingSettings,
       copySettingsFromBank
     }}>

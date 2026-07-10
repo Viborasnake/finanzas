@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, Trash2, Save, X } from 'lucide-react';
+import { Plus, Trash2, Save, X, BadgeCheck, Landmark, Tags, Users, Wand2, CalendarCheck, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { extractAndNormalizeRUT } from '../utils/rutParser';
 import type { ClassificationRule } from '../utils/classificationRules';
@@ -10,6 +10,22 @@ import { CascadingCategorySelector } from './Transactions';
 import { useSettings } from '../contexts/SettingsContext';
 import { useBanks, AVAILABLE_BANKS } from '../contexts/BankContext';
 import { InitialAdjustmentManager } from '../components/InitialAdjustmentManager';
+import type { FixedExpense } from '../contexts/SettingsContext';
+
+const SUGGESTED_FIXED_EXPENSES = [
+  'Luz',
+  'Agua',
+  'Gas',
+  'Internet hogar',
+  'GPT',
+  'Apple Music',
+  'HBO Max',
+  'iCloud',
+  'Gemini',
+  'Dividendo',
+  'CAE (Crédito con aval del estado)',
+  'Seguro Auto (Falabella)'
+];
 
 
 export default function Settings() {
@@ -54,7 +70,7 @@ export default function Settings() {
   const [newContactName, setNewContactName] = useState('');
   const [newContactRut, setNewContactRut] = useState('');
   
-  const { customCategories, saveCustomCategories, classificationRules, saveClassificationRules } = useSettings();
+  const { customCategories, saveCustomCategories, classificationRules, saveClassificationRules, fixedExpenses, saveFixedExpenses } = useSettings();
   const { connectedBanks, mainBank, setMainBankAndSave, addBank, removeBank } = useBanks();
   
   const [newRuleKeyword, setNewRuleKeyword] = useState('');
@@ -62,6 +78,13 @@ export default function Settings() {
   const [newCatTipo, setNewCatTipo] = useState('Egreso');
   const [newCatPrincipal, setNewCatPrincipal] = useState('');
   const [newCatSecundaria, setNewCatSecundaria] = useState('');
+  const [newFixedName, setNewFixedName] = useState('');
+  const [newFixedKeyword, setNewFixedKeyword] = useState('');
+  const [newFixedCategory, setNewFixedCategory] = useState<{ tipo: string | null, principal: string | null, secundaria: string | null }>({ tipo: null, principal: null, secundaria: null });
+  const [editingFixedId, setEditingFixedId] = useState<string | null>(null);
+  const [editFixedName, setEditFixedName] = useState('');
+  const [editFixedKeyword, setEditFixedKeyword] = useState('');
+  const [editFixedCategory, setEditFixedCategory] = useState<{ tipo: string | null, principal: string | null, secundaria: string | null }>({ tipo: null, principal: null, secundaria: null });
 
   useEffect(() => {
     if (user) {
@@ -155,6 +178,95 @@ export default function Settings() {
     toast.success('Regla eliminada');
   };
 
+  const handleAddFixedExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newFixedName.trim()) {
+      toast.error('Ponle un nombre al gasto fijo');
+      return;
+    }
+
+    const item: FixedExpense = {
+      id: crypto.randomUUID(),
+      name: newFixedName.trim(),
+      tipo_movimiento: newFixedCategory.tipo || 'Egreso',
+      categoria_principal: newFixedCategory.principal,
+      categoria_secundaria: newFixedCategory.secundaria,
+      keyword: newFixedKeyword.trim() || undefined
+    };
+
+    await saveFixedExpenses([...fixedExpenses, item]);
+    setNewFixedName('');
+    setNewFixedKeyword('');
+    setNewFixedCategory({ tipo: null, principal: null, secundaria: null });
+    toast.success('Gasto fijo agregado');
+  };
+
+  const handleDeleteFixedExpense = async (id: string) => {
+    await saveFixedExpenses(fixedExpenses.filter(item => item.id !== id));
+    toast.success('Gasto fijo eliminado');
+  };
+
+  const startEditFixedExpense = (item: FixedExpense) => {
+    setEditingFixedId(item.id);
+    setEditFixedName(item.name);
+    setEditFixedKeyword(item.keyword || '');
+    setEditFixedCategory({
+      tipo: item.tipo_movimiento || 'Egreso',
+      principal: item.categoria_principal || null,
+      secundaria: item.categoria_secundaria || null
+    });
+  };
+
+  const cancelEditFixedExpense = () => {
+    setEditingFixedId(null);
+    setEditFixedName('');
+    setEditFixedKeyword('');
+    setEditFixedCategory({ tipo: null, principal: null, secundaria: null });
+  };
+
+  const handleSaveFixedExpense = async (id: string) => {
+    if (!editFixedName.trim()) {
+      toast.error('Ponle un nombre al gasto fijo');
+      return;
+    }
+
+    const next = fixedExpenses.map(item => item.id === id
+      ? {
+          ...item,
+          name: editFixedName.trim(),
+          tipo_movimiento: editFixedCategory.tipo || 'Egreso',
+          categoria_principal: editFixedCategory.principal,
+          categoria_secundaria: editFixedCategory.secundaria,
+          keyword: editFixedKeyword.trim() || undefined
+        }
+      : item
+    );
+
+    await saveFixedExpenses(next);
+    cancelEditFixedExpense();
+    toast.success('Gasto fijo actualizado');
+  };
+
+  const handleLoadSuggestedFixedExpenses = async () => {
+    const existing = new Set(fixedExpenses.map(item => item.name.toLowerCase()));
+    const next = [
+      ...fixedExpenses,
+      ...SUGGESTED_FIXED_EXPENSES
+        .filter(name => !existing.has(name.toLowerCase()))
+        .map(name => ({
+          id: crypto.randomUUID(),
+          name,
+          tipo_movimiento: 'Egreso',
+          categoria_principal: null,
+          categoria_secundaria: null,
+          keyword: name
+        }))
+    ];
+
+    await saveFixedExpenses(next);
+    toast.success('Gastos fijos sugeridos cargados');
+  };
+
   const handleDeleteContact = async (id: string) => {
     try {
       const { error } = await supabase
@@ -218,21 +330,127 @@ export default function Settings() {
 
 
   return (
-    <div>
-      <h1 style={{ fontSize: '2.5rem', marginBottom: '2rem' }}>Configuración</h1>
-      
+    <div className="settings-page">
+      <div className="settings-hero">
+        <div>
+          <span className="settings-kicker">Centro de control</span>
+          <h1>Configuración</h1>
+          <p>Define cómo MisFinanzas reconoce bancos, personas, reglas y categorías para clasificar mejor tus movimientos.</p>
+        </div>
+        <div className="settings-stats">
+          <a href="#bancos"><Landmark size={18} /> {connectedBanks.length} bancos</a>
+          <a href="#contactos"><Users size={18} /> {contacts.length} contactos</a>
+          <a href="#categorias"><Tags size={18} /> {customCategories.length} categorías</a>
+          <a href="#gastos-fijos"><CalendarCheck size={18} /> {fixedExpenses.length} fijos</a>
+          <a href="#reglas"><Wand2 size={18} /> {classificationRules.length} reglas</a>
+        </div>
+      </div>
 
+      <div className="settings-quick-links">
+        <a href="#bancos">Bancos</a>
+        <a href="#ajuste">Saldo inicial</a>
+        <a href="#deteccion">RUT</a>
+        <a href="#contactos">Contactos</a>
+        <a href="#categorias">Categorías</a>
+        <a href="#gastos-fijos">Gastos fijos</a>
+        <a href="#reglas">Reglas</a>
+      </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', maxWidth: '800px' }}>
+      <div className="settings-bento">
+        {/* Bank Management */}
+        <div className="card settings-card settings-card-wide" style={{ position: 'relative', zIndex: 9 }}>
+          <div className="settings-section-title">
+            <Landmark size={26} />
+            <div>
+              <h2 id="bancos">Mis Bancos</h2>
+              <span>Primero elige con qué banco vas a trabajar</span>
+            </div>
+          </div>
+          <p className="settings-muted">
+            Administra los bancos que tienes conectados y define cuál es el banco principal para tus reportes globales.
+          </p>
+          
+          <div className="settings-list compact" style={{ marginBottom: '1.5rem' }}>
+            {connectedBanks.map(bankId => {
+              const bank = AVAILABLE_BANKS.find(b => b.id === bankId);
+              if (!bank) return null;
+              const isMain = bank.id === mainBank;
+              return (
+                <div key={bank.id} className="settings-list-row bank-row">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <span style={{ fontSize: '1.5rem' }}>{bank.emoji}</span>
+                    <span style={{ fontWeight: 800, fontSize: '1.1rem' }}>{bank.label}</span>
+                    {isMain && (
+                      <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', backgroundColor: '#fef08a', color: '#854d0e', borderRadius: '999px', fontWeight: 900, border: '2px solid #000' }}>
+                        BANCO PRINCIPAL
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    {!isMain && (
+                      <button 
+                        className="btn btn-outline" 
+                        onClick={() => setMainBankAndSave(bank.id)}
+                        style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}
+                      >
+                        Establecer Principal
+                      </button>
+                    )}
+                    {connectedBanks.length > 1 && (
+                      <button 
+                        className="btn" 
+                        onClick={() => removeBank(bank.id)}
+                        style={{ padding: '0.5rem', backgroundColor: '#fee2e2', color: 'var(--danger)', border: '2px solid var(--danger)' }}
+                        title="Desconectar banco"
+                      >
+                        <X size={18} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', fontWeight: 800 }}>Agregar Nuevo Banco</h3>
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            {AVAILABLE_BANKS.filter(b => !connectedBanks.includes(b.id)).map(bank => (
+              <button
+                key={bank.id}
+                onClick={() => addBank(bank.id)}
+                className="btn btn-outline"
+                style={{ padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '1', minWidth: '150px' }}
+              >
+                <Plus size={16} />
+                {bank.emoji} {bank.label}
+              </button>
+            ))}
+            {AVAILABLE_BANKS.filter(b => !connectedBanks.includes(b.id)).length === 0 && (
+              <p style={{ color: 'var(--text-secondary)' }}>Ya tienes todos los bancos disponibles conectados.</p>
+            )}
+          </div>
+        </div>
+
+        {/* Ajuste de Inicio */}
+        <div id="ajuste" className="settings-card-wide settings-anchor">
+          <InitialAdjustmentManager />
+        </div>
         
         {/* Identificación (RUT) */}
-        <div className="card">
-          <h2 id="deteccion" style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Detección Automática (Tu RUT)</h2>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
+        <div className="card settings-card settings-card-wide">
+          <div className="settings-section-title">
+            <BadgeCheck size={26} />
+            <div>
+              <h2 id="deteccion">Detección Automática</h2>
+              <span>Tu RUT y auto-clasificación histórica</span>
+            </div>
+          </div>
+          <p className="settings-muted">
             Ingresa tu RUT para que el sistema reconozca automáticamente las transferencias entre tus propias cuentas y no las sume como Egreso o Ingreso.
           </p>
           
-          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+          <div className="settings-inline-form">
             <input 
               type="text" 
               className="input" 
@@ -246,7 +464,7 @@ export default function Settings() {
             </button>
           </div>
 
-          <div style={{ borderTop: '2px solid #e2e8f0', margin: '1.5rem 0', paddingTop: '1.5rem' }}>
+          <div className="settings-callout">
             <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', fontWeight: 800 }}>¿Tienes transacciones antiguas sin clasificar?</h3>
             <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem', fontWeight: 500 }}>
               Si importaste datos antes de guardar tu RUT o tus reglas, puedes aplicar la auto-clasificación a todo tu historial pendiente.
@@ -313,13 +531,19 @@ export default function Settings() {
         </div>
 
         {/* Categorías Personalizadas */}
-        <div className="card">
-          <h2 id="categorias" style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Mis Categorías (Personalizadas)</h2>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
+        <div className="card settings-card settings-card-wide">
+          <div className="settings-section-title">
+            <Tags size={26} />
+            <div>
+              <h2 id="categorias">Mis Categorías</h2>
+              <span>Categorías personalizadas para este banco</span>
+            </div>
+          </div>
+          <p className="settings-muted">
             Agrega nuevas categorías para organizar tus movimientos. Estas se sumarán a la lista base que ya trae la aplicación.
           </p>
 
-          <form onSubmit={handleAddCustomCategory} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '1rem', alignItems: 'end', marginBottom: '2rem' }}>
+          <form className="settings-grid-form" onSubmit={handleAddCustomCategory}>
             <div>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 700, fontSize: '0.85rem' }}>Tipo de Movimiento</label>
               <select className="input" value={newCatTipo} onChange={(e) => setNewCatTipo(e.target.value)} style={{ width: '100%', padding: '0.5rem' }}>
@@ -344,9 +568,9 @@ export default function Settings() {
           </form>
 
           {customCategories.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="settings-list">
               {customCategories.map((cat, i) => (
-                <div key={i} style={{ padding: '1rem', border: '2px solid #e2e8f0', borderRadius: '8px', backgroundColor: '#f8fafc' }}>
+                <div key={i} className="settings-list-item">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
                     <span style={{ backgroundColor: '#000', color: '#fff', fontSize: '0.7rem', fontWeight: 800, padding: '0.25rem 0.5rem', borderRadius: '4px', textTransform: 'uppercase' }}>
                       {cat.tipo}
@@ -371,20 +595,168 @@ export default function Settings() {
               ))}
             </div>
           ) : (
-            <div style={{ padding: '2rem', textAlign: 'center', border: '2px dashed #cbd5e1', borderRadius: '8px' }}>
+            <div className="settings-empty">
               <p style={{ margin: 0, color: '#64748b', fontWeight: 600 }}>No has creado categorías personalizadas aún.</p>
             </div>
           )}
         </div>
 
+        {/* Gastos Fijos */}
+        <div className="card settings-card settings-card-wide">
+          <div className="settings-section-title">
+            <CalendarCheck size={26} />
+            <div>
+              <h2 id="gastos-fijos">Gastos Fijos</h2>
+              <span>Cuentas recurrentes para controlar pagos mensuales</span>
+            </div>
+          </div>
+          <p className="settings-muted">
+            Crea tus cuentas fijas y vincúlalas a una categoría. El dashboard las cruzará con tus movimientos para mostrar qué está pagado y qué falta.
+          </p>
+
+          {fixedExpenses.length === 0 && (
+            <div className="settings-callout" style={{ borderTop: 'none', marginTop: 0, paddingTop: 0, marginBottom: '1.25rem' }}>
+              <h3 style={{ fontSize: '1.05rem', marginBottom: '0.5rem', fontWeight: 900 }}>Partir rápido con tus cuentas</h3>
+              <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem', fontWeight: 600 }}>
+                Carga Luz, Agua, Gas, Internet hogar, suscripciones, Dividendo, CAE y Seguro Auto. Luego ajustas el vínculo de categoría de cada una.
+              </p>
+              <button className="btn btn-outline" onClick={handleLoadSuggestedFixedExpenses} type="button">
+                <Plus size={18} />
+                Cargar sugeridos
+              </button>
+            </div>
+          )}
+
+          <form className="settings-fixed-expense-form" onSubmit={handleAddFixedExpense}>
+            <input
+              type="text"
+              className="input"
+              placeholder="Nombre (ej. Luz, CAE, HBO Max)"
+              value={newFixedName}
+              onChange={(e) => setNewFixedName(e.target.value)}
+              required
+            />
+            <input
+              type="text"
+              className="input"
+              placeholder="Palabra opcional (ej. Enel, Falabella)"
+              value={newFixedKeyword}
+              onChange={(e) => setNewFixedKeyword(e.target.value)}
+            />
+            <div className="settings-rule-category">
+              <CascadingCategorySelector
+                initialPrincipal={null}
+                initialSecundaria={null}
+                onSave={(t: any, p: any, s: any) => setNewFixedCategory({ tipo: t, principal: p, secundaria: s })}
+              />
+            </div>
+            <button type="submit" className="btn btn-primary">
+              <Plus size={20} />
+              Agregar fijo
+            </button>
+          </form>
+
+          <div className="settings-list compact">
+            {fixedExpenses.length === 0 ? (
+              <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Aún no tienes gastos fijos configurados.</p>
+            ) : (
+              fixedExpenses.map(item => (
+                <div key={item.id} className="settings-list-row">
+                  {editingFixedId === item.id ? (
+                    <div className="settings-fixed-expense-edit">
+                      <input
+                        type="text"
+                        className="input"
+                        value={editFixedName}
+                        onChange={(e) => setEditFixedName(e.target.value)}
+                        placeholder="Nombre"
+                      />
+                      <input
+                        type="text"
+                        className="input"
+                        value={editFixedKeyword}
+                        onChange={(e) => setEditFixedKeyword(e.target.value)}
+                        placeholder="Palabra opcional"
+                      />
+                      <div className="settings-rule-category">
+                        <CascadingCategorySelector
+                          initialPrincipal={editFixedCategory.principal}
+                          initialSecundaria={editFixedCategory.secundaria}
+                          onSave={(t: any, p: any, s: any) => setEditFixedCategory({ tipo: t, principal: p, secundaria: s })}
+                        />
+                      </div>
+                      <div className="settings-row-actions">
+                        <button
+                          className="btn btn-primary"
+                          onClick={() => handleSaveFixedExpense(item.id)}
+                          type="button"
+                        >
+                          <Save size={18} />
+                          Guardar
+                        </button>
+                        <button
+                          className="btn btn-outline"
+                          onClick={cancelEditFixedExpense}
+                          type="button"
+                        >
+                          <X size={18} />
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ minWidth: 0 }}>
+                        <span style={{ fontWeight: 900, display: 'block', marginBottom: '0.25rem' }}>{item.name}</span>
+                        <span style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', fontWeight: 650 }}>
+                          {item.categoria_principal
+                            ? `${item.tipo_movimiento || 'Egreso'} > ${item.categoria_principal}${item.categoria_secundaria ? ` > ${item.categoria_secundaria}` : ''}`
+                            : 'Falta vincular categoría'}
+                          {item.keyword ? ` · "${item.keyword}"` : ''}
+                        </span>
+                      </div>
+                      <div className="settings-row-actions">
+                        <button
+                          className="btn btn-outline"
+                          onClick={() => startEditFixedExpense(item)}
+                          type="button"
+                          title="Editar gasto fijo"
+                        >
+                          <Pencil size={18} />
+                          Editar
+                        </button>
+                        <button
+                          className="btn"
+                          style={{ padding: '0.5rem', color: 'var(--danger)', border: 'none', boxShadow: 'none' }}
+                          onClick={() => handleDeleteFixedExpense(item.id)}
+                          type="button"
+                          title="Eliminar gasto fijo"
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
         {/* Contactos Frecuentes */}
-        <div className="card">
-          <h2 id="contactos" style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Contactos Conocidos</h2>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
+        <div className="card settings-card">
+          <div className="settings-section-title">
+            <Users size={26} />
+            <div>
+              <h2 id="contactos">Contactos Conocidos</h2>
+              <span>Personas frecuentes para transferencias</span>
+            </div>
+          </div>
+          <p className="settings-muted">
             Agrega RUTs de amigos o familiares. Cuando importes, el sistema clasificará automáticamente los traspasos a ellos como "Transferencias a Otras Personas".
           </p>
           
-          <form className="flex-stack" onSubmit={handleAddContact} style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+          <form className="settings-stack-form" onSubmit={handleAddContact}>
             <input 
               type="text" 
               className="input" 
@@ -406,12 +778,12 @@ export default function Settings() {
             </button>
           </form>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <div className="settings-list compact">
             {contacts.length === 0 ? (
               <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>No hay contactos guardados.</p>
             ) : (
               contacts.map(c => (
-                <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', border: '2px solid black', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-color)' }}>
+                <div key={c.id} className="settings-list-row">
                   <div>
                     <span style={{ fontWeight: 600, display: 'block' }}>{c.name}</span>
                     {c.rut && <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>RUT: {c.rut}</span>}
@@ -430,13 +802,19 @@ export default function Settings() {
         </div>
 
         {/* Classification Rules */}
-        <div className="card" style={{ position: 'relative', zIndex: 10 }}>
-          <h2 id="reglas" style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Reglas de Auto-Clasificación (Mapeo)</h2>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
+        <div className="card settings-card settings-card-tall" style={{ position: 'relative', zIndex: 10 }}>
+          <div className="settings-section-title">
+            <Wand2 size={26} />
+            <div>
+              <h2 id="reglas">Reglas de Auto-Clasificación</h2>
+              <span>Mapeo persistente por palabra clave</span>
+            </div>
+          </div>
+          <p className="settings-muted">
             Define qué texto debe estar en la glosa (descripción) de una transacción para asignarle automáticamente una categoría. Las reglas se aplican al importar.
           </p>
           
-          <form className="flex-stack" onSubmit={handleAddRule} style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <form className="settings-rule-form" onSubmit={handleAddRule}>
             <input 
               type="text" 
               className="input" 
@@ -444,25 +822,26 @@ export default function Settings() {
               value={newRuleKeyword}
               onChange={(e) => setNewRuleKeyword(e.target.value)}
               required
-              style={{ flex: 1, minWidth: '200px' }}
             />
+            <div className="settings-rule-category">
             <CascadingCategorySelector 
               initialPrincipal={null} 
               initialSecundaria={null} 
               onSave={(t: any, p: any, s: any) => setNewRuleCategory({ tipo: t, principal: p, secundaria: s })} 
             />
+            </div>
             <button type="submit" className="btn btn-primary" style={{ padding: '0.5rem 1rem' }}>
               <Plus size={20} />
               Crear Regla
             </button>
           </form>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <div className="settings-list compact">
             {classificationRules.length === 0 ? (
               <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>No hay reglas de clasificación configuradas.</p>
             ) : (
               classificationRules.map(r => (
-                <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', border: '2px solid black', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-color)' }}>
+                <div key={r.id} className="settings-list-row">
                   <div>
                     <span style={{ fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>Si contiene: "{r.keyword}"</span>
                     <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
@@ -482,80 +861,8 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* Bank Management */}
-        <div className="card" style={{ position: 'relative', zIndex: 9 }}>
-          <h2 id="bancos" style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Mis Bancos</h2>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
-            Administra los bancos que tienes conectados y define cuál es el banco principal para tus reportes globales.
-          </p>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '2rem' }}>
-            {connectedBanks.map(bankId => {
-              const bank = AVAILABLE_BANKS.find(b => b.id === bankId);
-              if (!bank) return null;
-              const isMain = bank.id === mainBank;
-              return (
-                <div key={bank.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', border: '2px solid black', borderRadius: '8px', backgroundColor: 'var(--bg-color)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <span style={{ fontSize: '1.5rem' }}>{bank.emoji}</span>
-                    <span style={{ fontWeight: 800, fontSize: '1.1rem' }}>{bank.label}</span>
-                    {isMain && (
-                      <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', backgroundColor: '#fef08a', color: '#854d0e', borderRadius: '999px', fontWeight: 900, border: '2px solid #000' }}>
-                        BANCO PRINCIPAL
-                      </span>
-                    )}
-                  </div>
-                  
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    {!isMain && (
-                      <button 
-                        className="btn btn-outline" 
-                        onClick={() => setMainBankAndSave(bank.id)}
-                        style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}
-                      >
-                        Establecer Principal
-                      </button>
-                    )}
-                    {connectedBanks.length > 1 && (
-                      <button 
-                        className="btn" 
-                        onClick={() => removeBank(bank.id)}
-                        style={{ padding: '0.5rem', backgroundColor: '#fee2e2', color: 'var(--danger)', border: '2px solid var(--danger)' }}
-                        title="Desconectar banco"
-                      >
-                        <X size={18} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', fontWeight: 700 }}>Agregar Nuevo Banco</h3>
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            {AVAILABLE_BANKS.filter(b => !connectedBanks.includes(b.id)).map(bank => (
-              <button
-                key={bank.id}
-                onClick={() => addBank(bank.id)}
-                className="btn btn-outline"
-                style={{ padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '1', minWidth: '150px' }}
-              >
-                <Plus size={16} />
-                {bank.emoji} {bank.label}
-              </button>
-            ))}
-            {AVAILABLE_BANKS.filter(b => !connectedBanks.includes(b.id)).length === 0 && (
-              <p style={{ color: 'var(--text-secondary)' }}>Ya tienes todos los bancos disponibles conectados.</p>
-            )}
-          </div>
-        </div>
-
-        {/* Ajuste de Inicio */}
-        <InitialAdjustmentManager />
-
         {/* Danger Zone */}
-        <div className="card" style={{ position: 'relative', zIndex: 10, borderColor: 'var(--danger)' }}>
+        <div className="card settings-card settings-card-wide settings-danger" style={{ position: 'relative', zIndex: 10, borderColor: 'var(--danger)' }}>
           <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: 'var(--danger)' }}>Zona Peligrosa</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
             Borrar tu cuenta eliminará de forma irreversible todas tus transacciones, configuraciones y reglas guardadas. Esta acción no se puede deshacer.

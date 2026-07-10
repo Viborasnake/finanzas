@@ -1,35 +1,25 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FileSpreadsheet, Receipt, Settings, LogOut, Menu, X, ChevronDown, Check, Copy, Plus, ChevronLeft, ChevronRight, User as UserIcon, Shield } from 'lucide-react';
+import { LayoutDashboard, FileSpreadsheet, Receipt, Settings, LogOut, Menu, X, ChevronDown, Check, Copy, Plus, ChevronLeft, ChevronRight, User as UserIcon, Shield, CalendarCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useBanks, AVAILABLE_BANKS } from '../contexts/BankContext';
-import type { Bank } from '../contexts/BankContext';
+import type { Bank, DashboardBankScope } from '../contexts/BankContext';
 import { useSettings } from '../contexts/SettingsContext';
 import './Layout.css'; 
 
 const navItems = [
   { name: 'Dashboard', path: '/', icon: <LayoutDashboard size={20} /> },
   { name: 'Transacciones', path: '/transactions', icon: <Receipt size={20} /> },
+  { name: 'Cuentas', path: '/accounts', icon: <CalendarCheck size={20} /> },
   { name: 'Importar Cartola', path: '/import', icon: <FileSpreadsheet size={20} /> },
-  { 
-    name: 'Configuración', 
-    path: '/settings', 
-    icon: <Settings size={20} />,
-    subItems: [
-      { name: 'Detección (RUT)', hash: '#deteccion' },
-      { name: 'Mis Categorías', hash: '#categorias' },
-      { name: 'Contactos', hash: '#contactos' },
-      { name: 'Reglas (Mapeo)', hash: '#reglas' },
-      { name: 'Mis Bancos', hash: '#bancos' },
-      { name: 'Ajuste de Inicio', hash: '#ajuste' },
-    ]
-  },
+  { name: 'Configuración', path: '/settings', icon: <Settings size={20} /> },
 ];
 
 function BankIndicator() {
-  const { connectedBanks, activeBank, mainBank, setActiveBank, addBank } = useBanks();
+  const { connectedBanks, activeBank, dashboardScope, mainBank, setDashboardScope, addBank } = useBanks();
   const { copySettingsFromBank } = useSettings();
+  const location = useLocation();
   const [open, setOpen] = useState(false);
   const [pendingBank, setPendingBank] = useState<Bank | null>(null);
   const ref = useRef<HTMLDivElement>(null);
@@ -44,46 +34,74 @@ function BankIndicator() {
   }, []);
 
   const activeBankInfo = AVAILABLE_BANKS.find(b => b.id === activeBank);
+  const supportsConsolidatedScope = location.pathname === '/' || location.pathname.startsWith('/transactions') || location.pathname.startsWith('/accounts');
+  const isConsolidated = supportsConsolidatedScope && dashboardScope === 'all' && connectedBanks.length > 1;
   const unconnected = AVAILABLE_BANKS.filter(b => !connectedBanks.includes(b.id));
+  const displayLabel = isConsolidated ? 'Todos los bancos' : (activeBankInfo ? activeBankInfo.label : 'Sin banco');
+  const canOpen = connectedBanks.length > 1;
+
+  const chooseScope = (scope: DashboardBankScope) => {
+    setDashboardScope(scope);
+    setOpen(false);
+  };
 
   return (
-    <div ref={ref} style={{ position: 'relative', padding: '0.75rem 1.5rem', borderBottom: '2px solid black' }}>
+    <div ref={ref} className="bank-switcher">
       {/* Trigger */}
       <button
-        onClick={() => connectedBanks.length > 1 && setOpen(o => !o)}
-        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'none', border: 'none', cursor: connectedBanks.length > 1 ? 'pointer' : 'default', padding: 0 }}
+        onClick={() => canOpen && setOpen(o => !o)}
+        className="bank-switcher-trigger"
+        title={displayLabel}
       >
-        <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: activeBankInfo ? '#22c55e' : '#94a3b8', border: '1.5px solid #000', flexShrink: 0 }} />
-        <span className="bank-indicator-text" style={{ fontSize: '0.72rem', fontWeight: 800, color: '#000', textTransform: 'uppercase', letterSpacing: '0.05em', flex: 1, textAlign: 'left' }}>
-          {activeBankInfo ? activeBankInfo.label : 'Sin banco'}
+        <div className="bank-dot" style={{ backgroundColor: isConsolidated ? '#0f172a' : (activeBankInfo ? '#22c55e' : '#94a3b8') }} />
+        <span className="bank-indicator-text">
+          {displayLabel}
         </span>
-        {connectedBanks.length > 1 && (
-          <span className="bank-indicator-text" style={{ fontSize: '0.65rem', fontWeight: 700, color: '#555', backgroundColor: 'rgba(0,0,0,0.08)', borderRadius: '4px', padding: '0 4px' }}>
+        {canOpen && (
+          <span className="bank-count bank-indicator-text">
             {connectedBanks.length}
           </span>
         )}
-        {connectedBanks.length > 1 && (
-          <ChevronDown size={12} style={{ color: '#555', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+        {canOpen && (
+          <ChevronDown size={12} className="bank-indicator-text" style={{ transform: open ? 'rotate(180deg)' : 'none' }} />
         )}
       </button>
 
       {/* Dropdown */}
       {open && (
-        <div style={{ position: 'absolute', left: '0.75rem', minWidth: '200px', top: 'calc(100% + 4px)', backgroundColor: '#fff', border: '2px solid #000', borderRadius: '12px', boxShadow: '4px 4px 0px #000', zIndex: 100, overflow: 'hidden' }}>
+        <div className="bank-menu">
           
           {/* Connected banks */}
           {connectedBanks.length > 0 && (
             <div style={{ padding: '0.5rem', borderBottom: unconnected.length > 0 ? '2px solid #e2e8f0' : 'none' }}>
+              {supportsConsolidatedScope && connectedBanks.length > 1 && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.5rem', borderRadius: '8px', backgroundColor: isConsolidated ? '#f8fafc' : 'transparent', marginBottom: '0.25rem' }}>
+                  <button
+                    onClick={() => chooseScope('all')}
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 800, textAlign: 'left' }}
+                  >
+                    <span style={{ 
+                      width: '12px', height: '12px', borderRadius: '50%', display: 'inline-block',
+                      background: 'linear-gradient(135deg, #e63000 0 33%, #f77f00 33% 66%, #a855f7 66% 100%)',
+                      boxShadow: '1px 1px 0px #000',
+                      border: '1px solid #000'
+                    }} />
+                    <span>Todos los bancos</span>
+                    <span style={{ fontSize: '0.58rem', padding: '0.1rem 0.35rem', backgroundColor: '#dbeafe', color: '#0f172a', borderRadius: '999px', fontWeight: 900, border: '1px solid #000' }}>DASH</span>
+                    {isConsolidated && <Check size={14} style={{ marginLeft: 'auto' }} />}
+                  </button>
+                </div>
+              )}
               <div style={{ fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', color: '#94a3b8', padding: '0.25rem 0.5rem', letterSpacing: '0.05em' }}>Conectados</div>
               {connectedBanks.map(bankId => {
                 const bank = AVAILABLE_BANKS.find(b => b.id === bankId);
                 if (!bank) return null;
                 const isMain = bank.id === mainBank;
-                const isActive = bank.id === activeBank;
+                const isActive = supportsConsolidatedScope ? dashboardScope === bank.id : bank.id === activeBank;
                 return (
                   <div key={bank.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.5rem', borderRadius: '8px', backgroundColor: isActive ? '#f8fafc' : 'transparent' }}>
                     <button
-                      onClick={() => { setActiveBank(bank.id); setOpen(false); }}
+                      onClick={() => chooseScope(bank.id)}
                       style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700, textAlign: 'left' }}
                     >
                       <span style={{ 
@@ -181,48 +199,21 @@ export default function Layout() {
         {/* Collapse Button */}
         <button 
           onClick={() => setIsCollapsed(!isCollapsed)} 
-          style={{ 
-            position: 'absolute',
-            top: '50%',
-            right: '-15px',
-            transform: 'translateY(-50%)',
-            width: '28px',
-            height: '28px',
-            backgroundColor: 'white',
-            border: '2px solid black',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            zIndex: 50,
-            boxShadow: '2px 2px 0px black'
-          }}
+          className="sidebar-collapse-btn"
+          title={isCollapsed ? 'Expandir menú' : 'Colapsar menú'}
         >
           {isCollapsed ? <ChevronRight size={16} strokeWidth={3} /> : <ChevronLeft size={16} strokeWidth={3} />}
         </button>
 
-        <div style={{ 
-          padding: isCollapsed ? '2rem 0 1rem 0' : '2rem 1rem 1rem', 
-          borderBottom: '2px solid black',
-          display: 'flex',
-          justifyContent: isCollapsed ? 'center' : 'flex-start',
-          alignItems: 'center'
-        }}>
+        <div className="sidebar-brand">
           {!isCollapsed && (
-            <div style={{ fontSize: '1.35rem', margin: 0, fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}>
-              <div style={{ background: 'black', color: 'white', padding: '0.2rem', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>✨</span>
-              </div>
+            <div className="brand-lockup">
+              <div className="brand-mark">✨</div>
               MisFinanzas
             </div>
           )}
           {isCollapsed && (
-            <div style={{ margin: 0 }}>
-              <div style={{ background: 'black', color: 'white', padding: '0.2rem', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>✨</span>
-              </div>
-            </div>
+            <div className="brand-mark" title="MisFinanzas">✨</div>
           )}
         </div>
 
@@ -236,20 +227,11 @@ export default function Layout() {
                 <Link 
                   to={item.path} 
                   className={`nav-item ${isActive ? 'active' : ''}`}
+                  title={isCollapsed ? item.name : undefined}
                 >
                   {item.icon}
                   <span>{item.name}</span>
                 </Link>
-                {isActive && item.subItems && !isCollapsed && (
-                  <div style={{ paddingLeft: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem', marginTop: '0.25rem' }}>
-                    {item.subItems.map(sub => (
-                      <a key={sub.hash} href={`${item.path}${sub.hash}`} style={{ fontSize: '0.9rem', color: '#1e293b', textDecoration: 'none', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <div style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: 'black' }} />
-                        {sub.name}
-                      </a>
-                    ))}
-                  </div>
-                )}
               </div>
             )
           })}
@@ -257,25 +239,14 @@ export default function Layout() {
 
         <div className="sidebar-footer">
           {user && !isCollapsed && (
-            <div style={{ 
-              margin: '0 1.25rem 0.5rem 1.25rem',
-              fontWeight: 700, 
-              fontSize: '0.85rem', 
-              color: 'var(--text-secondary)',
-              overflow: 'hidden', 
-              textOverflow: 'ellipsis', 
-              whiteSpace: 'nowrap', 
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}>
-              <div style={{ backgroundColor: '#e2e8f0', color: 'black', borderRadius: '50%', padding: '0.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="sidebar-user">
+              <div className="sidebar-user-avatar">
                 <UserIcon size={14} strokeWidth={2.5} />
               </div>
-              {user.email}
+              <span>{user.email}</span>
             </div>
           )}
-          <button className="nav-item logout-btn" onClick={handleSignOut} style={{ backgroundColor: '#fee2e2', color: 'var(--danger)', fontWeight: 800, border: '2px solid black' }}>
+          <button className="nav-item logout-btn" onClick={handleSignOut} title={isCollapsed ? 'Cerrar sesión' : undefined}>
             <LogOut size={20} />
             <span>Cerrar Sesión</span>
           </button>
@@ -304,20 +275,11 @@ export default function Layout() {
                 <Link 
                   to={item.path} 
                   className={`mobile-nav-item ${isActive ? 'active' : ''}`}
-                  onClick={() => !item.subItems && setIsMobileMenuOpen(false)}
+                  onClick={() => setIsMobileMenuOpen(false)}
                 >
                   <div className="icon-container">{item.icon}</div>
                   <span>{item.name}</span>
                 </Link>
-                {isActive && item.subItems && (
-                  <div className="mobile-sub-nav">
-                    {item.subItems.map(sub => (
-                      <a key={sub.hash} href={`${item.path}${sub.hash}`} onClick={() => setIsMobileMenuOpen(false)}>
-                        {sub.name}
-                      </a>
-                    ))}
-                  </div>
-                )}
               </div>
             )})}
             

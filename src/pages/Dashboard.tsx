@@ -3,10 +3,11 @@ import { createPortal } from 'react-dom';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useBanks } from '../contexts/BankContext';
+import { useSettings } from '../contexts/SettingsContext';
 import { 
   ChevronRight, TrendingUp, TrendingDown, 
   Wallet, CreditCard, AlertTriangle, Sparkles, Activity, Search, X, Edit2,
-  ArrowUpRight, ArrowDownRight, Scale, PiggyBank, Calendar
+  ArrowUpRight, ArrowDownRight, Scale, PiggyBank, Calendar, Landmark, FileSpreadsheet, Tags, CheckCircle2, Settings, ChevronDown
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -17,7 +18,9 @@ import {
 import NeoDatePicker from '../components/NeoDatePicker';
 import InfoTooltip from '../components/InfoTooltip';
 import MindMapChart from '../components/MindMapChart';
+import LaikaPet from '../components/LaikaPet';
 import { useTaxonomy } from '../hooks/useTaxonomy';
+import { AVAILABLE_BANKS } from '../contexts/BankContext';
 
 type CategoryLevel = 'principal' | 'secundaria' | 'detalle';
 
@@ -54,6 +57,8 @@ const PRESETS: { id: string; label: string; range: () => DateRange }[] = [
   { id: 'all', label: 'Todo', range: () => ({ start: new Date(2000, 0, 1), end: new Date(2100, 11, 31, 23, 59, 59), label: 'Todo el tiempo' }) },
 ];
 
+const MIN_CURRENT_MONTH_TRANSACTIONS = 8;
+
 function toInputDate(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
@@ -64,13 +69,70 @@ const parseLocalDate = (dateStr: string) => {
   return new Date(parseInt(y), parseInt(m) - 1, parseInt(d), 12, 0, 0);
 };
 
+const parseMoneyLike = (value: any) => {
+  if (typeof value === 'number') return value;
+  if (value === null || value === undefined) return 0;
+  const clean = String(value).replace(/[^0-9,-]/g, '');
+  const parsed = parseFloat(clean.replace(',', '.'));
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
+
+const getTransactionKind = (tx: any): 'ingreso' | 'egreso' | null => {
+  const directType = String(tx.type || tx.tipo || tx.movimiento || '').toLowerCase();
+  if (directType.includes('ingreso') || directType.includes('abono') || directType.includes('credit')) return 'ingreso';
+  if (directType.includes('egreso') || directType.includes('cargo') || directType.includes('debit') || directType.includes('expense')) return 'egreso';
+
+  const raw = tx.raw_data || {};
+  const rawEntries = Object.entries(raw);
+  const abonoEntry = rawEntries.find(([key]) => {
+    const k = key.toLowerCase();
+    return k.includes('abono') || k.includes('haber') || k.includes('deposito') || k.includes('depósito');
+  });
+  const cargoEntry = rawEntries.find(([key]) => {
+    const k = key.toLowerCase();
+    return k.includes('cargo') || k.includes('debe') || k.includes('retiro');
+  });
+  if (abonoEntry && parseMoneyLike(abonoEntry[1]) > 0) return 'ingreso';
+  if (cargoEntry && parseMoneyLike(cargoEntry[1]) > 0) return 'egreso';
+
+  const categoryText = `${tx.tipo_movimiento || ''} ${tx.categoria_principal || ''} ${tx.categoria_secundaria || ''}`.toLowerCase();
+  if (categoryText.includes('ingreso') || categoryText.includes('sueldo') || categoryText.includes('honorario')) return 'ingreso';
+  if (categoryText.includes('egreso') || categoryText.includes('gasto') || categoryText.includes('tarjeta')) return 'egreso';
+
+  const amount = Number(tx.amount || 0);
+  if (amount < 0) return 'egreso';
+  return 'egreso';
+};
+
+const getTransactionAmount = (tx: any) => Math.abs(Number(tx.amount || 0));
+
+const normalizeBankName = (value: any) => String(value || '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+  .replace(/[^a-z0-9]/g, '');
+
+const getCanonicalBankId = (bankName: any) => {
+  const normalized = normalizeBankName(bankName);
+  return AVAILABLE_BANKS.find(bank => normalizeBankName(bank.id) === normalized || normalizeBankName(bank.label) === normalized)?.id || String(bankName || 'Sin banco');
+};
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
-  const { activeBank } = useBanks();
+  const { activeBank, connectedBanks, dashboardScope } = useBanks();
+  const { classificationRules } = useSettings();
   const { taxonomy } = useTaxonomy();
+  const isConsolidated = dashboardScope === 'all' && connectedBanks.length > 1;
+  const dashboardBanks = isConsolidated ? connectedBanks : (activeBank ? [activeBank] : []);
+  const activeBankInfo = AVAILABLE_BANKS.find(b => b.id === activeBank);
+  const dashboardBankLabel = isConsolidated ? 'Todos los bancos' : (activeBankInfo?.label || 'Sin banco');
+  const [setupCollapsed, setSetupCollapsed] = useState(() => localStorage.getItem('finanzas_setup_collapsed') === 'true');
+  const [reportCollapsed, setReportCollapsed] = useState(() => localStorage.getItem('finanzas_report_collapsed') === 'true');
+  const [setupMeta, setSetupMeta] = useState({ hasRut: false, contactsCount: 0 });
+  const [periodWasChosen, setPeriodWasChosen] = useState(() => sessionStorage.getItem('finanzas_dash_period_chosen') === 'true');
 
   const [activePreset, setActivePreset] = useState<string>(() => {
     return sessionStorage.getItem('finanzas_dash_preset') || 'month';
@@ -101,7 +163,7 @@ export default function Dashboard() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const applyPreset = (id: string) => {
+  const setDashboardRange = (id: string, userChosen = false) => {
     const preset = PRESETS.find(p => p.id === id);
     if (!preset) return;
     const r = preset.range();
@@ -110,6 +172,14 @@ export default function Dashboard() {
     setPickerOpen(false);
     sessionStorage.setItem('finanzas_dash_preset', id);
     sessionStorage.setItem('finanzas_dash_range', JSON.stringify(r));
+    if (userChosen) {
+      setPeriodWasChosen(true);
+      sessionStorage.setItem('finanzas_dash_period_chosen', 'true');
+    }
+  };
+
+  const applyPreset = (id: string) => {
+    setDashboardRange(id, true);
   };
 
   const applyCustomRange = () => {
@@ -124,6 +194,8 @@ export default function Dashboard() {
     setPickerOpen(false);
     sessionStorage.setItem('finanzas_dash_preset', 'custom');
     sessionStorage.setItem('finanzas_dash_range', JSON.stringify(r));
+    setPeriodWasChosen(true);
+    sessionStorage.setItem('finanzas_dash_period_chosen', 'true');
   };
 
   const [categoryLevel, setCategoryLevel] = useState<CategoryLevel>('principal');
@@ -137,27 +209,116 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    if (user && activeBank) {
+    if (user && dashboardBanks.length > 0) {
       fetchTransactions();
-    } else if (!activeBank) {
+    } else {
       setTransactions([]);
       setLoading(false);
     }
-  }, [user, activeBank]);
+  }, [user, dashboardScope, activeBank, connectedBanks.join('|')]);
+
+  useEffect(() => {
+    setPeriodWasChosen(sessionStorage.getItem('finanzas_dash_period_chosen') === 'true');
+  }, [dashboardScope, activeBank]);
+
+  useEffect(() => {
+    if (loading || transactions.length === 0) return;
+    if (periodWasChosen && activePreset !== 'month' && activePreset !== 'prev_month') return;
+
+    const now = new Date();
+    const currentStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const currentEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    const previous = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const previousStart = new Date(previous.getFullYear(), previous.getMonth(), 1);
+    const previousEnd = new Date(previous.getFullYear(), previous.getMonth() + 1, 0, 23, 59, 59);
+
+    const realTransactions = transactions.filter(t => !(t.description || '').toLowerCase().includes('saldo inicial'));
+    const currentCount = realTransactions.filter(t => {
+      const d = parseLocalDate(t.date);
+      return d >= currentStart && d <= currentEnd;
+    }).length;
+    const previousCount = realTransactions.filter(t => {
+      const d = parseLocalDate(t.date);
+      return d >= previousStart && d <= previousEnd;
+    }).length;
+
+    if (currentCount >= MIN_CURRENT_MONTH_TRANSACTIONS) {
+      if (activePreset !== 'month') setDashboardRange('month');
+      return;
+    }
+
+    if (previousCount > 0 && activePreset !== 'prev_month') {
+      setDashboardRange('prev_month');
+    }
+  }, [loading, transactions, periodWasChosen, activePreset]);
+
+  useEffect(() => {
+    const fetchSetupMeta = async () => {
+      if (!user) {
+        setSetupMeta({ hasRut: false, contactsCount: 0 });
+        return;
+      }
+
+      const [{ data: settings }, { count }] = await Promise.all([
+        supabase.from('user_settings').select('rut').eq('user_id', user.id).maybeSingle(),
+        supabase.from('known_contacts').select('id', { count: 'exact', head: true }).eq('user_id', user.id)
+      ]);
+
+      setSetupMeta({
+        hasRut: Boolean(settings?.rut),
+        contactsCount: count || 0
+      });
+    };
+
+    fetchSetupMeta();
+  }, [user]);
+
+  const toggleSetupCollapsed = () => {
+    setSetupCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem('finanzas_setup_collapsed', String(next));
+      return next;
+    });
+  };
 
   const fetchTransactions = async () => {
-    if (!user || !activeBank) return;
+    if (!user || dashboardBanks.length === 0) return;
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('bank', activeBank)
-        .order('date', { ascending: true });
+      if (isConsolidated) {
+        const results = await Promise.all(
+          dashboardBanks.map(bank =>
+            supabase
+              .from('transactions')
+              .select('*')
+              .eq('user_id', user.id)
+              .eq('bank', bank)
+              .order('date', { ascending: true })
+          )
+        );
 
-      if (error) throw error;
-      setTransactions(data || []);
+        const firstError = results.find(result => result.error)?.error;
+        if (firstError) throw firstError;
+
+        const rows = results.flatMap((result, index) =>
+          (result.data || []).map(tx => ({
+            ...tx,
+            bank: tx.bank || dashboardBanks[index]
+          }))
+        );
+        rows.sort((a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime());
+        setTransactions(rows);
+      } else {
+        const { data, error } = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('bank', dashboardBanks[0])
+          .order('date', { ascending: true });
+
+        if (error) throw error;
+        setTransactions(data || []);
+      }
     } catch (error) {
       console.error('Error fetching transactions:', error);
     } finally {
@@ -169,7 +330,7 @@ export default function Dashboard() {
     const { start, end } = dateRange;
     const txs = transactions.filter(t => {
       const d = parseLocalDate(t.date);
-      return d >= start && d <= end && t.type === type;
+      return d >= start && d <= end && getTransactionKind(t) === type;
     });
 
     let filtered: any[] = [];
@@ -242,6 +403,50 @@ export default function Dashboard() {
     });
   }, [transactions, dateRange]);
 
+  const isInitialBalanceTx = (t: any) => (t.description || '').toLowerCase().includes('saldo inicial');
+
+  const periodMovements = useMemo(() => {
+    return filteredTransactions.filter(t => !isInitialBalanceTx(t));
+  }, [filteredTransactions]);
+
+  const availablePeriods = useMemo(() => {
+    const months = new Map<string, { start: Date; end: Date; label: string; count: number }>();
+    transactions.forEach(t => {
+      if (isInitialBalanceTx(t)) return;
+      const d = parseLocalDate(t.date);
+      if (Number.isNaN(d.getTime())) return;
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      if (!months.has(key)) {
+        months.set(key, {
+          start: new Date(d.getFullYear(), d.getMonth(), 1),
+          end: new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59),
+          label: d.toLocaleString('es-CL', { month: 'long', year: 'numeric' }),
+          count: 0
+        });
+      }
+      months.get(key)!.count += 1;
+    });
+    return Array.from(months.values()).sort((a, b) => b.start.getTime() - a.start.getTime());
+  }, [transactions]);
+
+  const closestPeriodWithData = useMemo(() => {
+    if (availablePeriods.length === 0) return null;
+    const selectedTs = dateRange.start.getTime();
+    return [...availablePeriods].sort((a, b) => (
+      Math.abs(a.start.getTime() - selectedTs) - Math.abs(b.start.getTime() - selectedTs)
+    ))[0];
+  }, [availablePeriods, dateRange.start]);
+
+  const applyRangeObject = (range: DateRange) => {
+    setDateRange(range);
+    setActivePreset('custom');
+    setPickerOpen(false);
+    setPeriodWasChosen(true);
+    sessionStorage.setItem('finanzas_dash_preset', 'custom');
+    sessionStorage.setItem('finanzas_dash_range', JSON.stringify(range));
+    sessionStorage.setItem('finanzas_dash_period_chosen', 'true');
+  };
+
   const stats = useMemo(() => {
     const calcForRange = (start: Date, end: Date) => {
       let ingresos = 0;
@@ -276,30 +481,33 @@ export default function Dashboard() {
         const isInvestment = t.tipo_movimiento === 'Ahorro/Inversión';
         const isUnclassified = !t.categoria_principal || t.categoria_principal === 'Sin Clasificar';
 
-        if (t.type === 'ingreso') {
+        const kind = getTransactionKind(t);
+        const amount = getTransactionAmount(t);
+
+        if (kind === 'ingreso') {
           if (isInternal) {
-            aportePropio += t.amount;
+            aportePropio += amount;
           } else {
-            ingresos += t.amount;
+            ingresos += amount;
             
             const catP = t.categoria_principal?.toLowerCase() || '';
             if (catP.includes('sueldo')) {
-              sueldo += t.amount;
+              sueldo += amount;
             } else if (catP.includes('honorarios') || catP.includes('profesionales')) {
-              honorarios += t.amount;
+              honorarios += amount;
             } else {
-              ingresosOtros += t.amount;
+              ingresosOtros += amount;
             }
 
             // For intelligence
-            if (t.amount > maxIncomeAmount) {
-              maxIncomeAmount = t.amount;
+            if (amount > maxIncomeAmount) {
+              maxIncomeAmount = amount;
               maxIncomeDesc = t.description || t.categoria_principal || 'Ingreso';
             }
           }
-        } else {
+        } else if (kind === 'egreso') {
           // Gasto
-          const absAmt = Math.abs(t.amount);
+          const absAmt = amount;
           if (isInternal) {
             movimientoInternoEgreso += absAmt;
           } else if (!isInvestment) {
@@ -339,7 +547,7 @@ export default function Dashboard() {
       txs.forEach(t => {
         const isInternal = t.tipo_movimiento === 'Movimiento Interno';
         const isInvestment = t.tipo_movimiento === 'Ahorro/Inversión';
-        if (t.type === 'egreso' && !isInternal && !isInvestment) {
+        if (getTransactionKind(t) === 'egreso' && !isInternal && !isInvestment) {
           const desc = (t.description || t.original_description || 'Sin descripción').trim();
           catsDetalle[desc] = (catsDetalle[desc] || 0) + Math.abs(t.amount);
         }
@@ -402,6 +610,34 @@ export default function Dashboard() {
     };
   }, [transactions, currentRange, prevRange]);
 
+  const bankBreakdown = useMemo(() => {
+    const byBank = new Map<string, { bank: string; label: string; color: string; ingresos: number; egresos: number; count: number }>();
+
+    periodMovements.forEach(t => {
+      const bankName = getCanonicalBankId(t.bank);
+      const bankInfo = AVAILABLE_BANKS.find(b => b.id === bankName);
+      if (!byBank.has(bankName)) {
+        byBank.set(bankName, {
+          bank: bankName,
+          label: bankInfo?.label || bankName,
+          color: bankInfo?.color || '#94a3b8',
+          ingresos: 0,
+          egresos: 0,
+          count: 0
+        });
+      }
+
+      const item = byBank.get(bankName)!;
+      const amount = getTransactionAmount(t);
+      const kind = getTransactionKind(t);
+      if (kind === 'ingreso') item.ingresos += amount;
+      if (kind === 'egreso') item.egresos += amount;
+      item.count += 1;
+    });
+
+    return Array.from(byBank.values()).sort((a, b) => (b.ingresos + b.egresos) - (a.ingresos + a.egresos));
+  }, [periodMovements]);
+
   // Generate 6 buckets history for sparklines (based on dateRange duration)
   const historyData = useMemo(() => {
     const { start, end } = dateRange;
@@ -415,8 +651,9 @@ export default function Dashboard() {
         const d = parseLocalDate(t.date);
         if (d >= bStart && d <= bEnd) {
           const isInvestment = t.tipo_movimiento === 'Ahorro/Inversión';
-          if (t.type === 'ingreso') ing += Math.abs(t.amount);
-          if (t.type === 'egreso' && !isInvestment) gas += Math.abs(t.amount);
+          const kind = getTransactionKind(t);
+          if (kind === 'ingreso') ing += getTransactionAmount(t);
+          if (kind === 'egreso' && !isInvestment) gas += getTransactionAmount(t);
         }
       });
       let label = '';
@@ -477,8 +714,9 @@ export default function Dashboard() {
           const isInvestment = t.tipo_movimiento === 'Ahorro/Inversión';
           const key = getKey(d);
           if (data[key]) {
-            if (t.type === 'ingreso') data[key].Ingresos += Math.abs(t.amount);
-            if (t.type === 'egreso' && !isInvestment) data[key].Egresos += Math.abs(t.amount);
+            const kind = getTransactionKind(t);
+            if (kind === 'ingreso') data[key].Ingresos += getTransactionAmount(t);
+            if (kind === 'egreso' && !isInvestment) data[key].Egresos += getTransactionAmount(t);
           }
         }
       });
@@ -493,7 +731,7 @@ export default function Dashboard() {
         const d = parseLocalDate(t.date);
         if (d >= start && d <= end) {
           const isInvestment = t.tipo_movimiento === 'Ahorro/Inversión';
-          if (t.type === 'egreso' && !isInvestment) {
+          if (getTransactionKind(t) === 'egreso' && !isInvestment) {
             const catField = categoryLevel === 'detalle'
               ? (t.description || t.original_description || '').trim()
               : categoryLevel === 'principal'
@@ -519,20 +757,6 @@ export default function Dashboard() {
     padding: '2rem',
     marginBottom: '2rem'
   };
-
-  const neoButton = {
-    padding: '0.75rem 1.5rem',
-    backgroundColor: '#000',
-    color: '#fff',
-    border: '2px solid #000',
-    borderRadius: '2rem',
-    fontWeight: 800,
-    cursor: 'pointer',
-    boxShadow: '4px 4px 0px #000',
-    transition: 'all 0.1s'
-  };
-
-
 
   // --- Components ---
 
@@ -567,6 +791,296 @@ export default function Dashboard() {
             <Area type="monotone" dataKey={dataKey} stroke="#000" strokeWidth={3} fill={fill} fillOpacity={1} />
           </AreaChart>
         </ResponsiveContainer>
+      </div>
+    );
+  };
+
+  const renderOnboardingWizard = () => {
+    const steps = [
+      {
+        title: 'Banco activo',
+        description: dashboardBanks.length > 0 ? `Trabajaremos con ${dashboardBankLabel}.` : 'Elige tu primer banco para separar tus cartolas.',
+        icon: <Landmark size={24} strokeWidth={2.5} />,
+        action: dashboardBanks.length > 0 ? 'Cambiar banco' : 'Configurar banco',
+        path: '/settings#bancos',
+        done: dashboardBanks.length > 0,
+        color: '#dbeafe'
+      },
+      {
+        title: 'Datos base',
+        description: 'Guarda tu RUT para detectar transferencias propias y evitar dobles conteos.',
+        icon: <Settings size={24} strokeWidth={2.5} />,
+        action: 'Completar datos',
+        path: '/settings#deteccion',
+        done: false,
+        color: '#fef08a'
+      },
+      {
+        title: 'Primera cartola',
+        description: 'Carga MACH, Itaú o Scotiabank para crear tus movimientos iniciales.',
+        icon: <FileSpreadsheet size={24} strokeWidth={2.5} />,
+        action: 'Importar cartola',
+        path: '/import',
+        done: false,
+        color: '#dcfce7'
+      },
+      {
+        title: 'Clasificación',
+        description: 'Luego podrás revisar categorías, crear reglas y dejar el dashboard listo.',
+        icon: <Tags size={24} strokeWidth={2.5} />,
+        action: 'Ver clasificador',
+        path: '/transactions',
+        done: false,
+        color: '#f3e8ff'
+      }
+    ];
+
+    return (
+      <div style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '12px', boxShadow: '4px 4px 0px #000', overflow: 'hidden' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '0', borderBottom: '2px solid #000' }}>
+          <div style={{ padding: '2rem', backgroundColor: '#f8fafc' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.75rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#fef08a', boxShadow: '2px 2px 0px #000', fontSize: '0.75rem', fontWeight: 900, marginBottom: '1.25rem' }}>
+              <Sparkles size={16} strokeWidth={3} />
+              Primer inicio
+            </div>
+            <h2 style={{ fontSize: '2.15rem', lineHeight: 1.05, margin: '0 0 1rem 0', fontWeight: 900 }}>Preparemos tu dashboard financiero</h2>
+            <p style={{ fontSize: '1rem', fontWeight: 600, color: '#334155', maxWidth: '640px', marginBottom: '1.5rem' }}>
+              Aún no hay movimientos para mostrar. Sigue estos pasos y en pocos minutos tendrás ingresos, egresos, categorías y gráficos funcionando.
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <button
+                className="btn btn-primary"
+                onClick={() => navigate(dashboardBanks.length > 0 ? '/import' : '/settings#bancos')}
+                style={{ padding: '0.9rem 1.25rem', fontSize: '0.95rem' }}
+              >
+                {dashboardBanks.length > 0 ? <FileSpreadsheet size={20} /> : <Landmark size={20} />}
+                {dashboardBanks.length > 0 ? 'Importar primera cartola' : 'Configurar banco'}
+              </button>
+              <button
+                className="btn btn-outline"
+                onClick={() => navigate('/settings#deteccion')}
+                style={{ padding: '0.9rem 1.25rem', fontSize: '0.95rem', backgroundColor: '#fff' }}
+              >
+                <Settings size={20} />
+                Revisar configuración
+              </button>
+            </div>
+          </div>
+
+          <div style={{ padding: '2rem', backgroundColor: '#fff', borderLeft: '2px solid #000', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.25rem' }}>
+              <LaikaPet pose={dashboardBanks.length > 0 ? 'pointing' : 'welcome'} size={178} title="Laika acompaña el inicio" />
+            </div>
+            <div style={{ border: '2px solid #000', borderRadius: '10px', boxShadow: '3px 3px 0px #000', padding: '1rem', backgroundColor: '#dbeafe' }}>
+              <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 900, color: '#334155', marginBottom: '0.35rem' }}>Banco activo</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.25rem', fontWeight: 900 }}>
+                <span style={{ width: '14px', height: '14px', borderRadius: '50%', background: isConsolidated ? 'linear-gradient(135deg, #e63000 0 33%, #f77f00 33% 66%, #a855f7 66% 100%)' : (activeBankInfo ? activeBankInfo.color : '#cbd5e1'), border: '2px solid #000', boxShadow: '1px 1px 0px #000' }} />
+                {dashboardBankLabel}
+              </div>
+            </div>
+            <div style={{ border: '2px solid #000', borderRadius: '10px', boxShadow: '3px 3px 0px #000', padding: '1rem', backgroundColor: '#dcfce7' }}>
+              <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 900, color: '#334155', marginBottom: '0.35rem' }}>Movimientos</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 900 }}>0 cargados</div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 230px), 1fr))', gap: '1rem', padding: '1.25rem' }}>
+          {steps.map((step, index) => (
+            <button
+              key={step.title}
+              onClick={() => navigate(step.path)}
+              style={{ textAlign: 'left', padding: '1rem', minHeight: '190px', border: '2px solid #000', borderRadius: '10px', boxShadow: '3px 3px 0px #000', backgroundColor: step.color, display: 'flex', flexDirection: 'column', gap: '0.85rem' }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ width: '42px', height: '42px', borderRadius: '10px', border: '2px solid #000', backgroundColor: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxShadow: '2px 2px 0px #000' }}>
+                  {step.icon}
+                </span>
+                {step.done ? (
+                  <CheckCircle2 size={26} fill="#22c55e" color="#000" strokeWidth={2.5} />
+                ) : (
+                  <span style={{ width: '30px', height: '30px', borderRadius: '999px', border: '2px solid #000', backgroundColor: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, boxShadow: '2px 2px 0px #000' }}>
+                    {index + 1}
+                  </span>
+                )}
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.05rem', margin: '0 0 0.35rem 0', fontWeight: 900 }}>{step.title}</h3>
+                <p style={{ margin: 0, color: '#1f2937', fontSize: '0.86rem', fontWeight: 600, lineHeight: 1.45 }}>{step.description}</p>
+              </div>
+              <span style={{ marginTop: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.82rem', fontWeight: 900 }}>
+                {step.action}
+                <ChevronRight size={16} strokeWidth={3} />
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderSetupMiniDashboard = () => {
+    if (dashboardBanks.length === 0 || transactions.length === 0) return null;
+
+    const hasInitialBalance = transactions.some(t => isInitialBalanceTx(t));
+    const realMovements = transactions.filter(t => !isInitialBalanceTx(t)).length;
+    const unclassified = stats.current.unclassifiedCount;
+    const hasRules = classificationRules.length > 0;
+
+    const items = [
+      {
+        title: 'Banco activo',
+        detail: dashboardBankLabel,
+        done: true,
+        action: 'Cambiar',
+        path: '/settings#bancos',
+        icon: <Landmark size={18} strokeWidth={2.5} />
+      },
+      {
+        title: 'Saldo inicial',
+        detail: hasInitialBalance ? 'Configurado' : 'Pendiente para balance exacto',
+        done: hasInitialBalance,
+        action: hasInitialBalance ? 'Revisar' : 'Configurar',
+        path: '/settings#ajuste',
+        icon: <Wallet size={18} strokeWidth={2.5} />
+      },
+      {
+        title: 'RUT propio',
+        detail: setupMeta.hasRut ? 'Listo para detectar transferencias propias' : 'Falta para evitar dobles conteos',
+        done: setupMeta.hasRut,
+        action: setupMeta.hasRut ? 'Ver' : 'Guardar',
+        path: '/settings#deteccion',
+        icon: <Settings size={18} strokeWidth={2.5} />
+      },
+      {
+        title: 'Cartola',
+        detail: `${realMovements.toLocaleString('es-CL')} movimientos reales`,
+        done: realMovements > 0,
+        action: 'Importar más',
+        path: '/import',
+        icon: <FileSpreadsheet size={18} strokeWidth={2.5} />
+      },
+      {
+        title: 'Clasificación',
+        detail: unclassified === 0 ? 'Todo clasificado' : `${unclassified} sin clasificar`,
+        done: unclassified === 0,
+        action: unclassified === 0 ? 'Revisar' : 'Clasificar',
+        path: '/transactions',
+        icon: <Tags size={18} strokeWidth={2.5} />
+      },
+      {
+        title: 'Automatización',
+        detail: `${classificationRules.length} reglas · ${setupMeta.contactsCount} contactos`,
+        done: hasRules || setupMeta.contactsCount > 0,
+        action: 'Mejorar',
+        path: '/settings#contactos',
+        icon: <Sparkles size={18} strokeWidth={2.5} />
+      }
+    ];
+
+    const doneCount = items.filter(item => item.done).length;
+    const progress = Math.round((doneCount / items.length) * 100);
+    const nextItem = items.find(item => !item.done) || items[items.length - 1];
+    return (
+      <section style={{ border: '2px solid #000', borderRadius: '12px', boxShadow: '4px 4px 0px #000', backgroundColor: '#fff', marginBottom: '2rem', overflow: 'hidden' }}>
+        <button
+          type="button"
+          onClick={toggleSetupCollapsed}
+          style={{ width: '100%', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '1rem', alignItems: 'center', textAlign: 'left', padding: '1rem 1.25rem', backgroundColor: '#f8fafc', border: 'none', borderBottom: setupCollapsed ? 'none' : '2px solid #000', cursor: 'pointer' }}
+        >
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.45rem' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#dbeafe', boxShadow: '2px 2px 0 #000', fontSize: '0.72rem', fontWeight: 900 }}>
+                <Activity size={14} strokeWidth={3} />
+                Estado del banco
+              </span>
+              <strong style={{ fontSize: '1rem' }}>{dashboardBankLabel}</strong>
+              <span style={{ color: '#64748b', fontWeight: 800, fontSize: '0.85rem' }}>{doneCount}/{items.length} listo</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ flex: 1, maxWidth: '360px', height: '12px', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#fff', overflow: 'hidden' }}>
+                <div style={{ width: `${progress}%`, height: '100%', backgroundColor: progress === 100 ? '#86efac' : '#fde047' }} />
+              </div>
+              <span style={{ fontWeight: 900, fontSize: '0.85rem' }}>{progress}%</span>
+              <span style={{ color: '#334155', fontWeight: 700, fontSize: '0.85rem' }}>
+                {progress === 100 ? 'Operación lista' : `Sigue: ${nextItem.title}`}
+              </span>
+            </div>
+          </div>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontWeight: 900, fontSize: '0.85rem' }}>
+            {setupCollapsed ? 'Mostrar' : 'Ocultar'}
+            <ChevronDown size={18} strokeWidth={3} style={{ transform: setupCollapsed ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform 0.2s' }} />
+          </span>
+        </button>
+
+        {!setupCollapsed && (
+          <div style={{ padding: '1rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '0.9rem' }}>
+            {items.map(item => (
+              <button
+                key={item.title}
+                type="button"
+                onClick={() => navigate(item.path)}
+                style={{ textAlign: 'left', display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gridTemplateRows: 'auto auto', gap: '0.7rem 0.85rem', alignItems: 'start', minHeight: '116px', padding: '0.9rem', border: '2px solid #000', borderRadius: '10px', backgroundColor: item.done ? '#dcfce7' : '#fff7ed', boxShadow: '2px 2px 0 #000', cursor: 'pointer' }}
+              >
+                <span style={{ width: '38px', height: '38px', borderRadius: '8px', border: '2px solid #000', backgroundColor: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {item.done ? <CheckCircle2 size={20} fill="#22c55e" color="#000" strokeWidth={2.5} /> : item.icon}
+                </span>
+                <span style={{ minWidth: 0 }}>
+                  <strong style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.2rem' }}>{item.title}</strong>
+                  <span style={{ display: 'block', color: '#475569', fontWeight: 700, fontSize: '0.76rem', lineHeight: 1.35, overflowWrap: 'anywhere' }}>
+                    {item.detail}
+                  </span>
+                </span>
+                <span style={{ gridColumn: '2', justifySelf: 'start', alignSelf: 'end', display: 'inline-flex', alignItems: 'center', gap: '0.2rem', padding: '0.25rem 0.55rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#fff', boxShadow: '1px 1px 0 #000', fontSize: '0.72rem', fontWeight: 900 }}>
+                  {item.action}
+                  <ChevronRight size={14} strokeWidth={3} />
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+    );
+  };
+
+  const renderEmptyPeriodState = () => {
+    const periodLabel = dateRange.label || dateRange.start.toLocaleString('es-CL', { month: 'long', year: 'numeric' });
+    const nextPeriod = closestPeriodWithData;
+
+    return (
+      <div style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '12px', boxShadow: '4px 4px 0px #000', padding: '2rem', marginBottom: '2.5rem', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '1.5rem', alignItems: 'center' }}>
+        <div>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', padding: '0.35rem 0.75rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#fef08a', boxShadow: '2px 2px 0 #000', fontWeight: 900, fontSize: '0.78rem', marginBottom: '1rem' }}>
+            <Search size={16} strokeWidth={3} />
+            Sin movimientos en este periodo
+          </div>
+          <h2 style={{ margin: '0 0 0.6rem 0', fontSize: '1.6rem', fontWeight: 900 }}>
+            No hay datos para {periodLabel}
+          </h2>
+          <p style={{ margin: 0, color: '#475569', fontWeight: 650, lineHeight: 1.5, maxWidth: '640px' }}>
+            Este banco tiene movimientos cargados, pero ninguno cae dentro del rango seleccionado. Por eso los gráficos y totales aparecen vacíos.
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', minWidth: '220px' }}>
+          {nextPeriod && (
+            <button
+              className="btn btn-primary"
+              onClick={() => applyRangeObject({ start: nextPeriod.start, end: nextPeriod.end, label: nextPeriod.label })}
+              style={{ justifyContent: 'center' }}
+            >
+              Ver {nextPeriod.label}
+            </button>
+          )}
+          <button
+            className="btn btn-outline"
+            onClick={() => navigate('/import')}
+            style={{ justifyContent: 'center', backgroundColor: '#fff' }}
+          >
+            <FileSpreadsheet size={18} />
+            Importar cartola
+          </button>
+        </div>
       </div>
     );
   };
@@ -660,13 +1174,27 @@ export default function Dashboard() {
 
     return (
       <div style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '12px', padding: '1.5rem', boxShadow: '4px 4px 0px #000', marginBottom: '2.5rem' }}>
-        <h2 style={{ fontSize: '1.2rem', margin: '0 0 1rem 0', fontFamily: '"Montserrat", sans-serif', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Sparkles fill="#fde047" color="#000" size={20} strokeWidth={2} />
-          Reporte de Inteligencia
-          <InfoTooltip content="Análisis automático de tus finanzas que destaca tu balance, tu principal fuente de ingresos y tu mayor fuga de dinero." />
-        </h2>
+        <div 
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', margin: reportCollapsed ? '0' : '0 0 1rem 0' }}
+          onClick={() => {
+            const newVal = !reportCollapsed;
+            setReportCollapsed(newVal);
+            localStorage.setItem('finanzas_report_collapsed', String(newVal));
+          }}
+        >
+          <h2 style={{ fontSize: '1.2rem', margin: 0, fontFamily: '"Montserrat", sans-serif', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Sparkles fill="#fde047" color="#000" size={20} strokeWidth={2} />
+            Reporte de Inteligencia
+            <InfoTooltip content="Análisis automático de tus finanzas que destaca tu balance, tu principal fuente de ingresos y tu mayor fuga de dinero." />
+          </h2>
+          <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <ChevronDown size={20} strokeWidth={2.5} style={{ transform: reportCollapsed ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform 0.2s' }} />
+          </button>
+        </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: '1rem' }}>
+        {!reportCollapsed && (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: '1rem' }}>
           {/* Balance Insight */}
           <div style={{ padding: '1rem', backgroundColor: isDeficit ? '#fef2f2' : '#f0fdf4', border: '2px solid #000', borderRadius: '8px', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
             <Activity size={20} style={{ color: isDeficit ? '#ef4444' : '#22c55e', marginTop: '0.2rem', flexShrink: 0 }} />
@@ -710,6 +1238,40 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+
+        {isConsolidated && bankBreakdown.length > 0 && (
+          <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '2px solid #e2e8f0' }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 900, textTransform: 'uppercase', color: '#64748b', marginBottom: '0.75rem', letterSpacing: '0.04em' }}>
+              Consolidado por banco
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '0.75rem' }}>
+              {bankBreakdown.map(bank => {
+                const balance = bank.ingresos - bank.egresos;
+                return (
+                  <div
+                    key={bank.bank}
+                    style={{ border: '2px solid #000', borderRadius: '10px', backgroundColor: '#f8fafc', boxShadow: '2px 2px 0 #000', padding: '0.85rem' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '0.65rem' }}>
+                      <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: bank.color, border: '2px solid #000', boxShadow: '1px 1px 0 #000' }} />
+                      <strong style={{ fontSize: '0.95rem' }}>{bank.label}</strong>
+                      <span style={{ marginLeft: 'auto', fontSize: '0.72rem', fontWeight: 900, color: '#64748b' }}>{bank.count} mov.</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem', fontSize: '0.78rem', fontWeight: 800 }}>
+                      <span style={{ color: '#15803d' }}>+${bank.ingresos.toLocaleString('es-CL')}</span>
+                      <span style={{ color: '#dc2626', textAlign: 'right' }}>-${bank.egresos.toLocaleString('es-CL')}</span>
+                    </div>
+                    <div style={{ marginTop: '0.45rem', fontWeight: 900, fontSize: '0.92rem' }}>
+                      {balance >= 0 ? '+' : '-'}${Math.abs(balance).toLocaleString('es-CL')}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+          </>
+        )}
       </div>
     );
   };
@@ -1040,11 +1602,13 @@ export default function Dashboard() {
         if (d >= start && d <= end) {
           const isInternal = t.tipo_movimiento === 'Movimiento Interno';
           const isInv = t.tipo_movimiento === 'Ahorro/Inversión';
-          if (t.type === 'ingreso') {
-            if (isInternal) aporte += Math.abs(t.amount);
-            else ing += Math.abs(t.amount);
+          const kind = getTransactionKind(t);
+          const amount = getTransactionAmount(t);
+          if (kind === 'ingreso') {
+            if (isInternal) aporte += amount;
+            else ing += amount;
           }
-          if (t.type === 'egreso' && !isInv) gas += Math.abs(t.amount);
+          if (kind === 'egreso' && !isInv) gas += amount;
         }
       });
       // totalIng includes aportePropio as requested
@@ -1225,16 +1789,8 @@ export default function Dashboard() {
     <div style={{ maxWidth: '1100px', margin: '0 auto', paddingBottom: '4rem', padding: '0 1rem', paddingTop: '2rem' }}>
       {renderHeader()}
       
-      {!activeBank ? (
-        <div style={{ padding: '4rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', backgroundColor: 'white', border: '2px solid #000', borderRadius: '12px', boxShadow: '4px 4px 0px #000' }}>
-          <h1 style={{ fontSize: '2.5rem', marginBottom: '1.5rem', fontWeight: 900 }}>¡Bienvenido a MisFinanzas! 👋</h1>
-          <p style={{ fontSize: '1.1rem', color: '#64748b', maxWidth: '600px', marginBottom: '2rem', fontWeight: 500 }}>
-            Para comenzar a ver tu Dashboard, necesitas configurar un banco. Dirígete a la sección de Configuración para conectar tu primer banco.
-          </p>
-          <button className="btn" style={{ backgroundColor: '#000', color: '#fff', fontSize: '1.1rem', padding: '1rem 2rem' }} onClick={() => navigate('/settings')}>
-            Ir a Configuración
-          </button>
-        </div>
+      {dashboardBanks.length === 0 ? (
+        renderOnboardingWizard()
       ) : loading ? (
         <div style={{ marginTop: '2rem' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
@@ -1249,27 +1805,28 @@ export default function Dashboard() {
           </div>
         </div>
       ) : transactions.length === 0 ? (
-        <div style={{ backgroundColor: 'white', textAlign: 'center', padding: '6rem 2rem', border: '2px dashed #000', borderRadius: '12px', boxShadow: '4px 4px 0px #000' }}>
-          <h2 style={{ fontSize: '2rem', margin: '0 0 1rem 0', fontFamily: '"Montserrat", sans-serif', fontWeight: 900 }}>Aún no tienes movimientos cargados</h2>
-          <p style={{ marginBottom: '2rem', fontSize: '1.1rem', fontWeight: 600 }}>
-            Importa tus cartolas bancarias para comenzar a analizar.
-          </p>
-          <a href="/import" style={{ ...neoButton, textDecoration: 'none', display: 'inline-block', padding: '1rem 2rem', fontSize: '1.1rem' }}>Importar Transacciones</a>
-        </div>
+        renderOnboardingWizard()
       ) : (
         <>
-          {renderIntelligenceReport()}
-          {renderUnclassifiedAlert()}
-          {renderMainNumbers()}
-          {renderAnalysisBlock()}
-          {renderYearlyChart()}
-          <div className="card" style={{ marginTop: '2rem' }}>
-            <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Mapa de Flujo de Dinero</h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
-              Visualiza orgánicamente cómo se distribuye tu dinero en este periodo. Los montos se calculan en base a tus movimientos filtrados.
-            </p>
-            <MindMapChart transactions={filteredTransactions} taxonomy={taxonomy} />
-          </div>
+          {renderSetupMiniDashboard()}
+          {periodMovements.length === 0 ? (
+            renderEmptyPeriodState()
+          ) : (
+            <>
+              {renderIntelligenceReport()}
+              {renderUnclassifiedAlert()}
+              {renderMainNumbers()}
+              {renderAnalysisBlock()}
+              {renderYearlyChart()}
+              <div className="card" style={{ marginTop: '2rem' }}>
+                <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Mapa de Flujo de Dinero</h2>
+                <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
+                  Visualiza orgánicamente cómo se distribuye tu dinero en este periodo. Los montos se calculan en base a tus movimientos filtrados.
+                </p>
+                <MindMapChart transactions={filteredTransactions} taxonomy={taxonomy} />
+              </div>
+            </>
+          )}
         </>
       )}
 
@@ -1298,37 +1855,55 @@ export default function Dashboard() {
                   <thead>
                     <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 800, fontSize: '0.9rem', color: '#475569' }}>Fecha</th>
+                      {isConsolidated && (
+                        <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 800, fontSize: '0.9rem', color: '#475569' }}>Banco</th>
+                      )}
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 800, fontSize: '0.9rem', color: '#475569' }}>Descripción</th>
                       <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, fontSize: '0.9rem', color: '#475569' }}>Monto</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {detailsModal.transactions.map((t, i) => (
-                      <tr key={t.id} style={{ borderBottom: i === detailsModal.transactions.length - 1 ? 'none' : '1px solid #e2e8f0', backgroundColor: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
-                        <td style={{ padding: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap', fontSize: '0.9rem' }}>{t.date}</td>
-                        <td style={{ padding: '0.75rem', fontSize: '0.9rem', fontWeight: 500 }}>{t.description || t.original_description || 'Sin descripción'}</td>
-                        <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: t.type === 'ingreso' ? '#16a34a' : '#000' }}>
-                          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
-                            ${Math.abs(t.amount).toLocaleString('es-CL')}
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDetailsModal(null);
-                                navigate('/transactions?search=' + encodeURIComponent(t.description || t.original_description || ''));
-                              }}
-                              className="btn-icon"
-                              title="Corregir categoría"
-                            >
-                              <Edit2 size={14} strokeWidth={3} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {detailsModal.transactions.map((t, i) => {
+                      const bankId = getCanonicalBankId(t.bank);
+                      const bankInfo = AVAILABLE_BANKS.find(bank => bank.id === bankId);
+                      const bankLabel = bankInfo?.label || bankId;
+                      const bankColor = bankInfo?.color || '#94a3b8';
+
+                      return (
+                        <tr key={t.id} style={{ borderBottom: i === detailsModal.transactions.length - 1 ? 'none' : '1px solid #e2e8f0', backgroundColor: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                          <td style={{ padding: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap', fontSize: '0.9rem' }}>{t.date}</td>
+                          {isConsolidated && (
+                            <td style={{ padding: '0.75rem', whiteSpace: 'nowrap' }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.55rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#fff', boxShadow: '1px 1px 0 #000', fontSize: '0.72rem', fontWeight: 900 }}>
+                                <span style={{ width: '9px', height: '9px', borderRadius: '50%', backgroundColor: bankColor, border: '1.5px solid #000', flexShrink: 0 }} />
+                                {bankLabel}
+                              </span>
+                            </td>
+                          )}
+                          <td style={{ padding: '0.75rem', fontSize: '0.9rem', fontWeight: 500 }}>{t.description || t.original_description || 'Sin descripción'}</td>
+                          <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: getTransactionKind(t) === 'ingreso' ? '#16a34a' : '#000' }}>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
+                              ${Math.abs(t.amount).toLocaleString('es-CL')}
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDetailsModal(null);
+                                  navigate('/transactions?search=' + encodeURIComponent(t.description || t.original_description || ''));
+                                }}
+                                className="btn-icon"
+                                title="Corregir categoría"
+                              >
+                                <Edit2 size={14} strokeWidth={3} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                   <tfoot>
                     <tr style={{ backgroundColor: '#f1f5f9', borderTop: '2px solid #000' }}>
-                      <td colSpan={2} style={{ padding: '1rem 0.75rem', fontWeight: 900, fontSize: '1rem', color: '#000' }}>Total</td>
+                      <td colSpan={isConsolidated ? 3 : 2} style={{ padding: '1rem 0.75rem', fontWeight: 900, fontSize: '1rem', color: '#000' }}>Total</td>
                       <td style={{ padding: '1rem 0.75rem', textAlign: 'right', fontWeight: 900, fontSize: '1rem', color: '#000' }}>
                         ${(detailsModal.transactions.reduce((acc, t) => acc + Math.abs(t.amount), 0)).toLocaleString('es-CL')}
                       </td>

@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useBanks, AVAILABLE_BANKS } from '../contexts/BankContext';
 import type { Bank } from '../contexts/BankContext';
+import LaikaPet from '../components/LaikaPet';
 
 type Step = 'auth' | 'bank_setup' | 'verify_email';
 
@@ -100,7 +101,9 @@ export default function Login() {
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', padding: '1rem', backgroundColor: '#fdfdfc' }}>
         <div className="card" style={{ width: '100%', maxWidth: '480px' }}>
           <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🏦</div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
+              <LaikaPet pose="pointing" size={128} title="Laika te ayuda a elegir banco" />
+            </div>
             <h2 style={{ fontSize: '1.75rem', margin: '0 0 0.5rem 0' }}>¿Con qué banco trabajas?</h2>
             <p style={{ color: '#64748b', fontWeight: 600, fontSize: '0.9rem' }}>
               Selecciona los bancos que quieres integrar. Podrás agregar más desde el menú lateral.
@@ -186,7 +189,9 @@ export default function Login() {
     return (
       <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#fdfdfc', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
         <div className="card" style={{ width: '100%', maxWidth: '420px', textAlign: 'center', padding: '3rem 2rem' }}>
-          <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>✉️</div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+            <LaikaPet pose="love" size={136} title="Laika celebra tu registro" />
+          </div>
           <h2 style={{ fontSize: '2rem', fontWeight: 900, marginBottom: '1rem', letterSpacing: '-1px' }}>Revisa tu correo</h2>
           <p style={{ color: '#64748b', fontWeight: 600, fontSize: '1rem', marginBottom: '2rem', lineHeight: 1.6 }}>
             Te hemos enviado un enlace de confirmación a <strong>{email}</strong>. 
@@ -280,6 +285,10 @@ export default function Login() {
         }}
       >
         <div style={{ width: '100%', maxWidth: '400px' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.25rem' }}>
+            <LaikaPet pose={isSignUp ? 'pointing' : 'welcome'} size={136} title="Laika te da la bienvenida" />
+          </div>
+
           {/* Tabs */}
           <div style={{ display: 'flex', backgroundColor: '#fff', borderRadius: '2rem', border: '2px solid black', marginBottom: '2.5rem', padding: '0.25rem', boxShadow: '4px 4px 0px black' }}>
             <button 
