@@ -249,8 +249,8 @@ export function CascadingCategorySelector({ initialPrincipal, initialSecundaria,
 
             <div className="category-picker-grid">
               <div className="category-picker-left" style={{ padding: '1rem', overflowY: 'auto' }}>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.6rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#dbeafe', boxShadow: '2px 2px 0 #000', fontSize: '0.7rem', fontWeight: 900, marginBottom: '0.75rem' }}>
-                  Opción 1: buscar o tomar sugerencia
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.8rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#dbeafe', boxShadow: '3px 3px 0 #000', fontSize: '1rem', fontWeight: 900, marginBottom: '0.75rem' }}>
+                  Busca
                 </div>
                 {contextDescription && (
                   <div style={{ marginBottom: '0.75rem', padding: '0.65rem 0.75rem', border: '2px solid #000', borderRadius: '8px', backgroundColor: '#f1f5f9', boxShadow: '2px 2px 0px #000' }}>
@@ -306,9 +306,9 @@ export function CascadingCategorySelector({ initialPrincipal, initialSecundaria,
                 )}
               </div>
 
-              <div style={{ padding: '1rem', overflowY: 'auto', minHeight: 0 }}>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.6rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#fef08a', boxShadow: '2px 2px 0 #000', fontSize: '0.7rem', fontWeight: 900, marginBottom: '0.75rem' }}>
-                  Opción 2: navegar o crear categoría
+              <div className="category-picker-right" style={{ padding: '1rem', overflowY: 'auto', backgroundColor: '#f8fafc', borderLeft: '2px solid #000' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.8rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#fef08a', boxShadow: '3px 3px 0 #000', fontSize: '1.1rem', fontWeight: 900, marginBottom: '1rem' }}>
+                  Navega / Crea
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
                   {tipoTabs.map(tipo => (
@@ -442,6 +442,29 @@ export default function Transactions() {
     }
   }, [user, dashboardScope, activeBank, connectedBanks.join('|')]);
 
+  const fetchAllForBank = async (bankId: string) => {
+    let allData: any[] = [];
+    let from = 0;
+    const step = 1000;
+    while (true) {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user!.id)
+        .eq('bank', bankId)
+        .neq('amount', 0)
+        .order('date', { ascending: false })
+        .range(from, from + step - 1);
+      
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      allData = [...allData, ...data];
+      if (data.length < step) break;
+      from += step;
+    }
+    return allData;
+  };
+
   const fetchTransactions = async () => {
     try {
       setLoading(true);
@@ -452,39 +475,32 @@ export default function Transactions() {
 
       if (isConsolidated) {
         const results = await Promise.all(
-          scopedBanks.map(bank =>
-            supabase
-              .from('transactions')
-              .select('*')
-              .eq('user_id', user.id)
-              .eq('bank', bank)
-              .neq('amount', 0)
-              .order('date', { ascending: false })
-          )
+          scopedBanks.map(async bank => {
+            try {
+              const data = await fetchAllForBank(bank);
+              return { data, bank, error: null };
+            } catch (error) {
+              return { data: null, bank, error };
+            }
+          })
         );
 
         const firstError = results.find(result => result.error)?.error;
         if (firstError) throw firstError;
 
-        const rows = results.flatMap((result, index) =>
+        const rows = results.flatMap(result =>
           (result.data || []).map(tx => ({
             ...tx,
-            bank: tx.bank || scopedBanks[index]
+            bank: tx.bank || result.bank
           }))
         );
         rows.sort((a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime());
         setTransactions(rows);
       } else {
-        const { data, error } = await supabase
-          .from('transactions')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('bank', scopedBanks[0])
-          .neq('amount', 0)
-          .order('date', { ascending: false });
-
-        if (error) throw error;
-        setTransactions(data || []);
+        const data = await fetchAllForBank(scopedBanks[0]);
+        // Sort descending for Transactions
+        data.sort((a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime());
+        setTransactions(data);
       }
     } catch (error) {
       console.error('Error fetching transactions:', error);

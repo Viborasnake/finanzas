@@ -11,6 +11,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import { useBanks, AVAILABLE_BANKS } from '../contexts/BankContext';
 import { useNavigate } from 'react-router-dom';
 import { InitialAdjustmentManager } from '../components/InitialAdjustmentManager';
+import { useActionQueue } from '../hooks/useActionQueue';
 
 const CollapsibleSection = ({ id, icon: Icon, title, subtitle, description, defaultCollapsed = true, className = "card settings-card settings-card-wide", children }: any) => {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
@@ -79,10 +80,10 @@ export default function Settings() {
 
   // Settings
   const [myRut, setMyRut] = useState('');
+  const { dispatchAction } = useActionQueue();
 
 
-  
-  const { customCategories, saveCustomCategories, classificationRules, saveClassificationRules } = useSettings();
+  const { customCategories, saveCustomCategories, classificationRules, saveClassificationRules, setClassificationRules } = useSettings();
   const { connectedBanks, mainBank, setMainBankAndSave, addBank, removeBank, activeBank } = useBanks();
   const dashboardScope = localStorage.getItem('finanzas_dashboard_scope') || 'all';
 
@@ -601,7 +602,43 @@ export default function Settings() {
             <CascadingCategorySelector 
               initialPrincipal={editingRuleId ? newRuleCategory.principal : null} 
               initialSecundaria={editingRuleId ? newRuleCategory.secundaria : null} 
-              onSave={(t: any, p: any, s: any) => setNewRuleCategory({ tipo: t, principal: p, secundaria: s })} 
+              onSave={(t: any, p: any, s: any) => {
+                setNewRuleCategory({ tipo: t, principal: p, secundaria: s });
+                if (editingRuleId && newRuleKeyword.trim()) {
+                  const currentRule = classificationRules.find(r => r.id === editingRuleId);
+                  const updatedRules = classificationRules.map(r => 
+                    r.id === editingRuleId ? {
+                      ...r,
+                      keyword: newRuleKeyword.trim(),
+                      tipo_movimiento: t,
+                      categoria_principal: p,
+                      categoria_secundaria: s
+                    } : r
+                  );
+                  
+                  // Instantly update local state via setClassificationRules
+                  setClassificationRules(updatedRules);
+                  
+                  dispatchAction({
+                    id: `rule-update-${editingRuleId}`,
+                    message: `Regla actualizada`,
+                    execute: async () => {
+                      // Execute DB update in background
+                      await saveClassificationRules(updatedRules);
+                    },
+                    onUndo: () => {
+                      if (currentRule) {
+                        const revertedRules = classificationRules.map(r => r.id === editingRuleId ? currentRule : r);
+                        setClassificationRules(revertedRules);
+                      }
+                    }
+                  });
+                  
+                  setEditingRuleId(null);
+                  setNewRuleKeyword('');
+                  setNewRuleCategory({ tipo: null, principal: null, secundaria: null });
+                }
+              }} 
               autoOpenTrigger={autoOpenTrigger}
             />
             </div>

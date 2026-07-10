@@ -30,6 +30,7 @@ interface SettingsContextType {
   customCategories: CustomCategory[];
   saveCustomCategories: (cats: CustomCategory[], targetBank?: string) => Promise<void>;
   classificationRules: ClassificationRule[];
+  setClassificationRules: React.Dispatch<React.SetStateAction<ClassificationRule[]>>;
   saveClassificationRules: (rules: ClassificationRule[], targetBank?: string) => Promise<void>;
   fixedExpenses: FixedExpense[];
   saveFixedExpenses: (items: FixedExpense[]) => Promise<void>;
@@ -42,6 +43,7 @@ const SettingsContext = createContext<SettingsContextType>({
   customCategories: [],
   saveCustomCategories: async () => {},
   classificationRules: [],
+  setClassificationRules: () => {},
   saveClassificationRules: async () => {},
   fixedExpenses: [],
   saveFixedExpenses: async () => {},
@@ -248,7 +250,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     <SettingsContext.Provider value={{ 
       customCategories, 
       saveCustomCategories, 
-      classificationRules, 
+      classificationRules,
+      setClassificationRules, 
       saveClassificationRules,
       fixedExpenses,
       saveFixedExpenses,

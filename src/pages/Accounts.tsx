@@ -34,28 +34,7 @@ const monthRange = (base: Date) => ({
   label: base.toLocaleString('es-CL', { month: 'long', year: 'numeric' })
 });
 
-const fetchAllBankTransactions = async (userId: string, bank: string) => {
-  const pageSize = 1000;
-  let from = 0;
-  const rows: any[] = [];
 
-  while (true) {
-    const { data, error } = await supabase
-      .from('transactions')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('bank', bank)
-      .order('date', { ascending: true })
-      .range(from, from + pageSize - 1);
-
-    if (error) throw error;
-    rows.push(...(data || []));
-    if (!data || data.length < pageSize) break;
-    from += pageSize;
-  }
-
-  return rows;
-};
 
 export default function Accounts() {
   const navigate = useNavigate();
@@ -68,31 +47,70 @@ export default function Accounts() {
   const [selectedStatusId, setSelectedStatusId] = useState<string | null>(null);
 
   const isConsolidated = dashboardScope === 'all' && connectedBanks.length > 1;
-  const banks = isConsolidated ? connectedBanks : (activeBank ? [activeBank] : []);
+  const scopedBanks = isConsolidated ? connectedBanks : (activeBank ? [activeBank] : []);
   const bankLabel = isConsolidated
     ? 'Todos los bancos'
     : (AVAILABLE_BANKS.find(bank => bank.id === activeBank)?.label || 'Sin banco');
   const range = useMemo(() => monthRange(month), [month]);
 
   useEffect(() => {
+    const fetchAllForBank = async (bankId: string) => {
+      let allData: any[] = [];
+      let from = 0;
+      const step = 1000;
+      while (true) {
+        const { data, error } = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('user_id', user!.id)
+          .eq('bank', bankId)
+          .order('date', { ascending: false })
+          .range(from, from + step - 1);
+        
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        allData = [...allData, ...data];
+        if (data.length < step) break;
+        from += step;
+      }
+      return allData;
+    };
+
     const fetchTransactions = async () => {
-      if (!user || banks.length === 0) {
+      if (!user || scopedBanks.length === 0) {
         setTransactions([]);
         setLoading(false);
         return;
       }
-
       try {
         setLoading(true);
-        const results = await Promise.all(
-          banks.map(async bank => {
-            const rows = await fetchAllBankTransactions(user.id, bank);
-            return rows.map(tx => ({ ...tx, bank: tx.bank || bank }));
-          })
-        );
-        const rows = results.flat();
-        rows.sort((a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime());
-        setTransactions(rows);
+        if (isConsolidated) {
+          const results = await Promise.all(
+            scopedBanks.map(async bank => {
+              try {
+                const data = await fetchAllForBank(bank);
+                return { data, bank, error: null };
+              } catch (error) {
+                return { data: null, bank, error };
+              }
+            })
+          );
+          const firstError = results.find(result => result.error)?.error;
+          if (firstError) throw firstError;
+
+          const rows = results.flatMap(result =>
+            (result.data || []).map(tx => ({
+              ...tx,
+              bank: tx.bank || result.bank
+            }))
+          );
+          rows.sort((a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime());
+          setTransactions(rows);
+        } else {
+          const data = await fetchAllForBank(scopedBanks[0]);
+          data.sort((a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime());
+          setTransactions(data);
+        }
       } catch (error) {
         console.error('Error fetching fixed expenses transactions:', error);
       } finally {

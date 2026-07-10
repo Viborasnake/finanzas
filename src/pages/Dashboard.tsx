@@ -250,43 +250,60 @@ export default function Dashboard() {
     }
   }, [loading, transactions, periodWasChosen, activePreset]);
 
+  const fetchAllForBank = async (bankId: string) => {
+    let allData: any[] = [];
+    let from = 0;
+    const step = 1000;
+    while (true) {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user!.id)
+        .eq('bank', bankId)
+        .order('date', { ascending: false })
+        .range(from, from + step - 1);
+      
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      allData = [...allData, ...data];
+      if (data.length < step) break;
+      from += step;
+    }
+    return allData;
+  };
+
   const fetchTransactions = async () => {
     if (!user || dashboardBanks.length === 0) return;
     try {
       setLoading(true);
       if (isConsolidated) {
         const results = await Promise.all(
-          dashboardBanks.map(bank =>
-            supabase
-              .from('transactions')
-              .select('*')
-              .eq('user_id', user.id)
-              .eq('bank', bank)
-              .order('date', { ascending: true })
-          )
+          dashboardBanks.map(async bank => {
+            try {
+              const data = await fetchAllForBank(bank);
+              return { data, bank, error: null };
+            } catch (error) {
+              return { data: null, bank, error };
+            }
+          })
         );
 
         const firstError = results.find(result => result.error)?.error;
         if (firstError) throw firstError;
 
-        const rows = results.flatMap((result, index) =>
+        const rows = results.flatMap(result =>
           (result.data || []).map(tx => ({
             ...tx,
-            bank: tx.bank || dashboardBanks[index]
+            bank: tx.bank || result.bank
           }))
         );
         rows.sort((a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime());
         setTransactions(rows);
       } else {
-        const { data, error } = await supabase
-          .from('transactions')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('bank', dashboardBanks[0])
-          .order('date', { ascending: true });
-
-        if (error) throw error;
-        setTransactions(data || []);
+        const data = await fetchAllForBank(dashboardBanks[0]);
+        // Sort ascending for Dashboard
+        data.sort((a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime());
+        setTransactions(data);
       }
     } catch (error) {
       console.error('Error fetching transactions:', error);
