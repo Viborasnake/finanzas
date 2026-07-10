@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { AVAILABLE_BANKS, useBanks } from '../contexts/BankContext';
-import { Edit2, Trash2, Plus, AlertCircle } from 'lucide-react';
+import { Edit2, Trash2, Plus, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export function InitialAdjustmentManager() {
@@ -190,14 +190,39 @@ export function InitialAdjustmentManager() {
     return bankInfo ? bankInfo.label : bankId;
   };
 
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
   if (connectedBanks.length === 0) return null;
 
   return (
-    <div className="card" style={{ marginBottom: '2rem' }}>
-      <h2 style={{ fontSize: '1.5rem', marginBottom: '0.75rem' }}>Ajuste de Inicio (Saldo Inicial)</h2>
-      <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
-        Configura o edita el saldo base de tus cuentas bancarias para que el balance sea exacto.
-      </p>
+    <div id="ajuste" className="card settings-card-wide settings-anchor" style={{ marginBottom: '2rem', padding: '1.25rem' }}>
+      <div 
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+      >
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', backgroundColor: '#f1f5f9', borderRadius: '8px' }}>
+            <span style={{ fontSize: '1.2rem', fontWeight: 900 }}>$</span>
+          </div>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Ajuste de Inicio (Saldo Inicial)</h2>
+            <span style={{ display: 'block', color: '#64748b', fontSize: '0.82rem', fontWeight: 800 }}>Configura el saldo base para que cuadre todo</span>
+          </div>
+        </div>
+        <button className="btn btn-outline" type="button" style={{ padding: '0.5rem 0.75rem', border: '2px solid black', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          {isCollapsed ? (
+            <>Mostrar <ChevronDown size={16} strokeWidth={3} /></>
+          ) : (
+            <>Ocultar <ChevronUp size={16} strokeWidth={3} /></>
+          )}
+        </button>
+      </div>
+      
+      {!isCollapsed && (
+        <div style={{ marginTop: '1.25rem' }}>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 600 }}>
+            Configura o edita el saldo base de tus cuentas bancarias para que el balance sea exacto.
+          </p>
 
       {loading ? (
         <p style={{ fontWeight: 600 }}>Cargando información...</p>
@@ -301,6 +326,8 @@ export function InitialAdjustmentManager() {
               </div>
             );
           })}
+        </div>
+      )}
         </div>
       )}
     </div>

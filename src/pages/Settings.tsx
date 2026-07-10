@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, Trash2, Save, X, BadgeCheck, Landmark, Tags, Users, Wand2, CalendarCheck, Pencil, Activity, CheckCircle2, ChevronRight, Settings as SettingsIcon, FileSpreadsheet, Sparkles, ChevronDown, Wallet } from 'lucide-react';
+import { Plus, Trash2, Save, X, BadgeCheck, Landmark, Tags, Users, Wand2, CalendarCheck, Pencil, Activity, CheckCircle2, ChevronRight, Settings as SettingsIcon, FileSpreadsheet, Sparkles, ChevronDown, ChevronUp, Wallet } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { extractAndNormalizeRUT } from '../utils/rutParser';
 import type { ClassificationRule } from '../utils/classificationRules';
@@ -28,6 +28,39 @@ const SUGGESTED_FIXED_EXPENSES = [
   'Seguro Auto (Falabella)'
 ];
 
+
+const CollapsibleSection = ({ id, icon: Icon, title, subtitle, description, defaultCollapsed = true, className = "card settings-card settings-card-wide", children }: any) => {
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  return (
+    <div id={id} className={className} style={{ position: 'relative', zIndex: 9, padding: '1.25rem' }}>
+      <div 
+        onClick={() => setCollapsed(!collapsed)}
+        style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+      >
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <Icon size={26} />
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{title}</h2>
+            <span style={{ display: 'block', color: '#64748b', fontSize: '0.82rem', fontWeight: 800, marginTop: '0.25rem' }}>{subtitle}</span>
+          </div>
+        </div>
+        <button className="btn btn-outline" type="button" style={{ padding: '0.5rem 0.75rem', border: '2px solid black', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          {collapsed ? (
+            <>Mostrar <ChevronDown size={16} strokeWidth={3} /></>
+          ) : (
+            <>Ocultar <ChevronUp size={16} strokeWidth={3} /></>
+          )}
+        </button>
+      </div>
+      {!collapsed && (
+        <div style={{ marginTop: '1.25rem' }}>
+          {description && <p className="settings-muted" style={{ marginBottom: '1.25rem' }}>{description}</p>}
+          {children}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -522,17 +555,7 @@ export default function Settings() {
 
       <div className="settings-bento">
         {/* Bank Management */}
-        <div className="card settings-card settings-card-wide" style={{ position: 'relative', zIndex: 9 }}>
-          <div className="settings-section-title">
-            <Landmark size={26} />
-            <div>
-              <h2 id="bancos">Mis Bancos</h2>
-              <span>Primero elige con qué banco vas a trabajar</span>
-            </div>
-          </div>
-          <p className="settings-muted">
-            Administra los bancos que tienes conectados y define cuál es el banco principal para tus reportes globales.
-          </p>
+        <CollapsibleSection id="bancos" icon={Landmark} title="Mis Bancos" subtitle="Primero elige con qué banco vas a trabajar" description="Administra los bancos que tienes conectados y define cuál es el banco principal para tus reportes globales." defaultCollapsed={false}>
           
           <div className="settings-list compact" style={{ marginBottom: '1.5rem' }}>
             {connectedBanks.map(bankId => {
@@ -594,7 +617,7 @@ export default function Settings() {
               <p style={{ color: 'var(--text-secondary)' }}>Ya tienes todos los bancos disponibles conectados.</p>
             )}
           </div>
-        </div>
+        </CollapsibleSection>
 
         {/* Ajuste de Inicio */}
         <div id="ajuste" className="settings-card-wide settings-anchor">
@@ -602,17 +625,7 @@ export default function Settings() {
         </div>
         
         {/* Identificación (RUT) */}
-        <div className="card settings-card settings-card-wide">
-          <div className="settings-section-title">
-            <BadgeCheck size={26} />
-            <div>
-              <h2 id="deteccion">Detección Automática</h2>
-              <span>Tu RUT y auto-clasificación histórica</span>
-            </div>
-          </div>
-          <p className="settings-muted">
-            Ingresa tu RUT para que el sistema reconozca automáticamente las transferencias entre tus propias cuentas y no las sume como Egreso o Ingreso.
-          </p>
+        <CollapsibleSection id="deteccion" icon={BadgeCheck} title="Detección Automática" subtitle="Tu RUT y auto-clasificación histórica" description="Ingresa tu RUT para que el sistema reconozca automáticamente las transferencias entre tus propias cuentas y no las sume como Egreso o Ingreso." defaultCollapsed={true}>
           
           <div className="settings-inline-form">
             <input 
@@ -692,20 +705,10 @@ export default function Settings() {
               Auto-clasificar pendientes
             </button>
           </div>
-        </div>
+        </CollapsibleSection>
 
         {/* Categorías Personalizadas */}
-        <div className="card settings-card settings-card-wide">
-          <div className="settings-section-title">
-            <Tags size={26} />
-            <div>
-              <h2 id="categorias">Mis Categorías</h2>
-              <span>Categorías personalizadas para este banco</span>
-            </div>
-          </div>
-          <p className="settings-muted">
-            Agrega nuevas categorías para organizar tus movimientos. Estas se sumarán a la lista base que ya trae la aplicación.
-          </p>
+        <CollapsibleSection id="categorias" icon={Tags} title="Mis Categorías" subtitle="Categorías personalizadas para este banco" description="Agrega nuevas categorías para organizar tus movimientos. Estas se sumarán a la lista base que ya trae la aplicación." defaultCollapsed={true}>
 
           <form className="settings-grid-form" onSubmit={handleAddCustomCategory}>
             <div>
@@ -763,20 +766,10 @@ export default function Settings() {
               <p style={{ margin: 0, color: '#64748b', fontWeight: 600 }}>No has creado categorías personalizadas aún.</p>
             </div>
           )}
-        </div>
+        </CollapsibleSection>
 
         {/* Gastos Fijos */}
-        <div className="card settings-card settings-card-wide">
-          <div className="settings-section-title">
-            <CalendarCheck size={26} />
-            <div>
-              <h2 id="gastos-fijos">Gastos Fijos</h2>
-              <span>Cuentas recurrentes para controlar pagos mensuales</span>
-            </div>
-          </div>
-          <p className="settings-muted">
-            Crea tus cuentas fijas y vincúlalas a una categoría. El dashboard las cruzará con tus movimientos para mostrar qué está pagado y qué falta.
-          </p>
+        <CollapsibleSection id="gastos-fijos" icon={CalendarCheck} title="Gastos Fijos" subtitle="Cuentas recurrentes para controlar pagos mensuales" description="Crea tus cuentas fijas y vincúlalas a una categoría. El dashboard las cruzará con tus movimientos para mostrar qué está pagado y qué falta." defaultCollapsed={true}>
 
           {fixedExpenses.length === 0 && (
             <div className="settings-callout" style={{ borderTop: 'none', marginTop: 0, paddingTop: 0, marginBottom: '1.25rem' }}>
@@ -905,20 +898,10 @@ export default function Settings() {
               ))
             )}
           </div>
-        </div>
+        </CollapsibleSection>
 
         {/* Contactos Frecuentes */}
-        <div className="card settings-card">
-          <div className="settings-section-title">
-            <Users size={26} />
-            <div>
-              <h2 id="contactos">Contactos Conocidos</h2>
-              <span>Personas frecuentes para transferencias</span>
-            </div>
-          </div>
-          <p className="settings-muted">
-            Agrega RUTs de amigos o familiares. Cuando importes, el sistema clasificará automáticamente los traspasos a ellos como "Transferencias a Otras Personas".
-          </p>
+        <CollapsibleSection id="contactos" icon={Users} title="Contactos Conocidos" subtitle="Personas frecuentes para transferencias" description="Agrega RUTs de amigos o familiares. Cuando importes, el sistema clasificará automáticamente los traspasos a ellos como 'Transferencias a Otras Personas'." defaultCollapsed={true}>
           
           <form className="settings-stack-form" onSubmit={handleAddContact}>
             <input 
@@ -963,20 +946,10 @@ export default function Settings() {
               ))
             )}
           </div>
-        </div>
+        </CollapsibleSection>
 
         {/* Classification Rules */}
-        <div className="card settings-card settings-card-tall" style={{ position: 'relative', zIndex: 10 }}>
-          <div className="settings-section-title">
-            <Wand2 size={26} />
-            <div>
-              <h2 id="reglas">Reglas de Auto-Clasificación</h2>
-              <span>Mapeo persistente por palabra clave</span>
-            </div>
-          </div>
-          <p className="settings-muted">
-            Define qué texto debe estar en la glosa (descripción) de una transacción para asignarle automáticamente una categoría. Las reglas se aplican al importar.
-          </p>
+        <CollapsibleSection id="reglas" icon={Wand2} title="Reglas de Auto-Clasificación" subtitle="Mapeo persistente por palabra clave" description="Define qué texto debe estar en la glosa (descripción) de una transacción para asignarle automáticamente una categoría. Las reglas se aplican al importar." className="card settings-card settings-card-tall" defaultCollapsed={true}>
           
           <form className="settings-rule-form" onSubmit={handleAddRule}>
             <input 
@@ -1023,7 +996,7 @@ export default function Settings() {
               ))
             )}
           </div>
-        </div>
+        </CollapsibleSection>
 
         {/* Danger Zone */}
         <div className="card settings-card settings-card-wide settings-danger" style={{ position: 'relative', zIndex: 10, borderColor: 'var(--danger)' }}>
