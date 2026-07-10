@@ -44,11 +44,11 @@ const CollapsibleSection = ({ id, icon: Icon, title, subtitle, description, defa
             <span style={{ display: 'block', color: '#64748b', fontSize: '0.82rem', fontWeight: 800, marginTop: '0.25rem' }}>{subtitle}</span>
           </div>
         </div>
-        <button className="btn btn-outline" type="button" style={{ padding: '0.5rem 0.75rem', border: '2px solid black', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <button type="button" style={{ background: 'transparent', border: 'none', boxShadow: 'none', padding: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer', color: '#000' }}>
           {collapsed ? (
-            <>Mostrar <ChevronDown size={16} strokeWidth={3} /></>
+            <>Mostrar <ChevronDown size={24} strokeWidth={4} /></>
           ) : (
-            <>Ocultar <ChevronUp size={16} strokeWidth={3} /></>
+            <>Ocultar <ChevronUp size={24} strokeWidth={4} /></>
           )}
         </button>
       </div>
@@ -555,7 +555,7 @@ export default function Settings() {
 
       <div className="settings-bento">
         {/* Bank Management */}
-        <CollapsibleSection id="bancos" icon={Landmark} title="Mis Bancos" subtitle="Primero elige con qué banco vas a trabajar" description="Administra los bancos que tienes conectados y define cuál es el banco principal para tus reportes globales." defaultCollapsed={false}>
+        <CollapsibleSection id="bancos" icon={Landmark} title="Mis Bancos" subtitle="Primero elige con qué banco vas a trabajar" description="Administra los bancos que tienes conectados y define cuál es el banco principal para tus reportes globales." defaultCollapsed={true}>
           
           <div className="settings-list compact" style={{ marginBottom: '1.5rem' }}>
             {connectedBanks.map(bankId => {

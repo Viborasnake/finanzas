@@ -190,7 +190,7 @@ export function InitialAdjustmentManager() {
     return bankInfo ? bankInfo.label : bankId;
   };
 
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   if (connectedBanks.length === 0) return null;
 
@@ -209,11 +209,11 @@ export function InitialAdjustmentManager() {
             <span style={{ display: 'block', color: '#64748b', fontSize: '0.82rem', fontWeight: 800 }}>Configura el saldo base para que cuadre todo</span>
           </div>
         </div>
-        <button className="btn btn-outline" type="button" style={{ padding: '0.5rem 0.75rem', border: '2px solid black', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <button type="button" style={{ background: 'transparent', border: 'none', boxShadow: 'none', padding: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer', color: '#000' }}>
           {isCollapsed ? (
-            <>Mostrar <ChevronDown size={16} strokeWidth={3} /></>
+            <>Mostrar <ChevronDown size={24} strokeWidth={4} /></>
           ) : (
-            <>Ocultar <ChevronUp size={16} strokeWidth={3} /></>
+            <>Ocultar <ChevronUp size={24} strokeWidth={4} /></>
           )}
         </button>
       </div>
