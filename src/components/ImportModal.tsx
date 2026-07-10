@@ -596,15 +596,11 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
       
       try {
         const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
-        const page = await pdf.getPage(1);
-        const textContent = await page.getTextContent();
-        const fullText = textContent.items.map((i: any) => i.str).join(' ').toLowerCase();
-        if (fullText.includes('consorcio')) return 'Consorcio';
+        await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
+        return 'Consorcio';
       } catch (e) {
-        // Ignore error, might be password protected (Mach)
+        return 'Mach';
       }
-      return 'Mach'; // Por defecto asumimos que es MACH para los PDFs
     }
     if (name.endsWith('.xls') || name.endsWith('.xlsx')) return 'Itaú';
     
@@ -758,13 +754,53 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
         return;
       }
 
-      const { error } = await supabase.from('transactions').insert(
-        newTransactions.map(t => {
-          const sig = `${t.date}_${t.amount}_${t.original_description}`;
-          const manualMatch = manualMatches.get(sig);
+      if (newTransactions.length > 0) {
+        const { error: insertError } = await supabase.from('transactions').insert(
+          newTransactions.map(t => {
+            const sig = `${t.date}_${t.amount}_${t.original_description}`;
+            const manualMatch = manualMatches.get(sig);
 
-          if (manualMatch) {
-            // Heredar categorías del pago manual
+            if (manualMatch) {
+              // Heredar categorías del pago manual
+              return {
+                user_id: user.id,
+                bank: activeBank,
+                date: t.date,
+                description: t.description,
+                original_description: t.original_description,
+                amount: t.amount,
+                type: t.type,
+                raw_data: t.raw_data,
+                tipo_movimiento: manualMatch.tipo_movimiento,
+                categoria_principal: manualMatch.categoria_principal,
+                categoria_secundaria: manualMatch.categoria_secundaria
+              };
+            }
+
+            const descForCheck = (t.original_description || t.description || '').toLowerCase();
+            
+            let tipo_movimiento = null;
+            let categoria_principal = null;
+            let categoria_secundaria = null;
+            
+            const rutExtracted = extractAndNormalizeRUT(descForCheck);
+            const normalizedMyRut = myRut ? extractAndNormalizeRUT(myRut) : null;
+            
+            if (rutExtracted && normalizedMyRut && rutExtracted === normalizedMyRut) {
+              tipo_movimiento = 'Movimiento Interno';
+              categoria_principal = descForCheck.includes('fondo') ? 'Traspaso fondo' : 'Transferencia personal';
+              categoria_secundaria = categoria_principal;
+            }
+
+            if (!tipo_movimiento) {
+              const ruleMatch = applyRules(descForCheck, classificationRules);
+              if (ruleMatch) {
+                tipo_movimiento = ruleMatch.tipo_movimiento;
+                categoria_principal = ruleMatch.categoria_principal;
+                categoria_secundaria = ruleMatch.categoria_secundaria;
+              }
+            }
+
             return {
               user_id: user.id,
               bank: activeBank,
@@ -774,53 +810,14 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
               amount: t.amount,
               type: t.type,
               raw_data: t.raw_data,
-              tipo_movimiento: manualMatch.tipo_movimiento,
-              categoria_principal: manualMatch.categoria_principal,
-              categoria_secundaria: manualMatch.categoria_secundaria
+              tipo_movimiento,
+              categoria_principal,
+              categoria_secundaria
             };
-          }
-
-          const descForCheck = (t.original_description || t.description || '').toLowerCase();
-          
-          let tipo_movimiento = null;
-          let categoria_principal = null;
-          let categoria_secundaria = null;
-          
-          const rutExtracted = extractAndNormalizeRUT(descForCheck);
-          const normalizedMyRut = myRut ? extractAndNormalizeRUT(myRut) : null;
-          
-          if (rutExtracted && normalizedMyRut && rutExtracted === normalizedMyRut) {
-            tipo_movimiento = 'Movimiento Interno';
-            categoria_principal = descForCheck.includes('fondo') ? 'Traspaso fondo' : 'Transferencia personal';
-            categoria_secundaria = categoria_principal;
-          }
-
-          if (!tipo_movimiento) {
-            const ruleMatch = applyRules(descForCheck, classificationRules);
-            if (ruleMatch) {
-              tipo_movimiento = ruleMatch.tipo_movimiento;
-              categoria_principal = ruleMatch.categoria_principal;
-              categoria_secundaria = ruleMatch.categoria_secundaria;
-            }
-          }
-
-          return {
-            user_id: user.id,
-            bank: activeBank,
-            date: t.date,
-            description: t.description,
-            original_description: t.original_description,
-            amount: t.amount,
-            type: t.type,
-            raw_data: t.raw_data,
-            tipo_movimiento,
-            categoria_principal,
-            categoria_secundaria
-          };
-        })
-      );
-
-      if (error) throw error;
+          })
+        );
+        if (insertError) throw insertError;
+      }
       
       // Eliminar los pagos manuales que fueron reemplazados
       if (manualIdsToDelete.length > 0) {
