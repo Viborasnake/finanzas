@@ -35,7 +35,7 @@ const getBankMeta = (bankName: any) => {
 };
 
 
-export function CascadingCategorySelector({ initialPrincipal, initialSecundaria, contextDescription, onSave }: any) {
+export function CascadingCategorySelector({ initialPrincipal, initialSecundaria, contextDescription, onSave, autoOpenTrigger }: any) {
   const { taxonomy, allOptions: ALL_OPTIONS } = useTaxonomy();
   const { customCategories, saveCustomCategories, classificationRules } = useSettings();
 
@@ -60,6 +60,16 @@ export function CascadingCategorySelector({ initialPrincipal, initialSecundaria,
       setInputValue('');
     }
   }, [initialPrincipal, initialSecundaria]);
+
+  useEffect(() => {
+    if (autoOpenTrigger) {
+      setIsOpen(true);
+      setSearchValue('');
+      const tipo = ALL_OPTIONS.find(o => o.principal === initialPrincipal && o.secundaria === initialSecundaria)?.tipo || 'Egreso';
+      setSelectedTipo(tipo);
+      setExpandedPrincipal(initialPrincipal || null);
+    }
+  }, [autoOpenTrigger]);
 
   useEffect(() => {
     if (!isOpen) return;

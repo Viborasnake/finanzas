@@ -264,6 +264,7 @@ export default function Settings() {
   const [newRuleKeyword, setNewRuleKeyword] = useState('');
   const [newRuleCategory, setNewRuleCategory] = useState<{ tipo: string | null, principal: string | null, secundaria: string | null }>({ tipo: null, principal: null, secundaria: null });
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
+  const [autoOpenTrigger, setAutoOpenTrigger] = useState<number>(0);
   const [newCatTipo, setNewCatTipo] = useState('Egreso');
   const [newCatPrincipal, setNewCatPrincipal] = useState('');
   const [newCatSecundaria, setNewCatSecundaria] = useState('');
@@ -601,6 +602,7 @@ export default function Settings() {
               initialPrincipal={editingRuleId ? newRuleCategory.principal : null} 
               initialSecundaria={editingRuleId ? newRuleCategory.secundaria : null} 
               onSave={(t: any, p: any, s: any) => setNewRuleCategory({ tipo: t, principal: p, secundaria: s })} 
+              autoOpenTrigger={autoOpenTrigger}
             />
             </div>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -629,7 +631,7 @@ export default function Settings() {
                       Clasificar como: <br/>{r.tipo_movimiento} &gt; {r.categoria_principal} &gt; {r.categoria_secundaria}
                     </span>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', borderTop: '2px dashed #e2e8f0', paddingTop: '0.75rem' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', borderTop: '2px dashed #e2e8f0', paddingTop: '0.75rem', marginTop: 'auto' }}>
                     <button 
                       className="btn btn-outline" 
                       style={{ padding: '0.5rem', flex: 1 }}
@@ -637,6 +639,7 @@ export default function Settings() {
                         setEditingRuleId(r.id);
                         setNewRuleKeyword(r.keyword);
                         setNewRuleCategory({ tipo: r.tipo_movimiento, principal: r.categoria_principal, secundaria: r.categoria_secundaria });
+                        setAutoOpenTrigger(Date.now());
                         window.scrollTo({ top: document.getElementById('reglas')?.offsetTop || 0, behavior: 'smooth' });
                       }}
                     >
@@ -645,11 +648,11 @@ export default function Settings() {
                     </button>
                     <button 
                       className="btn" 
-                      style={{ padding: '0.5rem', backgroundColor: '#fee2e2', color: 'var(--danger)', border: '2px solid var(--danger)', flex: 1 }}
+                      style={{ padding: '0.5rem', backgroundColor: '#fee2e2', color: 'var(--danger)', border: '2px solid var(--danger)', flex: '0 0 auto' }}
+                      title="Eliminar regla"
                       onClick={() => handleDeleteRule(r.id)}
                     >
                       <Trash2 size={18} />
-                      Eliminar
                     </button>
                   </div>
                 </div>
