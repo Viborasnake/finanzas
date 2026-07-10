@@ -459,7 +459,7 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
              original_description: description,
              amount,
              type,
-             raw_data: { fullLine: lineItems.map((i: any) => i.str).join(' ') }
+             raw_data: { fullLine: lineItems.map((i: any) => i.str).join(' '), 'Descripción': description }
            });
         }
       }
@@ -566,7 +566,7 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
              original_description: description,
              amount,
              type,
-             raw_data: { fullLine: fullText }
+             raw_data: { fullLine: fullText, 'Descripción': description }
            });
         }
       }
@@ -767,7 +767,6 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
                 bank: activeBank,
                 date: t.date,
                 description: t.description,
-                original_description: t.original_description,
                 amount: t.amount,
                 type: t.type,
                 raw_data: t.raw_data,
@@ -806,7 +805,6 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
               bank: activeBank,
               date: t.date,
               description: t.description,
-              original_description: t.original_description,
               amount: t.amount,
               type: t.type,
               raw_data: t.raw_data,
