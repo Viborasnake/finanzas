@@ -1,139 +1,151 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { useBanks } from '../contexts/BankContext';
-import { Edit2, Trash2 } from 'lucide-react';
+import { AVAILABLE_BANKS, useBanks } from '../contexts/BankContext';
+import { Edit2, Trash2, Plus, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export function InitialAdjustmentManager() {
   const { user } = useAuth();
-  const { connectedBanks, mainBank } = useBanks();
-  const [selectedBank, setSelectedBank] = useState<string>(mainBank || (connectedBanks.length > 0 ? connectedBanks[0] : ''));
+  const { connectedBanks } = useBanks();
   
-  const [existingAdjustment, setExistingAdjustment] = useState<any>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [adjustments, setAdjustments] = useState<Record<string, any>>({});
+  const [suggestions, setSuggestions] = useState<Record<string, any>>({});
+  const [editingBank, setEditingBank] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Form states
+  // Form states (reset when editingBank changes)
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [desc, setDesc] = useState('Saldo Inicial (Calculado de Cartola)');
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<'ingreso'|'egreso'>('ingreso');
-  const [suggestion, setSuggestion] = useState<{ amount: number, type: 'ingreso'|'egreso', refDate: string } | null>(null);
 
-  useEffect(() => {
-    if (connectedBanks.length > 0 && !selectedBank) {
-      setSelectedBank(mainBank || connectedBanks[0]);
-    }
-  }, [connectedBanks, mainBank, selectedBank]);
-
-  useEffect(() => {
-    async function checkExisting() {
-      if (!user || !selectedBank) return;
-      setLoading(true);
-      
-      const { data } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('bank', selectedBank)
-        .ilike('description', '%saldo inicial%')
-        .limit(1);
-
-      if (data && data.length > 0) {
-        setExistingAdjustment(data[0]);
-        setSuggestion(null);
-      } else {
-        setExistingAdjustment(null);
-        fetchSuggestion();
-      }
+  const fetchAllData = async () => {
+    if (!user || connectedBanks.length === 0) {
       setLoading(false);
+      return;
     }
-    checkExisting();
-  }, [user, selectedBank]);
-
-  async function fetchSuggestion() {
-    if (!user || !selectedBank) return;
-    const { data } = await supabase
+    setLoading(true);
+    
+    // 1. Fetch adjustments
+    const { data: adjData } = await supabase
       .from('transactions')
-      .select('date, amount, type, raw_data')
+      .select('*')
       .eq('user_id', user.id)
-      .eq('bank', selectedBank)
-      .not('raw_data', 'is', null)
-      .order('date', { ascending: true })
-      .limit(1);
+      .in('bank', connectedBanks)
+      .ilike('description', '%saldo inicial%');
 
-    if (data && data.length > 0) {
-      const tx = data[0];
-      if (tx.raw_data) {
-        const saldoKey = Object.keys(tx.raw_data).find(k => k.toLowerCase() === 'saldo' || k.toLowerCase().includes('saldo'));
-        if (saldoKey) {
-          const val = tx.raw_data[saldoKey];
-          const cleanStr = String(val).replace(/[^0-9,-]/g, '');
-          const num = parseFloat(cleanStr.replace(',', '.'));
-          let currentSaldo = isNaN(num) ? 0 : num;
-          
-          if (!isNaN(currentSaldo)) {
-            const saldoAnterior = tx.type === 'ingreso' ? currentSaldo - tx.amount : currentSaldo + tx.amount;
-            setSuggestion({ 
-              amount: Math.abs(saldoAnterior), 
-              type: saldoAnterior >= 0 ? 'ingreso' : 'egreso', 
-              refDate: tx.date 
-            });
+    const newAdjustments: Record<string, any> = {};
+    if (adjData) {
+      adjData.forEach(adj => {
+        newAdjustments[adj.bank] = adj;
+      });
+    }
+    setAdjustments(newAdjustments);
+
+    // 2. Fetch suggestions for missing adjustments
+    const newSuggestions: Record<string, any> = {};
+    const missingBanks = connectedBanks.filter(b => !newAdjustments[b]);
+    
+    if (missingBanks.length > 0) {
+      const { data: txData } = await supabase
+        .from('transactions')
+        .select('bank, date, amount, type, raw_data')
+        .eq('user_id', user.id)
+        .in('bank', missingBanks)
+        .not('raw_data', 'is', null)
+        .order('date', { ascending: true });
+        
+      if (txData) {
+        // Only get the first valid one per bank
+        for (const tx of txData) {
+          if (newSuggestions[tx.bank]) continue;
+          if (tx.raw_data) {
+            const saldoKey = Object.keys(tx.raw_data).find(k => k.toLowerCase() === 'saldo' || k.toLowerCase().includes('saldo'));
+            if (saldoKey) {
+              const val = tx.raw_data[saldoKey];
+              const cleanStr = String(val).replace(/[^0-9,-]/g, '');
+              const num = parseFloat(cleanStr.replace(',', '.'));
+              let currentSaldo = isNaN(num) ? 0 : num;
+              
+              if (!isNaN(currentSaldo)) {
+                const saldoAnterior = tx.type === 'ingreso' ? currentSaldo - tx.amount : currentSaldo + tx.amount;
+                newSuggestions[tx.bank] = { 
+                  amount: Math.abs(saldoAnterior), 
+                  type: saldoAnterior >= 0 ? 'ingreso' : 'egreso', 
+                  refDate: tx.date 
+                };
+              }
+            }
           }
         }
       }
     }
-  }
+    
+    setSuggestions(newSuggestions);
+    setLoading(false);
+  };
 
-  const applySuggestion = () => {
-    if (!suggestion) return;
-    setAmount(suggestion.amount.toString());
-    setType(suggestion.type);
+  useEffect(() => {
+    fetchAllData();
+  }, [user, connectedBanks]);
+
+  const handleEditClick = (bank: string) => {
+    const existing = adjustments[bank];
+    if (existing) {
+      setDate(existing.date.split('T')[0]);
+      setDesc(existing.description);
+      setAmount(existing.amount.toString());
+      setType(existing.type);
+    } else {
+      setDate(new Date().toISOString().split('T')[0]);
+      setDesc('Saldo Inicial (Calculado de Cartola)');
+      setAmount('');
+      setType('ingreso');
+    }
+    setEditingBank(bank);
+  };
+
+  const applySuggestion = (bank: string) => {
+    const sug = suggestions[bank];
+    if (!sug) return;
+    setAmount(sug.amount.toString());
+    setType(sug.type);
     setDesc(`Saldo Inicial (Calculado de Cartola)`);
     
-    const d = new Date(suggestion.refDate);
+    const d = new Date(sug.refDate);
     d.setDate(d.getDate() - 1);
     setDate(d.toISOString().split('T')[0]);
   };
 
-  const handleEditClick = () => {
-    if (!existingAdjustment) return;
-    setDate(existingAdjustment.date);
-    setDesc(existingAdjustment.description);
-    setAmount(existingAdjustment.amount.toString());
-    setType(existingAdjustment.type);
-    setIsEditing(true);
-  };
-
-  const handleDelete = async () => {
-    if (!existingAdjustment) return;
-    if (!window.confirm("¿Estás seguro de eliminar el Ajuste de Inicio para este banco?")) return;
+  const handleDelete = async (bank: string) => {
+    const existing = adjustments[bank];
+    if (!existing) return;
+    if (!window.confirm(`¿Estás seguro de eliminar el Ajuste de Inicio para ${bank}?`)) return;
     
     toast.loading('Eliminando...', { id: 'del-adj' });
     const { error } = await supabase
       .from('transactions')
       .delete()
-      .eq('id', existingAdjustment.id);
+      .eq('id', existing.id);
       
     if (error) {
       toast.error('Error al eliminar', { id: 'del-adj' });
     } else {
       toast.success('Ajuste eliminado', { id: 'del-adj' });
-      setExistingAdjustment(null);
-      fetchSuggestion();
+      if (editingBank === bank) setEditingBank(null);
+      fetchAllData();
     }
   };
 
-  const handleSubmit = async (e: any) => {
+  const handleSubmit = async (e: React.FormEvent, bank: string) => {
     e.preventDefault();
-    if (!user || !selectedBank) return;
-    if (!desc.trim() || !amount) return;
+    if (!user || !desc.trim() || !amount) return;
     
     toast.loading('Guardando...', { id: 'save-adj' });
     const payload = {
       user_id: user.id,
-      bank: selectedBank,
+      bank,
       date,
       description: desc.trim(),
       amount: Math.abs(parseFloat(amount)),
@@ -143,135 +155,152 @@ export function InitialAdjustmentManager() {
       categoria_secundaria: 'Saldo Inicial'
     };
 
-    if (existingAdjustment) {
-      const { error, data } = await supabase
+    const existing = adjustments[bank];
+    
+    if (existing) {
+      const { error } = await supabase
         .from('transactions')
         .update(payload)
-        .eq('id', existingAdjustment.id)
-        .select();
+        .eq('id', existing.id);
         
       if (error) {
         toast.error('Error al actualizar', { id: 'save-adj' });
       } else {
         toast.success('Ajuste actualizado', { id: 'save-adj' });
-        setExistingAdjustment(data[0]);
-        setIsEditing(false);
+        setEditingBank(null);
+        fetchAllData();
       }
     } else {
-      const { error, data } = await supabase
+      const { error } = await supabase
         .from('transactions')
-        .insert([payload])
-        .select();
+        .insert([payload]);
         
       if (error) {
         toast.error('Error al guardar', { id: 'save-adj' });
       } else {
         toast.success('Ajuste guardado', { id: 'save-adj' });
-        setExistingAdjustment(data[0]);
-        setIsEditing(false);
+        setEditingBank(null);
+        fetchAllData();
       }
     }
+  };
+
+  const getBankLabel = (bankId: string) => {
+    const bankInfo = AVAILABLE_BANKS.find(b => b.id === bankId);
+    return bankInfo ? bankInfo.label : bankId;
   };
 
   if (connectedBanks.length === 0) return null;
 
   return (
     <div className="card" style={{ marginBottom: '2rem' }}>
-      <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Ajuste de Inicio (Saldo Inicial)</h2>
+      <h2 style={{ fontSize: '1.5rem', marginBottom: '0.75rem' }}>Ajuste de Inicio (Saldo Inicial)</h2>
       <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
         Configura o edita el saldo base de tus cuentas bancarias para que el balance sea exacto.
       </p>
 
-      <div style={{ marginBottom: '1.5rem' }}>
-        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.5rem' }}>SELECCIONA UN BANCO</label>
-        <select 
-          className="input" 
-          value={selectedBank} 
-          onChange={(e) => {
-            setSelectedBank(e.target.value);
-            setIsEditing(false);
-          }}
-          style={{ maxWidth: '300px' }}
-        >
-          {connectedBanks.map(b => (
-            <option key={b} value={b}>{b}</option>
-          ))}
-        </select>
-      </div>
-
       {loading ? (
         <p style={{ fontWeight: 600 }}>Cargando información...</p>
-      ) : existingAdjustment && !isEditing ? (
-        <div style={{ backgroundColor: '#f8fafc', border: '2px solid black', borderRadius: 'var(--radius-md)', padding: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-            <div>
-              <p style={{ margin: '0 0 0.5rem 0', fontWeight: 800, fontSize: '1.1rem' }}>Saldo Inicial Configurado</p>
-              <p style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900, color: existingAdjustment.type === 'ingreso' ? 'var(--success)' : 'var(--danger)' }}>
-                {existingAdjustment.type === 'ingreso' ? '+' : '-'}${existingAdjustment.amount.toLocaleString('es-CL')}
-              </p>
-              <p style={{ margin: '0.5rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 600 }}>Fecha base: {new Date(existingAdjustment.date).toLocaleDateString('es-CL')}</p>
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button className="btn" onClick={handleEditClick} style={{ backgroundColor: 'white', border: '2px solid black', boxShadow: '2px 2px 0px black' }}>
-                <Edit2 size={16} /> Editar
-              </button>
-              <button className="btn" onClick={handleDelete} style={{ backgroundColor: '#fee2e2', color: 'var(--danger)', border: '2px solid black', boxShadow: '2px 2px 0px black' }}>
-                <Trash2 size={16} /> Borrar
-              </button>
-            </div>
-          </div>
-        </div>
       ) : (
-        <div style={{ backgroundColor: '#fff', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '2px solid black', boxShadow: '4px 4px 0px black' }}>
-          <h3 style={{ margin: '0 0 1.5rem 0', fontWeight: 800 }}>{isEditing ? 'Editar Ajuste' : 'Nuevo Ajuste de Inicio'}</h3>
-          
-          {!isEditing && suggestion && (
-            <div style={{ backgroundColor: '#f0fdf4', border: '2px dashed #166534', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
-              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: '#166534', fontWeight: 800 }}>💡 Sugerencia del Sistema</p>
-              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: '#166534' }}>
-                Basado en tu primera transacción importada, tu saldo inicial debió ser de <strong>${suggestion.amount.toLocaleString('es-CL')}</strong> ({suggestion.type}).
-              </p>
-              <button 
-                type="button"
-                onClick={applySuggestion} 
-                style={{ backgroundColor: '#166534', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 800, cursor: 'pointer' }}
-              >
-                Autocompletar Formulario
-              </button>
-            </div>
-          )}
+        <div style={{ display: 'grid', gap: '1rem' }}>
+          {connectedBanks.map(bank => {
+            const adj = adjustments[bank];
+            const isEditingThis = editingBank === bank;
+            const bankLabel = getBankLabel(bank);
 
-          <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '1rem', gridTemplateColumns: '1fr 1fr' }}>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>FECHA</label>
-              <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} required style={{ width: '100%' }} />
-            </div>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>DESCRIPCIÓN</label>
-              <input className="input" type="text" value={desc} onChange={e => setDesc(e.target.value)} required style={{ width: '100%' }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>MONTO</label>
-              <input className="input" type="number" min="0" step="1" value={amount} onChange={e => setAmount(e.target.value)} required style={{ width: '100%' }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>TIPO</label>
-              <select className="input" value={type} onChange={(e: any) => setType(e.target.value)} style={{ width: '100%' }}>
-                <option value="ingreso">Ingreso (+)</option>
-                <option value="egreso">Egreso (-)</option>
-              </select>
-            </div>
-            <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-              <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
-                Guardar Ajuste
-              </button>
-              {isEditing && (
-                <button type="button" className="btn" onClick={() => setIsEditing(false)} style={{ backgroundColor: '#e2e8f0', color: 'black' }}>
-                  Cancelar
-                </button>
-              )}
-            </div>
-          </form>
+            return (
+              <div key={bank} style={{ border: '2px solid black', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+                <div style={{ backgroundColor: adj ? '#f8fafc' : '#fefce8', padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                  
+                  <div>
+                    <h3 style={{ margin: '0 0 0.5rem 0', fontWeight: 900, fontSize: '1.1rem' }}>{bankLabel}</h3>
+                    {adj ? (
+                      <div>
+                        <p style={{ margin: 0, fontSize: '1.4rem', fontWeight: 900, color: adj.type === 'ingreso' ? 'var(--success)' : 'var(--danger)' }}>
+                          {adj.type === 'ingreso' ? '+' : '-'}${adj.amount.toLocaleString('es-CL')}
+                        </p>
+                        <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600 }}>Fecha base: {new Date(adj.date).toLocaleDateString('es-CL')}</p>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#854d0e', fontWeight: 700, fontSize: '0.9rem' }}>
+                        <AlertCircle size={16} /> No configurado
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    {adj ? (
+                      <>
+                        <button className="btn" onClick={() => isEditingThis ? setEditingBank(null) : handleEditClick(bank)} style={{ backgroundColor: 'white', border: '2px solid black', boxShadow: '2px 2px 0px black' }}>
+                          <Edit2 size={16} /> {isEditingThis ? 'Ocultar' : 'Editar'}
+                        </button>
+                        <button className="btn" onClick={() => handleDelete(bank)} style={{ backgroundColor: '#fee2e2', color: 'var(--danger)', border: '2px solid black', boxShadow: '2px 2px 0px black' }}>
+                          <Trash2 size={16} /> Borrar
+                        </button>
+                      </>
+                    ) : (
+                      <button className="btn btn-primary" onClick={() => isEditingThis ? setEditingBank(null) : handleEditClick(bank)}>
+                        {isEditingThis ? 'Ocultar' : <><Plus size={16} /> Configurar</>}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Form area */}
+                {isEditingThis && (
+                  <div style={{ padding: '1.5rem', backgroundColor: 'white', borderTop: '2px solid black' }}>
+                    <h4 style={{ margin: '0 0 1.25rem 0', fontWeight: 800 }}>{adj ? 'Editar Ajuste' : 'Nuevo Ajuste de Inicio'} para {bankLabel}</h4>
+                    
+                    {!adj && suggestions[bank] && (
+                      <div style={{ backgroundColor: '#f0fdf4', border: '2px dashed #166534', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
+                        <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: '#166534', fontWeight: 800 }}>💡 Sugerencia del Sistema</p>
+                        <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: '#166534' }}>
+                          Basado en tu primera transacción importada, tu saldo inicial debió ser de <strong>${suggestions[bank].amount.toLocaleString('es-CL')}</strong> ({suggestions[bank].type}).
+                        </p>
+                        <button 
+                          type="button"
+                          onClick={() => applySuggestion(bank)} 
+                          style={{ backgroundColor: '#166534', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 800, cursor: 'pointer' }}
+                        >
+                          Autocompletar Formulario
+                        </button>
+                      </div>
+                    )}
+
+                    <form onSubmit={(e) => handleSubmit(e, bank)} style={{ display: 'grid', gap: '1rem', gridTemplateColumns: '1fr 1fr' }}>
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>FECHA</label>
+                        <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} required style={{ width: '100%' }} />
+                      </div>
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>DESCRIPCIÓN</label>
+                        <input className="input" type="text" value={desc} onChange={e => setDesc(e.target.value)} required style={{ width: '100%' }} />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>MONTO</label>
+                        <input className="input" type="number" min="0" step="1" value={amount} onChange={e => setAmount(e.target.value)} required style={{ width: '100%' }} />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>TIPO</label>
+                        <select className="input" value={type} onChange={(e: any) => setType(e.target.value)} style={{ width: '100%' }}>
+                          <option value="ingreso">Ingreso (+)</option>
+                          <option value="egreso">Egreso (-)</option>
+                        </select>
+                      </div>
+                      <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                        <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
+                          Guardar Ajuste
+                        </button>
+                        <button type="button" className="btn" onClick={() => setEditingBank(null)} style={{ backgroundColor: '#e2e8f0', color: 'black' }}>
+                          Cancelar
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

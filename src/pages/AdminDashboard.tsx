@@ -236,7 +236,7 @@ export default function AdminDashboard() {
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table className="responsive-table" style={{ width: '100%', tableLayout: 'fixed' }}>
+            <table className="responsive-table" style={{ width: '100%', minWidth: '950px', tableLayout: 'fixed' }}>
               <thead>
                 <tr>
                   <th style={{ width: '220px' }}>Email / Usuario</th>

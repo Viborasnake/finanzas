@@ -824,24 +824,29 @@ select.input {
 
 .settings-inline-form,
 .settings-stack-form,
-.settings-grid-form {
-  display: grid;
-  grid-template-columns: 1fr;
+.settings-grid-form,
+.settings-rule-form {
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.8rem;
   align-items: end;
   margin-bottom: 1.25rem;
 }
 
-.settings-rule-form {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.8rem;
-  align-items: stretch;
-  margin-bottom: 1.25rem;
+.settings-inline-form > *,
+.settings-stack-form > *,
+.settings-grid-form > *,
+.settings-rule-form > * {
+  flex: 1 1 200px;
+  min-width: 0;
 }
 
-.settings-rule-form > * {
-  min-width: 0;
+.settings-inline-form > .btn,
+.settings-stack-form > .btn,
+.settings-grid-form > .btn,
+.settings-rule-form > .btn {
+  flex: 0 0 auto;
+  align-self: flex-end;
 }
 
 .settings-rule-category {
@@ -1011,26 +1016,7 @@ select.input {
     grid-row: span 2;
   }
 
-  .settings-inline-form {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
 
-  .settings-grid-form {
-    grid-template-columns: minmax(150px, 0.8fr) minmax(180px, 1fr) minmax(180px, 1fr) auto;
-  }
-
-  .settings-stack-form {
-    grid-template-columns: minmax(0, 1fr) minmax(240px, auto) auto;
-  }
-
-  .settings-rule-form {
-    grid-template-columns: minmax(180px, 0.9fr) minmax(220px, 1.1fr);
-  }
-
-  .settings-rule-form .btn-primary {
-    grid-column: 1 / -1;
-    justify-self: start;
-  }
 
   .settings-fixed-expense-form {
     grid-template-columns: minmax(160px, 0.9fr) minmax(160px, 0.9fr) minmax(220px, 1.1fr);
