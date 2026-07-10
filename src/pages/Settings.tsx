@@ -516,23 +516,6 @@ export default function Settings() {
           <h1>Configuración</h1>
           <p>Define cómo MisFinanzas reconoce bancos, personas, reglas y categorías para clasificar mejor tus movimientos.</p>
         </div>
-        <div className="settings-stats">
-          <a href="#bancos"><Landmark size={18} /> {connectedBanks.length} bancos</a>
-          <a href="#contactos"><Users size={18} /> {contacts.length} contactos</a>
-          <a href="#categorias"><Tags size={18} /> {customCategories.length} categorías</a>
-          <a href="#gastos-fijos"><CalendarCheck size={18} /> {fixedExpenses.length} fijos</a>
-          <a href="#reglas"><Wand2 size={18} /> {classificationRules.length} reglas</a>
-        </div>
-      </div>
-
-      <div className="settings-quick-links">
-        <a href="#bancos">Bancos</a>
-        <a href="#ajuste">Saldo inicial</a>
-        <a href="#deteccion">RUT</a>
-        <a href="#contactos">Contactos</a>
-        <a href="#categorias">Categorías</a>
-        <a href="#gastos-fijos">Gastos fijos</a>
-        <a href="#reglas">Reglas</a>
       </div>
 
       {renderSetupMiniDashboard()}
