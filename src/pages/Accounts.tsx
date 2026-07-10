@@ -276,14 +276,11 @@ export default function Accounts() {
             </button>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: '0.85rem' }}>
             {statuses.map(status => {
               const bg = !status.configured ? '#fefce8' : status.paid ? '#f0fdf4' : '#fff1f2';
               const label = !status.configured ? 'Vincular' : status.paid ? 'Pagado' : 'Pendiente';
               const labelBg = !status.configured ? '#fde047' : status.paid ? '#86efac' : '#fca5a5';
-              const category = status.item.categoria_principal
-                ? `${status.item.categoria_principal}${status.item.categoria_secundaria ? ` > ${status.item.categoria_secundaria}` : ''}`
-                : 'Falta vincular categoría';
 
               return (
                 <article
@@ -294,41 +291,29 @@ export default function Accounts() {
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' || event.key === ' ') setSelectedStatusId(status.item.id);
                   }}
-                  title={`Ver pagos asociados a ${status.item.name}`}
-                  style={{ border: '2px solid #000', borderRadius: '10px', boxShadow: '3px 3px 0 #000', backgroundColor: bg, padding: '1rem', minHeight: '190px', display: 'flex', flexDirection: 'column', gap: '0.8rem', cursor: 'pointer' }}
+                  title={`Ver detalle de ${status.item.name}`}
+                  style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr) auto', gap: '0.8rem', alignItems: 'center', padding: '0.9rem', border: '2px solid #000', borderRadius: '10px', backgroundColor: bg, boxShadow: '2px 2px 0 #000', cursor: 'pointer', transition: 'transform 0.1s, box-shadow 0.1s' }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.7rem' }}>
-                    <span style={{ width: '34px', height: '34px', border: '2px solid #000', borderRadius: '9px', backgroundColor: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      {status.paid ? <CheckCircle2 size={20} fill="#22c55e" color="#000" /> : <Calendar size={19} strokeWidth={2.5} />}
-                    </span>
-                    <div style={{ minWidth: 0 }}>
-                      <strong style={{ display: 'block', fontSize: '1.05rem', lineHeight: 1.2 }}>{status.item.name}</strong>
-                      <span style={{ color: '#475569', fontSize: '0.78rem', fontWeight: 800, overflowWrap: 'anywhere' }}>{category}</span>
+                  <span style={{ width: '38px', height: '38px', border: '2px solid #000', borderRadius: '8px', backgroundColor: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {status.paid ? <CheckCircle2 size={22} fill="#22c55e" color="#000" /> : <Calendar size={20} strokeWidth={2.5} />}
+                  </span>
+
+                  <div style={{ minWidth: 0 }}>
+                    <strong style={{ display: 'block', fontSize: '0.95rem', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{status.item.name}</strong>
+                    <div style={{ color: '#475569', fontSize: '0.78rem', fontWeight: 800, marginTop: '0.15rem' }}>
+                      {fmtDate(status.paid ? status.paidDate : status.estimatedDate)}
                     </div>
                   </div>
 
-                  <div style={{ marginTop: 'auto' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.6rem', alignItems: 'end' }}>
-                      <div>
-                        <div style={{ color: '#64748b', fontWeight: 900, fontSize: '0.7rem', textTransform: 'uppercase' }}>{status.paid ? 'Pagado el' : 'Fecha estimada'}</div>
-                        <div style={{ fontWeight: 950, fontSize: '1.08rem' }}>{fmtDate(status.paid ? status.paidDate : status.estimatedDate)}</div>
-                        {status.paid && (
-                          <div style={{ color: '#15803d', fontWeight: 900, fontSize: '0.82rem' }}>
-                            ${status.paidAmount.toLocaleString('es-CL')} {status.paymentCount > 1 ? `· ${status.paymentCount} pagos` : ''}
-                          </div>
-                        )}
+                  <div style={{ textAlign: 'right' }}>
+                    {status.paid && (
+                      <div style={{ color: '#15803d', fontWeight: 900, fontSize: '0.85rem', marginBottom: '0.2rem' }}>
+                        ${status.paidAmount.toLocaleString('es-CL')}
                       </div>
-                      <span style={{ justifySelf: 'end', padding: '0.28rem 0.6rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: labelBg, fontWeight: 900, fontSize: '0.75rem' }}>
-                        {label}
-                      </span>
-                    </div>
-
-                    <div style={{ marginTop: '0.65rem', paddingTop: '0.65rem', borderTop: '1.5px solid rgba(0,0,0,0.12)', color: '#475569', fontWeight: 850, fontSize: '0.78rem', lineHeight: 1.35 }}>
-                      Pago anterior:{' '}
-                      {status.previousDate
-                        ? `${fmtDate(status.previousDate)} · $${status.previousAmount.toLocaleString('es-CL')}`
-                        : 'Sin registro'}
-                    </div>
+                    )}
+                    <span style={{ display: 'inline-block', padding: '0.2rem 0.5rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: labelBg, fontWeight: 900, fontSize: '0.7rem' }}>
+                      {label}
+                    </span>
                   </div>
                 </article>
               );
