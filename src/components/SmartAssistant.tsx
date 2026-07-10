@@ -33,6 +33,7 @@ type Suggestion = {
   contactName?: string;
   rut?: string | null;
   keyword: string;
+  banks: string[];
 };
 
 const HEURISTICS: Array<{ test: RegExp; reason: string; proposal: Proposal; confidence: number }> = [
@@ -91,16 +92,18 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
       const descNorm = normalize(description);
       const rut = extractAndNormalizeRUT(description);
       const total = group.reduce((sum, tx) => sum + Math.abs(Number(tx.amount || 0)), 0);
+      const banks = [...new Set(group.map((tx: any) => tx.bank).filter(Boolean))] as string[];
       const existingRule = applyRules(description, classificationRules);
 
       if (existingRule) {
         return {
           id: `rule-${descNorm}`,
-          ids: group.map(tx => tx.id),
+          ids: group.map((tx: any) => tx.id),
           description,
           type: first.type,
           count: group.length,
           total,
+          banks,
           confidence: 96,
           reason: 'Coincide con una regla persistente guardada',
           kind: 'rule',
@@ -114,11 +117,12 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
         const inferredName = extractContactName(description);
         return {
           id: `transfer-${descNorm}`,
-          ids: group.map(tx => tx.id),
+          ids: group.map((tx: any) => tx.id),
           description,
           type: first.type,
           count: group.length,
           total,
+          banks,
           confidence: group.length > 1 ? 86 : 74,
           reason: group.length > 1 ? 'Transferencia regular detectada por repetición' : 'Parece transferencia a persona',
           kind: 'recurring',
@@ -137,11 +141,12 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
       if (heuristic) {
         return {
           id: `merchant-${descNorm}`,
-          ids: group.map(tx => tx.id),
+          ids: group.map((tx: any) => tx.id),
           description,
           type: first.type,
           count: group.length,
           total,
+          banks,
           confidence: heuristic.confidence + (group.length > 1 ? 5 : 0),
           reason: group.length > 1 ? `${heuristic.reason}; aparece ${group.length} veces` : heuristic.reason,
           kind: 'merchant',
@@ -153,11 +158,12 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
       if (group.length > 1) {
         return {
           id: `recurring-${descNorm}`,
-          ids: group.map(tx => tx.id),
+          ids: group.map((tx: any) => tx.id),
           description,
           type: first.type,
           count: group.length,
           total,
+          banks,
           confidence: 58,
           reason: 'Movimiento repetido pendiente de regla',
           kind: 'recurring',
@@ -340,6 +346,9 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
                 {current.type === 'ingreso' ? '↑ INGRESO' : '↓ EGRESO'} &nbsp;
                 {current.type === 'ingreso' ? '+' : '-'}${current.total.toLocaleString('es-CL')}
               </span>
+              {current.banks.map(b => (
+                <span key={b} style={{ background: 'var(--pastel-blue)', borderColor: '#93c5fd' }}>🏦 {b}</span>
+              ))}
             </div>
             <p>
               <Lightbulb size={15} style={{ flexShrink: 0, color: '#d97706' }} />

@@ -565,6 +565,8 @@ select.input {
   border-radius: 10px;
   box-shadow: 4px 4px 0 #000;
   padding: 1.5rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .smart-assistant-header {
