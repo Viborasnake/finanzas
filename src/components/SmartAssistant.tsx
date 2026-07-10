@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
-import { Bot, Check, Lightbulb, RefreshCw, Sparkles, X } from 'lucide-react';
+import { Check, Lightbulb, RefreshCw, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { applyRules } from '../utils/classificationRules';
 import { extractAndNormalizeRUT } from '../utils/rutParser';
@@ -258,12 +258,12 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
 
   if (!current) {
     return (
-      <div className="smart-assistant">
-        <Bot size={48} style={{ margin: '0 auto 1rem', color: '#3b82f6' }} />
-        <h2>Asistente Inteligente</h2>
-        <p>No encontré movimientos pendientes para proponer. Puedes volver a escanear reglas guardadas cuando importes más datos.</p>
-        <button className="btn btn-outline" style={{ marginTop: '1rem', backgroundColor: 'white' }} onClick={handleRescan}>
-          <RefreshCw size={18} />
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem 2rem', gap: '1rem', textAlign: 'center' }}>
+        <div style={{ fontSize: '3rem' }}>✅</div>
+        <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0 }}>¡Todo clasificado!</h2>
+        <p style={{ color: '#555', maxWidth: 360, margin: 0 }}>No quedan movimientos pendientes de sugerir. Puedes re-escanear si importaste nuevas cartolas.</p>
+        <button className="btn btn-outline" style={{ marginTop: '0.5rem', backgroundColor: 'white' }} onClick={handleRescan}>
+          <RefreshCw size={16} />
           Re-escanear reglas
         </button>
       </div>
@@ -271,63 +271,167 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
   }
 
   const strongCount = suggestions.filter(s => s.confidence >= 85).length;
+  const progress = ((currentIndex) / suggestions.length) * 100;
+
+  const confidenceColor = current.confidence >= 85 ? '#16a34a' : current.confidence >= 70 ? '#d97706' : '#6b7280';
+  const confidenceBg = current.confidence >= 85 ? '#dcfce7' : current.confidence >= 70 ? '#fef3c7' : '#f3f4f6';
 
   return (
-    <div className="smart-assistant">
-      <div className="smart-assistant-header">
-        <div>
-          <div className="assistant-kicker"><Sparkles size={16} /> Asistente unificado</div>
-          <h2>Clasificación inteligente</h2>
-          <p>Revisa grupos repetidos, transferencias y comercios sugeridos. La categorización masiva vive aquí ahora.</p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0', maxWidth: 800, margin: '0 auto' }}>
+
+      {/* Header barra de progreso */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.2rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <span style={{ fontWeight: 800, fontSize: '1rem' }}>
+            {currentIndex + 1} <span style={{ color: '#888', fontWeight: 400 }}>de {suggestions.length} sugerencias</span>
+          </span>
+          {strongCount > 0 && (
+            <button
+              className="btn btn-primary"
+              style={{ fontSize: '0.78rem', padding: '0.3rem 0.8rem', gap: '0.3rem' }}
+              onClick={applyHighConfidence}
+              disabled={saving}
+            >
+              <Check size={14} />
+              Aplicar {strongCount} de alta confianza de una vez
+            </button>
+          )}
         </div>
-        <div className="assistant-metrics">
-          <span>{suggestions.length} sugerencias</span>
-          <span>{strongCount} alta confianza</span>
-        </div>
+        <button className="btn btn-outline" style={{ fontSize: '0.78rem', padding: '0.3rem 0.8rem', backgroundColor: 'white', gap: '0.3rem' }} onClick={handleRescan} disabled={saving}>
+          <RefreshCw size={14} />
+          Re-escanear
+        </button>
       </div>
 
-      <div className="assistant-actions">
-        <button className="btn btn-primary" onClick={applyHighConfidence} disabled={saving || strongCount === 0}>
-          <Check size={18} />
-          Aplicar alta confianza
-        </button>
-        <button className="btn btn-outline" onClick={handleRescan} disabled={saving} style={{ backgroundColor: '#fff' }}>
-          <RefreshCw size={18} />
-          Re-escanear reglas
-        </button>
+      {/* Barra de progreso */}
+      <div style={{ height: 6, background: '#e5e7eb', borderRadius: 99, marginBottom: '1.5rem', overflow: 'hidden', border: '1px solid black' }}>
+        <div style={{ height: '100%', width: `${progress}%`, background: 'black', borderRadius: 99, transition: 'width 0.3s ease' }} />
       </div>
 
-      <div className="assistant-card">
-        <div className="assistant-card-main">
-          <div className="assistant-progress">Sugerencia {currentIndex + 1} de {suggestions.length}</div>
-          <h3>{current.description}</h3>
-          <div className="assistant-facts">
-            <span>{current.count} movimiento{current.count === 1 ? '' : 's'}</span>
-            <span>{current.type === 'ingreso' ? '+' : '-'}${current.total.toLocaleString('es-CL')}</span>
-            <span>{current.confidence}% confianza</span>
+      {/* Tarjeta principal */}
+      <div style={{ border: '2px solid black', borderRadius: 12, boxShadow: '4px 4px 0 black', overflow: 'hidden', background: 'white' }}>
+
+        {/* Descripción */}
+        <div style={{ padding: '1.25rem 1.5rem', borderBottom: '2px solid black' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+            <div style={{ flex: 1 }}>
+              <p style={{ margin: '0 0 0.35rem', fontSize: '0.72rem', fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {current.kind === 'rule' ? '📌 Regla guardada' : current.kind === 'recurring' ? '🔁 Recurrente' : '🏪 Comercio detectado'}
+              </p>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, wordBreak: 'break-word', textTransform: 'uppercase' }}>
+                {current.description}
+              </h3>
+            </div>
+            <div style={{
+              padding: '0.3rem 0.75rem',
+              background: confidenceBg,
+              border: `1.5px solid ${confidenceColor}`,
+              borderRadius: 99,
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              color: confidenceColor,
+              whiteSpace: 'nowrap',
+              flexShrink: 0
+            }}>
+              {current.confidence}% confianza
+            </div>
           </div>
-          <p><Lightbulb size={18} /> {current.reason}</p>
         </div>
 
-        <div className="assistant-proposal">
-          <span>Clasificar como</span>
-          <strong>{current.proposal.categoria_secundaria}</strong>
-          <small>{current.proposal.tipo_movimiento} / {current.proposal.categoria_principal}</small>
-        </div>
-      </div>
+        {/* Datos del grupo + propuesta en dos columnas */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '2px solid black' }}>
 
-      <div className="assistant-actions">
-        <button className="btn btn-primary" onClick={() => applySuggestion(current, { persistRule: true })} disabled={saving}>
-          <Check size={18} />
-          Aplicar y recordar
-        </button>
-        <button className="btn btn-outline" onClick={() => applySuggestion(current)} disabled={saving} style={{ backgroundColor: '#fff' }}>
-          Solo aplicar ahora
-        </button>
-        <button className="btn btn-outline" onClick={() => setCurrentIndex(i => Math.min(i + 1, suggestions.length))} disabled={saving} style={{ backgroundColor: '#fff' }}>
-          <X size={18} />
-          Ignorar
-        </button>
+          {/* Columna izquierda: datos */}
+          <div style={{ padding: '1.25rem 1.5rem', borderRight: '2px solid black' }}>
+            <p style={{ margin: '0 0 0.75rem', fontSize: '0.72rem', fontWeight: 700, color: '#888', textTransform: 'uppercase' }}>Movimientos detectados</p>
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+              <div style={{ background: '#f3f4f6', border: '1.5px solid #d1d5db', borderRadius: 8, padding: '0.4rem 0.85rem', fontWeight: 700, fontSize: '0.9rem' }}>
+                {current.count} {current.count === 1 ? 'movimiento' : 'movimientos'}
+              </div>
+              <div style={{
+                background: current.type === 'ingreso' ? '#dcfce7' : '#fee2e2',
+                border: `1.5px solid ${current.type === 'ingreso' ? '#16a34a' : '#dc2626'}`,
+                borderRadius: 8,
+                padding: '0.4rem 0.85rem',
+                fontWeight: 800,
+                fontSize: '0.95rem',
+                color: current.type === 'ingreso' ? '#15803d' : '#b91c1c'
+              }}>
+                {current.type === 'ingreso' ? '+' : '-'}${current.total.toLocaleString('es-CL')}
+              </div>
+            </div>
+            <p style={{ margin: 0, fontSize: '0.83rem', color: '#555', display: 'flex', alignItems: 'flex-start', gap: '0.4rem' }}>
+              <Lightbulb size={15} style={{ marginTop: 2, flexShrink: 0, color: '#d97706' }} />
+              {current.reason}
+            </p>
+          </div>
+
+          {/* Columna derecha: propuesta */}
+          <div style={{ padding: '1.25rem 1.5rem', background: '#f9fafb' }}>
+            <p style={{ margin: '0 0 0.75rem', fontSize: '0.72rem', fontWeight: 700, color: '#888', textTransform: 'uppercase' }}>Clasificar como</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              <div style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 600 }}>Tipo de movimiento</div>
+              <div style={{ fontSize: '0.9rem', fontWeight: 700, background: 'white', border: '1.5px solid black', borderRadius: 8, padding: '0.35rem 0.75rem', display: 'inline-block' }}>
+                {current.proposal.tipo_movimiento}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 600, marginTop: '0.25rem' }}>Categoría</div>
+              <div style={{ fontSize: '0.9rem', fontWeight: 700, background: 'white', border: '1.5px solid black', borderRadius: 8, padding: '0.35rem 0.75rem', display: 'inline-block' }}>
+                {current.proposal.categoria_principal}
+                {current.proposal.categoria_secundaria && current.proposal.categoria_secundaria !== current.proposal.categoria_principal && (
+                  <span style={{ color: '#6b7280', fontWeight: 500 }}> › {current.proposal.categoria_secundaria}</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Acciones */}
+        <div style={{ padding: '1rem 1.5rem', display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', background: 'white' }}>
+          <button
+            className="btn btn-primary"
+            style={{ flex: '1 1 auto', justifyContent: 'center', gap: '0.4rem' }}
+            onClick={() => applySuggestion(current, { persistRule: true })}
+            disabled={saving}
+          >
+            <Check size={16} />
+            Aplicar y recordar
+          </button>
+          <button
+            className="btn btn-outline"
+            style={{ flex: '0 1 auto', backgroundColor: 'white', gap: '0.4rem', fontSize: '0.85rem' }}
+            onClick={() => applySuggestion(current)}
+            disabled={saving}
+          >
+            Solo esta vez
+          </button>
+          <button
+            className="btn btn-outline"
+            style={{ flex: '0 1 auto', backgroundColor: 'white', gap: '0.4rem', fontSize: '0.85rem', color: '#888', borderColor: '#d1d5db' }}
+            onClick={() => setCurrentIndex(i => Math.min(i + 1, suggestions.length))}
+            disabled={saving}
+          >
+            <X size={15} />
+            Omitir
+          </button>
+
+          {/* Navegación */}
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.4rem' }}>
+            <button
+              onClick={() => setCurrentIndex(i => Math.max(0, i - 1))}
+              disabled={currentIndex === 0 || saving}
+              style={{ padding: '0.4rem 0.65rem', border: '1.5px solid #d1d5db', background: 'white', borderRadius: 8, cursor: 'pointer', color: currentIndex === 0 ? '#d1d5db' : '#374151', fontWeight: 700, fontSize: '1rem' }}
+            >
+              ←
+            </button>
+            <button
+              onClick={() => setCurrentIndex(i => Math.min(suggestions.length - 1, i + 1))}
+              disabled={currentIndex >= suggestions.length - 1 || saving}
+              style={{ padding: '0.4rem 0.65rem', border: '1.5px solid #d1d5db', background: 'white', borderRadius: 8, cursor: 'pointer', color: currentIndex >= suggestions.length - 1 ? '#d1d5db' : '#374151', fontWeight: 700, fontSize: '1rem' }}
+            >
+              →
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
