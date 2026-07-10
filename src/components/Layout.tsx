@@ -5,6 +5,8 @@ import { LayoutDashboard, Receipt, Settings, LogOut, Menu, X, ChevronDown, Check
 import { useAuth } from '../contexts/AuthContext';
 import { useBanks, AVAILABLE_BANKS } from '../contexts/BankContext';
 import type { Bank, DashboardBankScope } from '../contexts/BankContext';
+import { useSettings } from '../contexts/SettingsContext';
+import { RutOnboardingModal } from './RutOnboardingModal';
 import './Layout.css'; 
 
 const navItems = [
@@ -159,6 +161,7 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
+  const { userRut, loadingSettings } = useSettings();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -293,6 +296,8 @@ export default function Layout() {
           <Outlet />
         </div>
       </main>
+      
+      {!loadingSettings && userRut === null && <RutOnboardingModal />}
     </div>
   );
 }

@@ -114,6 +114,31 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
         }
       };
       migrateV4();
+
+      const migrateV5 = async () => {
+        const migrationKey = `migrated_v5_${user.id}`;
+        if (localStorage.getItem(migrationKey)) return;
+        try {
+          const { data: contacts } = await supabase.from('known_contacts').select('*').eq('user_id', user.id);
+          if (contacts && contacts.length > 0) {
+            const rules = contacts.map(c => ({
+              user_id: user.id,
+              bank: 'global',
+              condition_type: 'contains',
+              condition_value: c.rut || c.name,
+              category_tipo: 'Egreso',
+              category_principal: 'Transferencias',
+              category_secundaria: 'Transferencias a Otras Personas'
+            }));
+            await supabase.from('classification_rules').insert(rules);
+            await supabase.from('known_contacts').delete().eq('user_id', user.id);
+          }
+          localStorage.setItem(migrationKey, 'true');
+        } catch (e) {
+          console.error("Migration v5 error:", e);
+        }
+      };
+      migrateV5();
     }
   }, [user]);
 

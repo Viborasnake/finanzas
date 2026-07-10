@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, Trash2, Save, X, BadgeCheck, Landmark, Tags, Users, Wand2, Activity, CheckCircle2, ChevronRight, Settings as SettingsIcon, FileSpreadsheet, Sparkles, ChevronDown, Wallet } from 'lucide-react';
+import { Plus, Trash2, Save, X, Landmark, Tags, Wand2, Activity, CheckCircle2, ChevronRight, Settings as SettingsIcon, FileSpreadsheet, Sparkles, ChevronDown, Wallet, Edit2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { extractAndNormalizeRUT } from '../utils/rutParser';
 import type { ClassificationRule } from '../utils/classificationRules';
@@ -79,10 +79,8 @@ export default function Settings() {
 
   // Settings
   const [myRut, setMyRut] = useState('');
-  const [isSavingRut, setIsSavingRut] = useState(false);
-  const [contacts, setContacts] = useState<any[]>([]);
-  const [newContactName, setNewContactName] = useState('');
-  const [newContactRut, setNewContactRut] = useState('');
+
+
   
   const { customCategories, saveCustomCategories, classificationRules, saveClassificationRules } = useSettings();
   const { connectedBanks, mainBank, setMainBankAndSave, addBank, removeBank, activeBank } = useBanks();
@@ -140,8 +138,6 @@ export default function Settings() {
 
     const hasRules = classificationRules.length > 0;
     const hasRut = Boolean(myRut);
-    const contactsCount = contacts.length;
-
     const items = [
       {
         title: 'Banco activo',
@@ -185,10 +181,10 @@ export default function Settings() {
       },
       {
         title: 'Automatización',
-        detail: `${classificationRules.length} reglas · ${contactsCount} contactos`,
-        done: hasRules || contactsCount > 0,
+        detail: `${classificationRules.length} reglas`,
+        done: hasRules,
         action: 'Mejorar',
-        path: '#contactos',
+        path: '#reglas',
         icon: <Sparkles size={18} strokeWidth={2.5} />
       }
     ];
@@ -267,75 +263,28 @@ export default function Settings() {
   
   const [newRuleKeyword, setNewRuleKeyword] = useState('');
   const [newRuleCategory, setNewRuleCategory] = useState<{ tipo: string | null, principal: string | null, secundaria: string | null }>({ tipo: null, principal: null, secundaria: null });
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
   const [newCatTipo, setNewCatTipo] = useState('Egreso');
   const [newCatPrincipal, setNewCatPrincipal] = useState('');
   const [newCatSecundaria, setNewCatSecundaria] = useState('');
 
   useEffect(() => {
     if (user) {
-      fetchSettingsAndContacts();
+      fetchSettings();
     }
   }, [user]);
 
-  const fetchSettingsAndContacts = async () => {
+  const fetchSettings = async () => {
     try {
-      const [{ data: s }, { data: c }] = await Promise.all([
-        supabase.from('user_settings').select('*').eq('user_id', user!.id).maybeSingle(),
-        supabase.from('known_contacts').select('*').eq('user_id', user!.id)
-      ]);
+      const { data: s } = await supabase.from('user_settings').select('*').eq('user_id', user!.id).maybeSingle();
       if (s && s.rut) setMyRut(s.rut);
-      if (c) setContacts(c);
     } catch (e) {
       console.error(e);
     }
   };
 
-  const handleSaveRut = async () => {
-    if (!user) return;
-    const normalized = extractAndNormalizeRUT(myRut);
-    if (!normalized) {
-      toast.error('RUT inválido. Verifica el formato.');
-      return;
-    }
-    
-    setIsSavingRut(true);
-    try {
-      const { error } = await supabase
-        .from('user_settings')
-        .upsert({ user_id: user.id, rut: normalized }, { onConflict: 'user_id' });
-      if (error) throw error;
-      setMyRut(normalized);
-      toast.success('RUT guardado exitosamente.');
-    } catch (e) {
-      console.error(e);
-      toast.error('Error guardando el RUT.');
-    } finally {
-      setIsSavingRut(false);
-    }
-  };
 
-  const handleAddContact = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newContactName.trim() || !user) return;
-    
-    const normalizedRut = newContactRut ? extractAndNormalizeRUT(newContactRut) : null;
-    
-    try {
-      const { data, error } = await supabase
-        .from('known_contacts')
-        .insert([{ name: newContactName.trim(), rut: normalizedRut, user_id: user.id }])
-        .select();
-        
-      if (error) throw error;
-      setContacts([...contacts, data[0]]);
-      setNewContactName('');
-      setNewContactRut('');
-      toast.success('Contacto agregado');
-    } catch (error) {
-      console.error('Error adding contact:', error);
-      toast.error('Error al eliminar contacto');
-    }
-  };
+
 
   const handleAddRule = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -343,18 +292,35 @@ export default function Settings() {
       toast.error('Completa los campos de la regla');
       return;
     }
-    const newRule: ClassificationRule = {
-      id: crypto.randomUUID(),
-      keyword: newRuleKeyword.trim(),
-      tipo_movimiento: newRuleCategory.tipo,
-      categoria_principal: newRuleCategory.principal!,
-      categoria_secundaria: newRuleCategory.secundaria!
-    };
-    const updatedRules = [...classificationRules, newRule];
-    await saveClassificationRules(updatedRules);
+    
+    if (editingRuleId) {
+      const updatedRules = classificationRules.map(r => 
+        r.id === editingRuleId ? {
+          ...r,
+          keyword: newRuleKeyword.trim(),
+          tipo_movimiento: newRuleCategory.tipo as string,
+          categoria_principal: newRuleCategory.principal!,
+          categoria_secundaria: newRuleCategory.secundaria!
+        } : r
+      );
+      await saveClassificationRules(updatedRules);
+      setEditingRuleId(null);
+      toast.success('Regla actualizada');
+    } else {
+      const newRule: ClassificationRule = {
+        id: crypto.randomUUID(),
+        keyword: newRuleKeyword.trim(),
+        tipo_movimiento: newRuleCategory.tipo as string,
+        categoria_principal: newRuleCategory.principal!,
+        categoria_secundaria: newRuleCategory.secundaria!
+      };
+      const updatedRules = [...classificationRules, newRule];
+      await saveClassificationRules(updatedRules);
+      toast.success('Regla agregada');
+    }
+    
     setNewRuleKeyword('');
     setNewRuleCategory({ tipo: null, principal: null, secundaria: null });
-    toast.success('Regla agregada');
   };
 
   const handleDeleteRule = async (id: string) => {
@@ -365,20 +331,7 @@ export default function Settings() {
 
 
 
-  const handleDeleteContact = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('known_contacts')
-        .delete()
-        .eq('id', id);
-        
-      if (error) throw error;
-      setContacts(contacts.filter(c => c.id !== id));
-      toast.success('Contacto eliminado');
-    } catch (error) {
-      console.error('Error deleting contact:', error);
-    }
-  };
+
 
   const handleAddCustomCategory = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -508,88 +461,7 @@ export default function Settings() {
         {/* Ajuste de Inicio */}
         <InitialAdjustmentManager />
         
-        {/* Identificación (RUT) */}
-        <CollapsibleSection id="deteccion" icon={BadgeCheck} title="Detección Automática" subtitle="Tu RUT y auto-clasificación histórica" description="Ingresa tu RUT para que el sistema reconozca automáticamente las transferencias entre tus propias cuentas y no las sume como Egreso o Ingreso." defaultCollapsed={true}>
-          
-          <div className="settings-inline-form">
-            <input 
-              type="text" 
-              className="input" 
-              placeholder="Ej: 16.424.491-1" 
-              value={myRut}
-              onChange={(e) => setMyRut(e.target.value)}
-            />
-            <button className="btn btn-primary" onClick={handleSaveRut} disabled={isSavingRut}>
-              <Save size={20} />
-              Guardar RUT
-            </button>
-          </div>
 
-          <div className="settings-callout">
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', fontWeight: 800 }}>¿Tienes transacciones antiguas sin clasificar?</h3>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem', fontWeight: 500 }}>
-              Si importaste datos antes de guardar tu RUT o tus reglas, puedes aplicar la auto-clasificación a todo tu historial pendiente.
-            </p>
-            <button className="btn btn-outline" onClick={async () => {
-              if (!user) return;
-              toast.loading('Escaneando transacciones...', { id: 'rescan' });
-              try {
-                // 1. Obtener pendientes
-                const { data: txs, error: fetchErr } = await supabase.from('transactions').select('id, raw_data, description').eq('user_id', user.id).is('tipo_movimiento', null);
-                if (fetchErr) throw fetchErr;
-                if (!txs || txs.length === 0) {
-                  toast.success('No hay transacciones pendientes.', { id: 'rescan' });
-                  return;
-                }
-
-                let updated = 0;
-                for (const tx of txs) {
-                  const rawDescKey = tx.raw_data ? Object.keys(tx.raw_data).find(k => k.toLowerCase().includes('descripc')) || '' : '';
-                  const rawDesc = tx.raw_data && rawDescKey ? tx.raw_data[rawDescKey] : '';
-                  const desc = (rawDesc || tx.description || '').toLowerCase();
-                  let tipo = null, principal = null, secundaria = null;
-                  
-                  const rutEx = extractAndNormalizeRUT(desc);
-                  const my = myRut ? extractAndNormalizeRUT(myRut) : null;
-                  
-                  if (rutEx && my && rutEx === my) {
-                    tipo = 'Movimiento Interno';
-                    principal = desc.includes('fondo') ? 'Traspaso fondo' : 'Transferencia personal';
-                    secundaria = principal;
-                  } else {
-                    const c = contacts.find(c => {
-                      if (rutEx && c.rut && extractAndNormalizeRUT(c.rut) === rutEx) return true;
-                      if (c.name && desc.includes(c.name.toLowerCase())) return true;
-                      return false;
-                    });
-                    if (c) {
-                      tipo = 'Egreso'; principal = 'Transferencias a Otras Personas'; secundaria = 'Familiares';
-                    }
-                  }
-                  
-                  if (!tipo) {
-                    const match = applyRules(desc, classificationRules);
-                    if (match) {
-                      tipo = match.tipo_movimiento;
-                      principal = match.categoria_principal;
-                      secundaria = match.categoria_secundaria;
-                    }
-                  }
-
-                  if (tipo) {
-                    await supabase.from('transactions').update({ tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria }).eq('id', tx.id);
-                    updated++;
-                  }
-                }
-                toast.success(`Se auto-clasificaron ${updated} transacciones.`, { id: 'rescan' });
-              } catch (e: any) {
-                toast.error('Error al escanear: ' + e.message, { id: 'rescan' });
-              }
-            }}>
-              Auto-clasificar pendientes
-            </button>
-          </div>
-        </CollapsibleSection>
 
         {/* Categorías Personalizadas */}
         <CollapsibleSection id="categorias" icon={Tags} title="Mis Categorías" subtitle="Categorías personalizadas compartidas entre todos tus bancos" description="Agrega nuevas categorías para organizar tus movimientos. Estas se sumarán a la lista base que ya trae la aplicación." defaultCollapsed={true}>
@@ -654,57 +526,67 @@ export default function Settings() {
 
 
 
-        {/* Contactos Frecuentes */}
-        <CollapsibleSection id="contactos" icon={Users} title="Contactos Conocidos" subtitle="Personas frecuentes para transferencias" description="Agrega RUTs de amigos o familiares. Cuando importes, el sistema clasificará automáticamente los traspasos a ellos como 'Transferencias a Otras Personas'." defaultCollapsed={true}>
-          
-          <form className="settings-stack-form" onSubmit={handleAddContact}>
-            <input 
-              type="text" 
-              className="input" 
-              placeholder="Nombre (ej. Juan)" 
-              value={newContactName}
-              onChange={(e) => setNewContactName(e.target.value)}
-              required
-            />
-            <input 
-              type="text" 
-              className="input" 
-              placeholder="RUT (opcional)" 
-              value={newContactRut}
-              onChange={(e) => setNewContactRut(e.target.value)}
-            />
-            <button type="submit" className="btn btn-primary">
-              <Plus size={20} />
-              Agregar
-            </button>
-          </form>
 
-          <div className="settings-list compact">
-            {contacts.length === 0 ? (
-              <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>No hay contactos guardados.</p>
-            ) : (
-              contacts.map(c => (
-                <div key={c.id} className="settings-list-row">
-                  <div>
-                    <span style={{ fontWeight: 600, display: 'block' }}>{c.name}</span>
-                    {c.rut && <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>RUT: {c.rut}</span>}
-                  </div>
-                  <button 
-                    className="btn" 
-                    style={{ padding: '0.5rem', color: 'var(--danger)', border: 'none', boxShadow: 'none' }}
-                    onClick={() => handleDeleteContact(c.id)}
-                  >
-                    <Trash2 size={20} />
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
-        </CollapsibleSection>
 
         {/* Classification Rules */}
         <CollapsibleSection id="reglas" icon={Wand2} title="Reglas de Auto-Clasificación" subtitle="Mapeo persistente por palabra clave" description="Define qué texto debe estar en la glosa (descripción) de una transacción para asignarle automáticamente una categoría. Las reglas se aplican al importar." className="card settings-card settings-card-wide settings-card-tall" defaultCollapsed={true}>
           
+          <div className="settings-callout" style={{ marginBottom: '2rem' }}>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', fontWeight: 800 }}>¿Tienes transacciones antiguas sin clasificar?</h3>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem', fontWeight: 500 }}>
+              Puedes aplicar la auto-clasificación a todo tu historial pendiente.
+            </p>
+            <button className="btn btn-outline" onClick={async () => {
+              if (!user) return;
+              toast.loading('Escaneando transacciones...', { id: 'rescan' });
+              try {
+                // 1. Obtener pendientes
+                const { data: txs, error: fetchErr } = await supabase.from('transactions').select('id, raw_data, description').eq('user_id', user.id).is('tipo_movimiento', null);
+                if (fetchErr) throw fetchErr;
+                if (!txs || txs.length === 0) {
+                  toast.success('No hay transacciones pendientes.', { id: 'rescan' });
+                  return;
+                }
+
+                let updated = 0;
+                for (const tx of txs) {
+                  const rawDescKey = tx.raw_data ? Object.keys(tx.raw_data).find(k => k.toLowerCase().includes('descripc')) || '' : '';
+                  const rawDesc = tx.raw_data && rawDescKey ? tx.raw_data[rawDescKey] : '';
+                  const desc = (rawDesc || tx.description || '').toLowerCase();
+                  let tipo = null, principal = null, secundaria = null;
+                  
+                  const rutEx = extractAndNormalizeRUT(desc);
+                  const my = myRut ? extractAndNormalizeRUT(myRut) : null;
+                  
+                  if (rutEx && my && rutEx === my) {
+                    tipo = 'Movimiento Interno';
+                    principal = desc.includes('fondo') ? 'Traspaso fondo' : 'Transferencia personal';
+                    secundaria = principal;
+                  }
+                  
+                  if (!tipo) {
+                    const match = applyRules(desc, classificationRules);
+                    if (match) {
+                      tipo = match.tipo_movimiento;
+                      principal = match.categoria_principal;
+                      secundaria = match.categoria_secundaria;
+                    }
+                  }
+
+                  if (tipo) {
+                    await supabase.from('transactions').update({ tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria }).eq('id', tx.id);
+                    updated++;
+                  }
+                }
+                toast.success(`Se auto-clasificaron ${updated} transacciones.`, { id: 'rescan' });
+              } catch (e: any) {
+                toast.error('Error al escanear: ' + e.message, { id: 'rescan' });
+              }
+            }}>
+              Auto-clasificar pendientes
+            </button>
+          </div>
+
           <form className="settings-rule-form" onSubmit={handleAddRule}>
             <input 
               type="text" 
@@ -716,36 +598,60 @@ export default function Settings() {
             />
             <div className="settings-rule-category">
             <CascadingCategorySelector 
-              initialPrincipal={null} 
-              initialSecundaria={null} 
+              initialPrincipal={editingRuleId ? newRuleCategory.principal : null} 
+              initialSecundaria={editingRuleId ? newRuleCategory.secundaria : null} 
               onSave={(t: any, p: any, s: any) => setNewRuleCategory({ tipo: t, principal: p, secundaria: s })} 
             />
             </div>
-            <button type="submit" className="btn btn-primary" style={{ padding: '0.5rem 1rem' }}>
-              <Plus size={20} />
-              Crear Regla
-            </button>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button type="submit" className="btn btn-primary" style={{ padding: '0.5rem 1rem', flex: 1 }}>
+                {editingRuleId ? <Save size={20} /> : <Plus size={20} />}
+                {editingRuleId ? 'Actualizar Regla' : 'Crear Regla'}
+              </button>
+              {editingRuleId && (
+                <button type="button" className="btn btn-outline" style={{ padding: '0.5rem 1rem', flex: 1 }} onClick={() => { setEditingRuleId(null); setNewRuleKeyword(''); setNewRuleCategory({ tipo: null, principal: null, secundaria: null }); }}>
+                  <X size={20} />
+                  Cancelar
+                </button>
+              )}
+            </div>
           </form>
 
-          <div className="settings-list compact">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem', marginTop: '1.5rem' }}>
             {classificationRules.length === 0 ? (
               <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>No hay reglas de clasificación configuradas.</p>
             ) : (
               classificationRules.map(r => (
-                <div key={r.id} className="settings-list-row">
-                  <div>
-                    <span style={{ fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>Si contiene: "{r.keyword}"</span>
-                    <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                      Clasificar como: {r.tipo_movimiento} &gt; {r.categoria_principal} &gt; {r.categoria_secundaria}
+                <div key={r.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem', border: '2px solid black', borderRadius: '12px', backgroundColor: '#fff', boxShadow: '3px 3px 0 #000' }}>
+                  <div style={{ flex: 1 }}>
+                    <span style={{ fontWeight: 800, display: 'block', marginBottom: '0.25rem', fontSize: '0.95rem' }}>Si contiene: "{r.keyword}"</span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, display: 'block', lineHeight: 1.4 }}>
+                      Clasificar como: <br/>{r.tipo_movimiento} &gt; {r.categoria_principal} &gt; {r.categoria_secundaria}
                     </span>
                   </div>
-                  <button 
-                    className="btn" 
-                    style={{ padding: '0.5rem', color: 'var(--danger)', border: 'none', boxShadow: 'none' }}
-                    onClick={() => handleDeleteRule(r.id)}
-                  >
-                    <Trash2 size={20} />
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', borderTop: '2px dashed #e2e8f0', paddingTop: '0.75rem' }}>
+                    <button 
+                      className="btn btn-outline" 
+                      style={{ padding: '0.5rem', flex: 1 }}
+                      onClick={() => {
+                        setEditingRuleId(r.id);
+                        setNewRuleKeyword(r.keyword);
+                        setNewRuleCategory({ tipo: r.tipo_movimiento, principal: r.categoria_principal, secundaria: r.categoria_secundaria });
+                        window.scrollTo({ top: document.getElementById('reglas')?.offsetTop || 0, behavior: 'smooth' });
+                      }}
+                    >
+                      <Edit2 size={18} />
+                      Editar
+                    </button>
+                    <button 
+                      className="btn" 
+                      style={{ padding: '0.5rem', backgroundColor: '#fee2e2', color: 'var(--danger)', border: '2px solid var(--danger)', flex: 1 }}
+                      onClick={() => handleDeleteRule(r.id)}
+                    >
+                      <Trash2 size={18} />
+                      Eliminar
+                    </button>
+                  </div>
                 </div>
               ))
             )}

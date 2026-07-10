@@ -35,7 +35,7 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [myRut, setMyRut] = useState<string | null>(null);
-  const [knownContacts, setKnownContacts] = useState<any[]>([]);
+
   const { user } = useAuth();
   const { classificationRules } = useSettings();
   const { activeBank, setActiveBank } = useBanks();
@@ -55,12 +55,8 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
     if (user) {
       const fetchData = async () => {
         try {
-          const [{ data: s }, { data: c }] = await Promise.all([
-            supabase.from('user_settings').select('*').eq('user_id', user.id).maybeSingle(),
-            supabase.from('known_contacts').select('*').eq('user_id', user.id)
-          ]);
+          const { data: s } = await supabase.from('user_settings').select('*').eq('user_id', user.id).maybeSingle();
           if (s) setMyRut(s.rut);
-          if (c) setKnownContacts(c);
         } catch (e) {
           console.error(e);
         }
@@ -663,18 +659,6 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
             tipo_movimiento = 'Movimiento Interno';
             categoria_principal = descForCheck.includes('fondo') ? 'Traspaso fondo' : 'Transferencia personal';
             categoria_secundaria = categoria_principal;
-          } else {
-            // Buscar por RUT si existe, sino por nombre
-            const contact = knownContacts.find(c => {
-              if (rutExtracted && c.rut && extractAndNormalizeRUT(c.rut) === rutExtracted) return true;
-              if (c.name && descForCheck.includes(c.name.toLowerCase())) return true;
-              return false;
-            });
-            if (contact) {
-              tipo_movimiento = 'Egreso';
-              categoria_principal = 'Transferencias a Otras Personas';
-              categoria_secundaria = 'Familiares';
-            }
           }
 
           if (!tipo_movimiento) {

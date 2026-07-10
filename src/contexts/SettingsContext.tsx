@@ -34,7 +34,8 @@ interface SettingsContextType {
   fixedExpenses: FixedExpense[];
   saveFixedExpenses: (items: FixedExpense[]) => Promise<void>;
   loadingSettings: boolean;
-
+  userRut: string | null;
+  saveUserRut: (rut: string) => Promise<boolean>;
 }
 
 const SettingsContext = createContext<SettingsContextType>({
@@ -45,7 +46,8 @@ const SettingsContext = createContext<SettingsContextType>({
   fixedExpenses: [],
   saveFixedExpenses: async () => {},
   loadingSettings: true,
-
+  userRut: null,
+  saveUserRut: async () => false,
 });
 
 const FIXED_EXPENSES_KEY = '__fixed_expenses';
@@ -62,6 +64,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const [classificationRules, setClassificationRules] = useState<ClassificationRule[]>([]);
   const [fixedExpenses, setFixedExpenses] = useState<FixedExpense[]>([]);
   const [loadingSettings, setLoadingSettings] = useState(true);
+  const [userRut, setUserRut] = useState<string | null>(null);
 
   // Las categorías ahora son transversales (globales) para todos los bancos
   const customCategories: CustomCategory[] = (allCustomCategories['__global'] || []) as CustomCategory[];
@@ -70,12 +73,14 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     if (!user) return;
     try {
       setLoadingSettings(true);
-      // 1. Cargar Custom Categories (JSONB completo)
+      // 1. Cargar Custom Categories (JSONB completo) y RUT
       const { data: settingsData } = await supabase
         .from('user_settings')
-        .select('custom_categories')
+        .select('custom_categories, rut')
         .eq('user_id', user.id)
         .maybeSingle();
+
+      setUserRut(settingsData?.rut || null);
 
       const cats = settingsData?.custom_categories || {};
       
@@ -229,7 +234,15 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     }
   };
 
-
+  const saveUserRut = async (rut: string) => {
+    if (!user) return false;
+    const { error } = await supabase
+      .from('user_settings')
+      .upsert({ user_id: user.id, rut }, { onConflict: 'user_id' });
+    if (error) return false;
+    setUserRut(rut);
+    return true;
+  };
 
   return (
     <SettingsContext.Provider value={{ 
@@ -239,7 +252,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       saveClassificationRules,
       fixedExpenses,
       saveFixedExpenses,
-      loadingSettings
+      loadingSettings,
+      userRut,
+      saveUserRut
     }}>
       {children}
     </SettingsContext.Provider>

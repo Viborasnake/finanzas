@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
-import { Bot, Check, ContactRound, Lightbulb, RefreshCw, Sparkles, X } from 'lucide-react';
+import { Bot, Check, Lightbulb, RefreshCw, Sparkles, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { applyRules } from '../utils/classificationRules';
 import { extractAndNormalizeRUT } from '../utils/rutParser';
@@ -61,26 +61,11 @@ function extractContactName(description: string) {
 export default function SmartAssistant({ transactions, onRefresh }: SmartAssistantProps) {
   const { user } = useAuth();
   const { classificationRules, saveClassificationRules } = useSettings();
-  const [contacts, setContacts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [saving, setSaving] = useState(false);
-  const [contactName, setContactName] = useState('');
 
-  useEffect(() => {
-    if (user) fetchContacts();
-  }, [user]);
 
-  const fetchContacts = async () => {
-    try {
-      const { data } = await supabase.from('known_contacts').select('*').eq('user_id', user!.id);
-      if (data) setContacts(data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const suggestions = useMemo<Suggestion[]>(() => {
     const pending = transactions.filter(t => !t.tipo_movimiento);
@@ -117,16 +102,9 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
         };
       }
 
-      const matchingContact = contacts.find(c => {
-        const contactRut = c.rut ? extractAndNormalizeRUT(c.rut) : null;
-        if (rut && contactRut && rut === contactRut) return true;
-        const nameParts = normalize(c.name).split(' ').filter((p: string) => p.length >= 3);
-        return nameParts.some((part: string) => descNorm.includes(part));
-      });
-
       const isTransfer = /tef|transfer|traspaso|abono/i.test(description);
-      if (isTransfer || matchingContact || rut) {
-        const inferredName = matchingContact?.name || extractContactName(description);
+      if (isTransfer || rut) {
+        const inferredName = extractContactName(description);
         return {
           id: `transfer-${descNorm}`,
           ids: group.map(tx => tx.id),
@@ -134,9 +112,9 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
           type: first.type,
           count: group.length,
           total,
-          confidence: matchingContact ? 94 : group.length > 1 ? 86 : 74,
-          reason: matchingContact ? `Coincide con el contacto ${matchingContact.name}` : group.length > 1 ? 'Transferencia regular detectada por repetición' : 'Parece transferencia a persona',
-          kind: matchingContact ? 'transfer' : 'recurring',
+          confidence: group.length > 1 ? 86 : 74,
+          reason: group.length > 1 ? 'Transferencia regular detectada por repetición' : 'Parece transferencia a persona',
+          kind: 'recurring',
           proposal: {
             tipo_movimiento: first.type === 'ingreso' ? 'Ingreso' : 'Egreso',
             categoria_principal: first.type === 'ingreso' ? 'Transferencias' : 'Transferencias a Otras Personas',
@@ -187,13 +165,11 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
 
       return null;
     }).filter(Boolean).sort((a: any, b: any) => b.confidence - a.confidence || b.count - a.count) as Suggestion[];
-  }, [transactions, contacts, classificationRules]);
+  }, [transactions, classificationRules]);
 
   const current = suggestions[currentIndex];
 
-  useEffect(() => {
-    setContactName(current?.contactName || '');
-  }, [current?.id]);
+
 
   const saveRule = async (suggestion: Suggestion) => {
     const exists = classificationRules.some(r => normalize(r.keyword) === normalize(suggestion.keyword));
@@ -210,23 +186,10 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
     ]);
   };
 
-  const addContact = async (suggestion: Suggestion) => {
-    if (!user || !contactName.trim()) return;
-    const exists = contacts.some(c => normalize(c.name) === normalize(contactName) || (suggestion.rut && c.rut && extractAndNormalizeRUT(c.rut) === suggestion.rut));
-    if (exists) return;
-    const { data, error } = await supabase
-      .from('known_contacts')
-      .insert([{ user_id: user.id, name: contactName.trim(), rut: suggestion.rut || null }])
-      .select();
-    if (error) throw error;
-    if (data?.[0]) setContacts(prev => [...prev, data[0]]);
-  };
-
-  const applySuggestion = async (suggestion: Suggestion, options: { persistRule?: boolean; persistContact?: boolean } = {}) => {
+  const applySuggestion = async (suggestion: Suggestion, options: { persistRule?: boolean } = {}) => {
     if (!user) return;
     setSaving(true);
     try {
-      if (options.persistContact) await addContact(suggestion);
       if (options.persistRule) await saveRule(suggestion);
 
       const { error } = await supabase
@@ -353,18 +316,8 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
         </div>
       </div>
 
-      {(current.kind === 'transfer' || current.kind === 'recurring') && /transfer|tef|traspaso/i.test(current.description) && (
-        <div className="assistant-contact">
-          <ContactRound size={20} />
-          <div>
-            <strong>Guardar contacto para próximas transferencias</strong>
-            <input className="input" value={contactName} onChange={e => setContactName(e.target.value)} placeholder="Nombre del contacto" />
-          </div>
-        </div>
-      )}
-
       <div className="assistant-actions">
-        <button className="btn btn-primary" onClick={() => applySuggestion(current, { persistRule: true, persistContact: !!contactName.trim() })} disabled={saving}>
+        <button className="btn btn-primary" onClick={() => applySuggestion(current, { persistRule: true })} disabled={saving}>
           <Check size={18} />
           Aplicar y recordar
         </button>
