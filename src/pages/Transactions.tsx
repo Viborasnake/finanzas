@@ -800,15 +800,17 @@ export default function Transactions() {
               </div>
             )}
           </div>
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
           <button 
             className="btn btn-primary" 
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.25rem' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.65rem 1rem', backgroundColor: '#e2e8f0', color: '#0f172a', fontWeight: 800, border: '2px solid #000', boxShadow: '3px 3px 0 #000' }}
             onClick={() => setIsImportModalOpen(true)}
           >
             <UploadCloud size={20} />
             Importar Cartola
           </button>
-        </div>
         
         <div className="responsive-tabs">
           <button 
@@ -825,6 +827,7 @@ export default function Transactions() {
           </button>
         </div>
       </div>
+    </div>
 
       {viewMode === 'assistant' && (
         <SmartAssistant transactions={transactions} onRefresh={fetchTransactions} />

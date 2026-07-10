@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, CalendarCheck, CheckCircle2, ChevronLeft, ChevronRight, Settings, X } from 'lucide-react';
+import { Calendar, CalendarCheck, CheckCircle2, ChevronLeft, ChevronRight, X, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -295,11 +295,6 @@ export default function Accounts() {
         </div>
 
         <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <button className="btn btn-outline" type="button" onClick={() => setShowConfigModal(true)} style={{ marginRight: '0.5rem' }}>
-            <Settings size={18} />
-            Configurar Cuentas
-          </button>
-          
           <button className="btn btn-outline" type="button" onClick={() => shiftMonth(-1)} style={{ padding: '0.65rem' }}>
             <ChevronLeft size={20} />
           </button>
@@ -308,10 +303,6 @@ export default function Accounts() {
           </div>
           <button className="btn btn-outline" type="button" onClick={() => shiftMonth(1)} style={{ padding: '0.65rem' }}>
             <ChevronRight size={20} />
-          </button>
-          <button className="btn btn-primary" type="button" onClick={() => navigate('/settings#gastos-fijos')}>
-            <Settings size={18} />
-            Configurar
           </button>
         </div>
       </div>
@@ -377,6 +368,36 @@ export default function Accounts() {
                 </article>
               );
             })}
+            
+            <article
+              onClick={() => setShowConfigModal(true)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') setShowConfigModal(true);
+              }}
+              style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gap: '0.8rem', alignItems: 'center', padding: '0.9rem', border: '2px dashed #94a3b8', borderRadius: '10px', backgroundColor: '#f8fafc', cursor: 'pointer', transition: 'all 0.2s', minHeight: '76px' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = '#000';
+                e.currentTarget.style.backgroundColor = '#f1f5f9';
+                e.currentTarget.style.boxShadow = '3px 3px 0 #000';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = '#94a3b8';
+                e.currentTarget.style.backgroundColor = '#f8fafc';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              <span style={{ width: '38px', height: '38px', border: '2px solid #94a3b8', borderRadius: '8px', backgroundColor: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Plus size={22} color="#64748b" />
+              </span>
+              <div>
+                <strong style={{ display: 'block', fontSize: '0.95rem', color: '#334155' }}>Crear nueva cuenta</strong>
+                <div style={{ color: '#64748b', fontSize: '0.78rem', fontWeight: 600, marginTop: '0.15rem' }}>
+                  Añadir nuevo gasto mensual
+                </div>
+              </div>
+            </article>
           </div>
         )}
       </section>
