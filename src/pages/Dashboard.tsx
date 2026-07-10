@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useBanks } from '../contexts/BankContext';
-import { useSettings } from '../contexts/SettingsContext';
+
 import { 
   ChevronRight, TrendingUp, TrendingDown, 
   Wallet, CreditCard, AlertTriangle, Sparkles, Activity, Search, X, Edit2,
@@ -123,7 +123,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { activeBank, connectedBanks, dashboardScope } = useBanks();
-  const { classificationRules } = useSettings();
+
   const { taxonomy } = useTaxonomy();
   const isConsolidated = dashboardScope === 'all' && connectedBanks.length > 1;
   const dashboardBanks = isConsolidated ? connectedBanks : (activeBank ? [activeBank] : []);
