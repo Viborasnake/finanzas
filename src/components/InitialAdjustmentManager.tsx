@@ -195,7 +195,7 @@ export function InitialAdjustmentManager() {
   if (connectedBanks.length === 0) return null;
 
   return (
-    <div id="ajuste" className="card settings-card-wide settings-anchor" style={{ marginBottom: '2rem', padding: '1.25rem' }}>
+    <div id="ajuste" className="card settings-card settings-card-wide settings-anchor" style={{ position: 'relative', zIndex: 9, padding: '1.25rem' }}>
       <div 
         onClick={() => setIsCollapsed(!isCollapsed)}
         style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}

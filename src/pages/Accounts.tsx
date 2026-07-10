@@ -445,44 +445,7 @@ export default function Accounts() {
                 ))}
               </div>
 
-              <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem' }}>Historial usado para estimar</h3>
-              {selectedStatus.previousPayments.length === 0 ? (
-                <div style={{ border: '2px dashed #cbd5e1', borderRadius: '9px', padding: '1rem', backgroundColor: '#f8fafc', color: '#64748b', fontWeight: 800 }}>
-                  Sin pagos anteriores asociados.
-                </div>
-              ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                    <thead>
-                      <tr style={{ backgroundColor: '#f1f5f9' }}>
-                        <th style={{ padding: '0.7rem', textAlign: 'left', borderBottom: '2px solid #cbd5e1' }}>Fecha</th>
-                        <th style={{ padding: '0.7rem', textAlign: 'left', borderBottom: '2px solid #cbd5e1' }}>Banco</th>
-                        <th style={{ padding: '0.7rem', textAlign: 'left', borderBottom: '2px solid #cbd5e1' }}>Descripcion</th>
-                        <th style={{ padding: '0.7rem', textAlign: 'right', borderBottom: '2px solid #cbd5e1' }}>Monto</th>
-                        <th style={{ padding: '0.7rem', textAlign: 'left', borderBottom: '2px solid #cbd5e1' }}>Corregir</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedStatus.previousPayments.map((tx: any) => (
-                        <tr key={tx.id}>
-                          <td style={{ padding: '0.7rem', borderBottom: '1px solid #e2e8f0', fontWeight: 800 }}>{tx.date}</td>
-                          <td style={{ padding: '0.7rem', borderBottom: '1px solid #e2e8f0', fontWeight: 800 }}>{tx.bank || 'Sin banco'}</td>
-                          <td style={{ padding: '0.7rem', borderBottom: '1px solid #e2e8f0' }}>{tx.description || tx.original_description || 'Sin descripcion'}</td>
-                          <td style={{ padding: '0.7rem', borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 900, color: '#dc2626' }}>${getTransactionAmount(tx).toLocaleString('es-CL')}</td>
-                          <td style={{ padding: '0.7rem', borderBottom: '1px solid #e2e8f0', minWidth: '220px' }}>
-                            <CascadingCategorySelector
-                              initialPrincipal={tx.categoria_principal}
-                              initialSecundaria={tx.categoria_secundaria}
-                              contextDescription={tx.description || tx.original_description}
-                              onSave={(tipo: any, principal: any, secundaria: any) => handleCategorizeTransaction(tx.id, tipo, principal, secundaria)}
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+
             </div>
           </div>
         </div>,

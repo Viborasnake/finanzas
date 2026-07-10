@@ -617,9 +617,7 @@ export default function Settings() {
         </CollapsibleSection>
 
         {/* Ajuste de Inicio */}
-        <div id="ajuste" className="settings-card-wide settings-anchor">
-          <InitialAdjustmentManager />
-        </div>
+        <InitialAdjustmentManager />
         
         {/* Identificación (RUT) */}
         <CollapsibleSection id="deteccion" icon={BadgeCheck} title="Detección Automática" subtitle="Tu RUT y auto-clasificación histórica" description="Ingresa tu RUT para que el sistema reconozca automáticamente las transferencias entre tus propias cuentas y no las sume como Egreso o Ingreso." defaultCollapsed={true}>
