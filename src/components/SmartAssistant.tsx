@@ -334,34 +334,34 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
           </div>
         </div>
 
-        {/* Cuerpo: dos columnas */}
-        <div className="assistant-body-grid">
+        {/* Cuerpo: dos columnas con flex */}
+        <div style={{ display: 'flex', borderBottom: '2px solid #000', minHeight: 0 }}>
 
           {/* Columna izquierda: datos */}
-          <div className="assistant-card-main">
+          <div style={{ flex: '1 1 0', minWidth: 0, padding: '1rem', borderRight: '2px solid #000' }}>
             <p className="assistant-section-label">Movimientos detectados</p>
-            <div className="assistant-facts">
+            <div className="assistant-facts" style={{ marginBottom: '0.75rem' }}>
               <span>{current.count} {current.count === 1 ? 'movimiento' : 'movimientos'}</span>
               <span className={current.type === 'ingreso' ? 'fact-ingreso' : 'fact-egreso'}>
-                {current.type === 'ingreso' ? '↑ INGRESO' : '↓ EGRESO'} &nbsp;
+                {current.type === 'ingreso' ? '↑ INGRESO' : '↓ EGRESO'}&nbsp;&nbsp;
                 {current.type === 'ingreso' ? '+' : '-'}${current.total.toLocaleString('es-CL')}
               </span>
               {current.banks.map(b => (
-                <span key={b} style={{ background: 'var(--pastel-blue)', borderColor: '#93c5fd' }}>🏦 {b}</span>
+                <span key={b} style={{ background: 'var(--pastel-blue)' }}>🏦 {b}</span>
               ))}
             </div>
-            <p>
-              <Lightbulb size={15} style={{ flexShrink: 0, color: '#d97706' }} />
+            <p style={{ margin: 0, fontSize: '0.83rem', color: '#334155', display: 'flex', alignItems: 'flex-start', gap: '0.4rem' }}>
+              <Lightbulb size={15} style={{ flexShrink: 0, marginTop: 2, color: '#d97706' }} />
               {current.reason}
             </p>
           </div>
 
           {/* Columna derecha: selector editable */}
-          <div className="assistant-proposal">
-            <span>
+          <div style={{ flex: '1 1 0', minWidth: 0, padding: '1rem', background: 'var(--pastel-green)', overflow: 'hidden' }}>
+            <p className="assistant-section-label">
               Clasificar como
               {overrideProposal && <em style={{ marginLeft: '0.4rem', fontStyle: 'normal', color: '#d97706' }}>✏️ Modificado</em>}
-            </span>
+            </p>
             <CascadingCategorySelector
               key={`${current.id}-${currentIndex}`}
               initialPrincipal={overrideProposal?.categoria_principal ?? current.proposal.categoria_principal}
@@ -375,7 +375,7 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
         </div>
 
         {/* Acciones por sugerencia */}
-        <div className="assistant-actions" style={{ marginTop: 0, borderTop: '2px solid #000', paddingTop: '1rem' }}>
+        <div className="assistant-actions" style={{ marginTop: 0, borderTop: '2px solid #000', padding: '1rem' }}>
           <button className="btn btn-primary" style={{ flex: '1 1 auto', justifyContent: 'center' }} onClick={() => applySuggestion(current, { persistRule: true })} disabled={saving}>
             <Check size={16} />
             Aplicar y recordar
