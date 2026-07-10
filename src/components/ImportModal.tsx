@@ -479,11 +479,118 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
       setLoading(false);
     }
   };
+  const parseConsorcioPdf = async (file: File) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const arrayBuffer = await file.arrayBuffer();
+      let pdf;
+      try {
+        pdf = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
+      } catch (err: any) {
+        throw err;
+      }
+      if (!pdf) return;
+
+      const parsedTransactions: Transaction[] = [];
+      const regex = /^(\d{2}\/\d{2}\/\d{4})\s+\d{2}:\d{2}:\d{2}\s+(.+?)\s*\$\s*([\d\.\,]+)\s*\$\s*([\d\.\,]+)\s*\$\s*([\d\.\,]+)$/;
+
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        const rawItems = Array.isArray(textContent.items) ? textContent.items : Array.from(textContent.items || []);
+        
+        const items = rawItems.map((item: any) => ({
+          str: item.str || '',
+          x: item.transform[4],
+          y: item.transform[5],
+        })).sort((a, b) => {
+          if (Math.abs(a.y - b.y) > 4) {
+             return b.y - a.y; // Higher Y first (top to bottom)
+          }
+          return a.x - b.x; // Left to right
+        });
+
+        const lines: any[][] = [];
+        let currentLine: any[] = [];
+        let lastY = -1;
+        
+        for (let k = 0; k < items.length; k++) {
+           const item = items[k];
+           if (!item.str.trim() && item.str !== ' ') continue;
+           
+           if (lastY === -1 || Math.abs(item.y - lastY) > 4) {
+              if (currentLine.length > 0) lines.push(currentLine);
+              currentLine = [item];
+              lastY = item.y;
+           } else {
+              currentLine.push(item);
+           }
+        }
+        if (currentLine.length > 0) lines.push(currentLine);
+
+        for (let l = 0; l < lines.length; l++) {
+           const lineItems = lines[l];
+           const fullText = lineItems.map((i: any) => i.str).join(' ').replace(/\s+/g, ' ').trim();
+           
+           const match = fullText.match(regex);
+           if (!match) continue;
+
+           const dateMatch = match[1].match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+           if (!dateMatch) continue;
+           const dateStr = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
+           
+           const descAndSerie = match[2].trim();
+           let description = descAndSerie;
+
+           const cargo = parseFloat(match[3].replace(/\./g, '').replace(/,/g, '.'));
+           const abono = parseFloat(match[4].replace(/\./g, '').replace(/,/g, '.'));
+
+           let amount = 0;
+           let type: 'ingreso' | 'egreso' = 'egreso';
+
+           if (cargo > 0) {
+             amount = cargo;
+             type = 'egreso';
+           } else if (abono > 0) {
+             amount = abono;
+             type = 'ingreso';
+           } else {
+             continue;
+           }
+
+           parsedTransactions.push({
+             date: dateStr,
+             description,
+             original_description: description,
+             amount,
+             type,
+             raw_data: { fullLine: fullText }
+           });
+        }
+      }
+
+      if (parsedTransactions.length === 0) {
+        setError("No se encontraron transacciones en el PDF de Consorcio. Asegúrate de que es una cartola válida.");
+        setStep('upload');
+      } else {
+        setData(parsedTransactions);
+        setStep('preview');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError("Error procesando el PDF de Consorcio: " + (err.message || 'Error desconocido'));
+      setStep('upload');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const detectBankFromFile = async (file: File): Promise<Bank | null> => {
     const name = file.name.toLowerCase();
     
     if (name.endsWith('.pdf')) {
+      if (name.includes('consorcio')) return 'Consorcio';
       return 'Mach'; // Por defecto asumimos que es MACH para los PDFs
     }
     if (name.endsWith('.xls') || name.endsWith('.xlsx')) return 'Itaú';
@@ -527,7 +634,11 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
     }
     
     if (selectedFile.name.toLowerCase().endsWith('.pdf')) {
-      parseMachPdf(selectedFile);
+      if (detectedBank === 'Consorcio') {
+        parseConsorcioPdf(selectedFile);
+      } else {
+        parseMachPdf(selectedFile);
+      }
     } else {
       setStep('preview');
       if (detectedBank === 'Itaú') parseItauXls(selectedFile);

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from './AuthContext';
 
-export type Bank = 'BancoEstado' | 'Scotiabank' | 'Itaú' | 'Mach';
+export type Bank = 'BancoEstado' | 'Scotiabank' | 'Itaú' | 'Mach' | 'Consorcio';
 export type DashboardBankScope = Bank | 'all';
 
 export const AVAILABLE_BANKS: { id: Bank; label: string; color: string; emoji: string }[] = [
@@ -10,6 +10,7 @@ export const AVAILABLE_BANKS: { id: Bank; label: string; color: string; emoji: s
   { id: 'Scotiabank', label: 'Scotiabank', color: '#e63000', emoji: '🔴' },
   { id: 'Itaú',       label: 'Itaú',       color: '#f77f00', emoji: '🟠' },
   { id: 'Mach',       label: 'Mach',       color: '#a855f7', emoji: '🟣' },
+  { id: 'Consorcio',  label: 'Consorcio',  color: '#ff7a00', emoji: '🏦' },
 ];
 
 interface BankContextType {
