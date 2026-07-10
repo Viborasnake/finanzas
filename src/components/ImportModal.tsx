@@ -532,7 +532,7 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
            const lineItems = lines[l];
            const fullText = lineItems.map((i: any) => i.str).join(' ').replace(/\s+/g, ' ').replace(/\s*\/\s*/g, '/').replace(/\s*\-\s*/g, '-').trim();
            
-           const regex = /^(\d{2}[/\-\.]\d{2}[/\-\.]\d{2,4})(?:\s+\d{2}:\d{2}:\d{2})?\s+(.+?)\s*(?:\$\s*)?([\d\.\,]+)\s*(?:\$\s*)?([\d\.\,]+)\s*(?:\$\s*)?([\d\.\,]+)$/;
+           const regex = /^(\d{2}[/\-\.]\d{2}[/\-\.]\d{2,4})(?:\s+\d{2}:\d{2}:\d{2})?\s+(.+?)\s*(?:\$\s*)?(-?[\d\.\,]+)\s*(?:\$\s*)?(-?[\d\.\,]+)\s*(?:\$\s*)?(-?[\d\.\,]+)$/;
            const match = fullText.match(regex);
            if (!match) continue;
 
