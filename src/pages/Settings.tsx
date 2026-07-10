@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, Trash2, Save, X, BadgeCheck, Landmark, Tags, Users, Wand2, CalendarCheck, Pencil } from 'lucide-react';
+import { Plus, Trash2, Save, X, BadgeCheck, Landmark, Tags, Users, Wand2, CalendarCheck, Pencil, Activity, CheckCircle2, ChevronRight, Settings as SettingsIcon, FileSpreadsheet, Sparkles, ChevronDown, Wallet } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { extractAndNormalizeRUT } from '../utils/rutParser';
 import type { ClassificationRule } from '../utils/classificationRules';
@@ -9,6 +9,7 @@ import { applyRules } from '../utils/classificationRules';
 import { CascadingCategorySelector } from './Transactions';
 import { useSettings } from '../contexts/SettingsContext';
 import { useBanks, AVAILABLE_BANKS } from '../contexts/BankContext';
+import { useNavigate } from 'react-router-dom';
 import { InitialAdjustmentManager } from '../components/InitialAdjustmentManager';
 import type { FixedExpense } from '../contexts/SettingsContext';
 
@@ -29,7 +30,7 @@ const SUGGESTED_FIXED_EXPENSES = [
 
 
 export default function Settings() {
-  
+  const navigate = useNavigate();
   const { user } = useAuth();
   
   const handleDeleteAccount = async () => {
@@ -71,7 +72,185 @@ export default function Settings() {
   const [newContactRut, setNewContactRut] = useState('');
   
   const { customCategories, saveCustomCategories, classificationRules, saveClassificationRules, fixedExpenses, saveFixedExpenses } = useSettings();
-  const { connectedBanks, mainBank, setMainBankAndSave, addBank, removeBank } = useBanks();
+  const { connectedBanks, mainBank, setMainBankAndSave, addBank, removeBank, activeBank } = useBanks();
+  const dashboardScope = localStorage.getItem('finanzas_dashboard_scope') || 'all';
+
+  const [setupCollapsed, setSetupCollapsed] = useState(() => localStorage.getItem('finanzas_setup_collapsed') === 'true');
+  const [setupStats, setSetupStats] = useState({ hasInitialBalance: false, realMovements: 0, unclassified: 0, loading: true });
+
+  const toggleSetupCollapsed = () => {
+    setSetupCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem('finanzas_setup_collapsed', String(next));
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    const fetchSetupStats = async () => {
+      if (!user) return;
+      
+      const dashboardBanks = dashboardScope === 'all' && connectedBanks.length > 1 ? connectedBanks : (activeBank ? [activeBank] : []);
+      if (dashboardBanks.length === 0) {
+        setSetupStats({ hasInitialBalance: false, realMovements: 0, unclassified: 0, loading: false });
+        return;
+      }
+
+      setSetupStats(prev => ({ ...prev, loading: true }));
+      
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('description, categoria_principal')
+        .eq('user_id', user.id)
+        .in('bank', dashboardBanks);
+
+      if (error || !data) {
+        setSetupStats({ hasInitialBalance: false, realMovements: 0, unclassified: 0, loading: false });
+        return;
+      }
+
+      const hasInitialBalance = data.some(t => (t.description || '').toLowerCase().includes('saldo inicial'));
+      const realMovements = data.filter(t => !(t.description || '').toLowerCase().includes('saldo inicial')).length;
+      const unclassified = data.filter(t => !(t.description || '').toLowerCase().includes('saldo inicial') && (!t.categoria_principal || t.categoria_principal === 'Sin Clasificar')).length;
+
+      setSetupStats({ hasInitialBalance, realMovements, unclassified, loading: false });
+    };
+    fetchSetupStats();
+  }, [user, activeBank, dashboardScope, connectedBanks.length]);
+
+  const renderSetupMiniDashboard = () => {
+    const dashboardBanks = dashboardScope === 'all' && connectedBanks.length > 1 ? connectedBanks : (activeBank ? [activeBank] : []);
+    if (dashboardBanks.length === 0 || setupStats.loading) return null;
+
+    const activeBankInfo = AVAILABLE_BANKS.find(b => b.id === activeBank);
+    const dashboardBankLabel = (dashboardScope === 'all' && connectedBanks.length > 1) ? 'Todos los bancos' : (activeBankInfo?.label || 'Sin banco');
+
+    const hasRules = classificationRules.length > 0;
+    const hasRut = Boolean(myRut);
+    const contactsCount = contacts.length;
+
+    const items = [
+      {
+        title: 'Banco activo',
+        detail: dashboardBankLabel,
+        done: true,
+        action: 'Cambiar',
+        path: '#bancos',
+        icon: <Landmark size={18} strokeWidth={2.5} />
+      },
+      {
+        title: 'Saldo inicial',
+        detail: setupStats.hasInitialBalance ? 'Configurado' : 'Pendiente para balance exacto',
+        done: setupStats.hasInitialBalance,
+        action: setupStats.hasInitialBalance ? 'Revisar' : 'Configurar',
+        path: '#ajuste',
+        icon: <Wallet size={18} strokeWidth={2.5} />
+      },
+      {
+        title: 'RUT propio',
+        detail: hasRut ? 'Listo para detectar transferencias propias' : 'Falta para evitar dobles conteos',
+        done: hasRut,
+        action: hasRut ? 'Ver' : 'Guardar',
+        path: '#deteccion',
+        icon: <SettingsIcon size={18} strokeWidth={2.5} />
+      },
+      {
+        title: 'Cartola',
+        detail: `${setupStats.realMovements.toLocaleString('es-CL')} movimientos reales`,
+        done: setupStats.realMovements > 0,
+        action: 'Importar más',
+        path: '/import',
+        icon: <FileSpreadsheet size={18} strokeWidth={2.5} />
+      },
+      {
+        title: 'Clasificación',
+        detail: setupStats.unclassified === 0 ? 'Todo clasificado' : `${setupStats.unclassified} sin clasificar`,
+        done: setupStats.unclassified === 0,
+        action: setupStats.unclassified === 0 ? 'Revisar' : 'Clasificar',
+        path: '/transactions',
+        icon: <Tags size={18} strokeWidth={2.5} />
+      },
+      {
+        title: 'Automatización',
+        detail: `${classificationRules.length} reglas · ${contactsCount} contactos`,
+        done: hasRules || contactsCount > 0,
+        action: 'Mejorar',
+        path: '#contactos',
+        icon: <Sparkles size={18} strokeWidth={2.5} />
+      }
+    ];
+
+    const doneCount = items.filter(item => item.done).length;
+    const progress = Math.round((doneCount / items.length) * 100);
+    const nextItem = items.find(item => !item.done) || items[items.length - 1];
+
+    return (
+      <section style={{ border: '2px solid #000', borderRadius: '12px', boxShadow: '4px 4px 0px #000', backgroundColor: '#fff', marginBottom: '2rem', overflow: 'hidden' }}>
+        <button
+          type="button"
+          onClick={toggleSetupCollapsed}
+          style={{ width: '100%', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '1rem', alignItems: 'center', textAlign: 'left', padding: '1rem 1.25rem', backgroundColor: '#f8fafc', border: 'none', borderBottom: setupCollapsed ? 'none' : '2px solid #000', cursor: 'pointer' }}
+        >
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.45rem' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#dbeafe', boxShadow: '2px 2px 0 #000', fontSize: '0.72rem', fontWeight: 900 }}>
+                <Activity size={14} strokeWidth={3} />
+                Estado del banco
+              </span>
+              <strong style={{ fontSize: '1rem' }}>{dashboardBankLabel}</strong>
+              <span style={{ color: '#64748b', fontWeight: 800, fontSize: '0.85rem' }}>{doneCount}/{items.length} listo</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ flex: 1, maxWidth: '360px', height: '12px', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#fff', overflow: 'hidden' }}>
+                <div style={{ width: `${progress}%`, height: '100%', backgroundColor: progress === 100 ? '#86efac' : '#fde047' }} />
+              </div>
+              <span style={{ fontWeight: 900, fontSize: '0.85rem' }}>{progress}%</span>
+              <span style={{ color: '#334155', fontWeight: 700, fontSize: '0.85rem' }}>
+                {progress === 100 ? 'Operación lista' : `Sigue: ${nextItem.title}`}
+              </span>
+            </div>
+          </div>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontWeight: 900, fontSize: '0.85rem' }}>
+            {setupCollapsed ? 'Mostrar' : 'Ocultar'}
+            <ChevronDown size={18} strokeWidth={3} style={{ transform: setupCollapsed ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform 0.2s' }} />
+          </span>
+        </button>
+
+        {!setupCollapsed && (
+          <div style={{ padding: '1rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '0.9rem' }}>
+            {items.map(item => (
+              <button
+                key={item.title}
+                type="button"
+                onClick={() => {
+                  if (item.path.startsWith('#')) {
+                    document.getElementById(item.path.substring(1))?.scrollIntoView({ behavior: 'smooth' });
+                  } else {
+                    navigate(item.path);
+                  }
+                }}
+                style={{ textAlign: 'left', display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gridTemplateRows: 'auto auto', gap: '0.7rem 0.85rem', alignItems: 'start', minHeight: '116px', padding: '0.9rem', border: '2px solid #000', borderRadius: '10px', backgroundColor: item.done ? '#dcfce7' : '#fff7ed', boxShadow: '2px 2px 0 #000', cursor: 'pointer' }}
+              >
+                <span style={{ width: '38px', height: '38px', borderRadius: '8px', border: '2px solid #000', backgroundColor: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {item.done ? <CheckCircle2 size={20} fill="#22c55e" color="#000" strokeWidth={2.5} /> : item.icon}
+                </span>
+                <span style={{ minWidth: 0 }}>
+                  <strong style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.2rem' }}>{item.title}</strong>
+                  <span style={{ display: 'block', color: '#475569', fontWeight: 700, fontSize: '0.76rem', lineHeight: 1.35, overflowWrap: 'anywhere' }}>
+                    {item.detail}
+                  </span>
+                </span>
+                <span style={{ gridColumn: '2', justifySelf: 'start', alignSelf: 'end', display: 'inline-flex', alignItems: 'center', gap: '0.2rem', padding: '0.25rem 0.55rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#fff', boxShadow: '1px 1px 0 #000', fontSize: '0.72rem', fontWeight: 900 }}>
+                  {item.action}
+                  <ChevronRight size={14} strokeWidth={3} />
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+    );
+  };
   
   const [newRuleKeyword, setNewRuleKeyword] = useState('');
   const [newRuleCategory, setNewRuleCategory] = useState<{ tipo: string | null, principal: string | null, secundaria: string | null }>({ tipo: null, principal: null, secundaria: null });
@@ -355,6 +534,8 @@ export default function Settings() {
         <a href="#gastos-fijos">Gastos fijos</a>
         <a href="#reglas">Reglas</a>
       </div>
+
+      {renderSetupMiniDashboard()}
 
       <div className="settings-bento">
         {/* Bank Management */}
