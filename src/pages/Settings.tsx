@@ -946,7 +946,7 @@ export default function Settings() {
         </CollapsibleSection>
 
         {/* Classification Rules */}
-        <CollapsibleSection id="reglas" icon={Wand2} title="Reglas de Auto-Clasificación" subtitle="Mapeo persistente por palabra clave" description="Define qué texto debe estar en la glosa (descripción) de una transacción para asignarle automáticamente una categoría. Las reglas se aplican al importar." className="card settings-card settings-card-tall" defaultCollapsed={true}>
+        <CollapsibleSection id="reglas" icon={Wand2} title="Reglas de Auto-Clasificación" subtitle="Mapeo persistente por palabra clave" description="Define qué texto debe estar en la glosa (descripción) de una transacción para asignarle automáticamente una categoría. Las reglas se aplican al importar." className="card settings-card settings-card-wide settings-card-tall" defaultCollapsed={true}>
           
           <form className="settings-rule-form" onSubmit={handleAddRule}>
             <input 
