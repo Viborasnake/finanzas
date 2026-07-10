@@ -34,7 +34,7 @@ interface SettingsContextType {
   fixedExpenses: FixedExpense[];
   saveFixedExpenses: (items: FixedExpense[]) => Promise<void>;
   loadingSettings: boolean;
-  copySettingsFromBank: (sourceBank: string, targetBank: string) => Promise<void>;
+
 }
 
 const SettingsContext = createContext<SettingsContextType>({
@@ -45,7 +45,7 @@ const SettingsContext = createContext<SettingsContextType>({
   fixedExpenses: [],
   saveFixedExpenses: async () => {},
   loadingSettings: true,
-  copySettingsFromBank: async () => {},
+
 });
 
 const FIXED_EXPENSES_KEY = '__fixed_expenses';
@@ -104,47 +104,51 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       setAllCustomCategories(newAllCats);
       setFixedExpenses(newAllCats[FIXED_EXPENSES_KEY]);
 
-      // 2. Cargar Rules para el banco activo si existe
-      if (activeBank) {
-        const { data: rulesData } = await supabase
-          .from('classification_rules')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('bank', activeBank);
+      // 2. Cargar Rules transversales (ignoramos el banco activo para las reglas)
+      const { data: rulesData } = await supabase
+        .from('classification_rules')
+        .select('*')
+        .eq('user_id', user.id);
 
-        if (rulesData && rulesData.length > 0) {
-          setClassificationRules(rulesData.map(r => ({
-            id: r.id,
-            keyword: r.condition_value,
-            tipo_movimiento: r.category_tipo,
-            categoria_principal: r.category_principal,
-            categoria_secundaria: r.category_secundaria
-          })));
-        } else {
-          // Intentar migrar desde localStorage si no hay reglas en BD
-          const localRulesStr = localStorage.getItem('finanzas_classification_rules');
-          if (localRulesStr) {
-            try {
-              const localRules = JSON.parse(localRulesStr);
-              if (localRules && localRules.length > 0) {
-                const inserts = localRules.map((r: any) => ({
-                  user_id: user.id,
-                  bank: activeBank,
-                  condition_type: 'contains',
-                  condition_value: r.keyword,
-                  category_tipo: r.tipo_movimiento,
-                  category_principal: r.categoria_principal,
-                  category_secundaria: r.categoria_secundaria || ''
-                }));
-                await supabase.from('classification_rules').insert(inserts);
-                setClassificationRules(localRules);
-                localStorage.removeItem('finanzas_classification_rules');
-                return;
-              }
-            } catch (err) {
-              console.error('Failed to parse local rules', err);
-            }
+      if (rulesData && rulesData.length > 0) {
+        const globalRulesMap = new Map();
+        rulesData.forEach(r => {
+          const keyword = r.condition_value.toLowerCase();
+          if (!globalRulesMap.has(keyword)) {
+            globalRulesMap.set(keyword, {
+              id: r.id,
+              keyword: r.condition_value,
+              tipo_movimiento: r.category_tipo,
+              categoria_principal: r.category_principal,
+              categoria_secundaria: r.category_secundaria
+            });
           }
+        });
+        setClassificationRules(Array.from(globalRulesMap.values()));
+      } else {
+        // Intentar migrar desde localStorage si no hay reglas en BD
+        const localRulesStr = localStorage.getItem('finanzas_classification_rules');
+        if (localRulesStr) {
+          try {
+            const localRules = JSON.parse(localRulesStr);
+            if (localRules && localRules.length > 0) {
+              const inserts = localRules.map((r: any) => ({
+                user_id: user.id,
+                bank: 'global',
+                condition_type: 'contains',
+                condition_value: r.keyword,
+                category_tipo: r.tipo_movimiento,
+                category_principal: r.categoria_principal,
+                category_secundaria: r.categoria_secundaria || ''
+              }));
+              await supabase.from('classification_rules').insert(inserts);
+              setClassificationRules(localRules);
+              localStorage.removeItem('finanzas_classification_rules');
+            }
+          } catch (err) {
+            console.error('Failed to parse local rules', err);
+          }
+        } else {
           setClassificationRules([]);
         }
       }
@@ -203,21 +207,18 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     }
   };
 
-  const saveClassificationRules = async (rules: ClassificationRule[], targetBank?: string) => {
-    const bankToSave = targetBank || activeBank;
-    if (!user || !bankToSave) return;
+  const saveClassificationRules = async (rules: ClassificationRule[]) => {
+    if (!user) return;
     
-    if (bankToSave === activeBank) {
-      setClassificationRules(rules);
-    }
+    setClassificationRules(rules);
 
-    // Delete existing rules for this bank
-    await supabase.from('classification_rules').delete().eq('user_id', user.id).eq('bank', bankToSave);
+    // Eliminamos todas las reglas previas (ahora son globales, por lo que borramos todas las de este usuario sin importar el banco)
+    await supabase.from('classification_rules').delete().eq('user_id', user.id);
 
     if (rules.length > 0) {
       const inserts = rules.map(r => ({
         user_id: user.id,
-        bank: bankToSave,
+        bank: 'global',
         condition_type: 'contains',
         condition_value: r.keyword,
         category_tipo: r.tipo_movimiento,
@@ -228,27 +229,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     }
   };
 
-  const copySettingsFromBank = async (sourceBank: string, targetBank: string) => {
-    if (!user) return;
-    
-    // 1. Fetch and copy rules (Categories are now transversal)
-    const { data: rulesData } = await supabase
-      .from('classification_rules')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('bank', sourceBank);
 
-    if (rulesData && rulesData.length > 0) {
-      const rules = rulesData.map(r => ({
-        id: r.id, // ID will be regenerated on insert or ignored by the save function since it deletes first
-        keyword: r.condition_value,
-        tipo_movimiento: r.category_tipo,
-        categoria_principal: r.category_principal,
-        categoria_secundaria: r.category_secundaria
-      }));
-      await saveClassificationRules(rules, targetBank);
-    }
-  };
 
   return (
     <SettingsContext.Provider value={{ 
@@ -258,8 +239,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       saveClassificationRules,
       fixedExpenses,
       saveFixedExpenses,
-      loadingSettings,
-      copySettingsFromBank
+      loadingSettings
     }}>
       {children}
     </SettingsContext.Provider>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, Trash2, Save, X, BadgeCheck, Landmark, Tags, Users, Wand2, CalendarCheck, Pencil, Activity, CheckCircle2, ChevronRight, Settings as SettingsIcon, FileSpreadsheet, Sparkles, ChevronDown, Wallet } from 'lucide-react';
+import { Plus, Trash2, Save, X, BadgeCheck, Landmark, Tags, Users, Wand2, Activity, CheckCircle2, ChevronRight, Settings as SettingsIcon, FileSpreadsheet, Sparkles, ChevronDown, Wallet } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { extractAndNormalizeRUT } from '../utils/rutParser';
 import type { ClassificationRule } from '../utils/classificationRules';
@@ -11,23 +11,6 @@ import { useSettings } from '../contexts/SettingsContext';
 import { useBanks, AVAILABLE_BANKS } from '../contexts/BankContext';
 import { useNavigate } from 'react-router-dom';
 import { InitialAdjustmentManager } from '../components/InitialAdjustmentManager';
-import type { FixedExpense } from '../contexts/SettingsContext';
-
-const SUGGESTED_FIXED_EXPENSES = [
-  'Luz',
-  'Agua',
-  'Gas',
-  'Internet hogar',
-  'GPT',
-  'Apple Music',
-  'HBO Max',
-  'iCloud',
-  'Gemini',
-  'Dividendo',
-  'CAE (Crédito con aval del estado)',
-  'Seguro Auto (Falabella)'
-];
-
 
 const CollapsibleSection = ({ id, icon: Icon, title, subtitle, description, defaultCollapsed = true, className = "card settings-card settings-card-wide", children }: any) => {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
@@ -101,7 +84,7 @@ export default function Settings() {
   const [newContactName, setNewContactName] = useState('');
   const [newContactRut, setNewContactRut] = useState('');
   
-  const { customCategories, saveCustomCategories, classificationRules, saveClassificationRules, fixedExpenses, saveFixedExpenses } = useSettings();
+  const { customCategories, saveCustomCategories, classificationRules, saveClassificationRules } = useSettings();
   const { connectedBanks, mainBank, setMainBankAndSave, addBank, removeBank, activeBank } = useBanks();
   const dashboardScope = localStorage.getItem('finanzas_dashboard_scope') || 'all';
 
@@ -287,13 +270,6 @@ export default function Settings() {
   const [newCatTipo, setNewCatTipo] = useState('Egreso');
   const [newCatPrincipal, setNewCatPrincipal] = useState('');
   const [newCatSecundaria, setNewCatSecundaria] = useState('');
-  const [newFixedName, setNewFixedName] = useState('');
-  const [newFixedKeyword, setNewFixedKeyword] = useState('');
-  const [newFixedCategory, setNewFixedCategory] = useState<{ tipo: string | null, principal: string | null, secundaria: string | null }>({ tipo: null, principal: null, secundaria: null });
-  const [editingFixedId, setEditingFixedId] = useState<string | null>(null);
-  const [editFixedName, setEditFixedName] = useState('');
-  const [editFixedKeyword, setEditFixedKeyword] = useState('');
-  const [editFixedCategory, setEditFixedCategory] = useState<{ tipo: string | null, principal: string | null, secundaria: string | null }>({ tipo: null, principal: null, secundaria: null });
 
   useEffect(() => {
     if (user) {
@@ -387,94 +363,7 @@ export default function Settings() {
     toast.success('Regla eliminada');
   };
 
-  const handleAddFixedExpense = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newFixedName.trim()) {
-      toast.error('Ponle un nombre al gasto fijo');
-      return;
-    }
 
-    const item: FixedExpense = {
-      id: crypto.randomUUID(),
-      name: newFixedName.trim(),
-      tipo_movimiento: newFixedCategory.tipo || 'Egreso',
-      categoria_principal: newFixedCategory.principal,
-      categoria_secundaria: newFixedCategory.secundaria,
-      keyword: newFixedKeyword.trim() || undefined
-    };
-
-    await saveFixedExpenses([...fixedExpenses, item]);
-    setNewFixedName('');
-    setNewFixedKeyword('');
-    setNewFixedCategory({ tipo: null, principal: null, secundaria: null });
-    toast.success('Gasto fijo agregado');
-  };
-
-  const handleDeleteFixedExpense = async (id: string) => {
-    await saveFixedExpenses(fixedExpenses.filter(item => item.id !== id));
-    toast.success('Gasto fijo eliminado');
-  };
-
-  const startEditFixedExpense = (item: FixedExpense) => {
-    setEditingFixedId(item.id);
-    setEditFixedName(item.name);
-    setEditFixedKeyword(item.keyword || '');
-    setEditFixedCategory({
-      tipo: item.tipo_movimiento || 'Egreso',
-      principal: item.categoria_principal || null,
-      secundaria: item.categoria_secundaria || null
-    });
-  };
-
-  const cancelEditFixedExpense = () => {
-    setEditingFixedId(null);
-    setEditFixedName('');
-    setEditFixedKeyword('');
-    setEditFixedCategory({ tipo: null, principal: null, secundaria: null });
-  };
-
-  const handleSaveFixedExpense = async (id: string) => {
-    if (!editFixedName.trim()) {
-      toast.error('Ponle un nombre al gasto fijo');
-      return;
-    }
-
-    const next = fixedExpenses.map(item => item.id === id
-      ? {
-          ...item,
-          name: editFixedName.trim(),
-          tipo_movimiento: editFixedCategory.tipo || 'Egreso',
-          categoria_principal: editFixedCategory.principal,
-          categoria_secundaria: editFixedCategory.secundaria,
-          keyword: editFixedKeyword.trim() || undefined
-        }
-      : item
-    );
-
-    await saveFixedExpenses(next);
-    cancelEditFixedExpense();
-    toast.success('Gasto fijo actualizado');
-  };
-
-  const handleLoadSuggestedFixedExpenses = async () => {
-    const existing = new Set(fixedExpenses.map(item => item.name.toLowerCase()));
-    const next = [
-      ...fixedExpenses,
-      ...SUGGESTED_FIXED_EXPENSES
-        .filter(name => !existing.has(name.toLowerCase()))
-        .map(name => ({
-          id: crypto.randomUUID(),
-          name,
-          tipo_movimiento: 'Egreso',
-          categoria_principal: null,
-          categoria_secundaria: null,
-          keyword: name
-        }))
-    ];
-
-    await saveFixedExpenses(next);
-    toast.success('Gastos fijos sugeridos cargados');
-  };
 
   const handleDeleteContact = async (id: string) => {
     try {
@@ -763,137 +652,7 @@ export default function Settings() {
           )}
         </CollapsibleSection>
 
-        {/* Gastos Fijos */}
-        <CollapsibleSection id="gastos-fijos" icon={CalendarCheck} title="Gastos Fijos" subtitle="Cuentas recurrentes para controlar pagos mensuales" description="Crea tus cuentas fijas y vincúlalas a una categoría. El dashboard las cruzará con tus movimientos para mostrar qué está pagado y qué falta." defaultCollapsed={true}>
 
-          {fixedExpenses.length === 0 && (
-            <div className="settings-callout" style={{ borderTop: 'none', marginTop: 0, paddingTop: 0, marginBottom: '1.25rem' }}>
-              <h3 style={{ fontSize: '1.05rem', marginBottom: '0.5rem', fontWeight: 900 }}>Partir rápido con tus cuentas</h3>
-              <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem', fontWeight: 600 }}>
-                Carga Luz, Agua, Gas, Internet hogar, suscripciones, Dividendo, CAE y Seguro Auto. Luego ajustas el vínculo de categoría de cada una.
-              </p>
-              <button className="btn btn-outline" onClick={handleLoadSuggestedFixedExpenses} type="button">
-                <Plus size={18} />
-                Cargar sugeridos
-              </button>
-            </div>
-          )}
-
-          <form className="settings-fixed-expense-form" onSubmit={handleAddFixedExpense}>
-            <input
-              type="text"
-              className="input"
-              placeholder="Nombre (ej. Luz, CAE, HBO Max)"
-              value={newFixedName}
-              onChange={(e) => setNewFixedName(e.target.value)}
-              required
-            />
-            <input
-              type="text"
-              className="input"
-              placeholder="Palabra opcional (ej. Enel, Falabella)"
-              value={newFixedKeyword}
-              onChange={(e) => setNewFixedKeyword(e.target.value)}
-            />
-            <div className="settings-rule-category">
-              <CascadingCategorySelector
-                initialPrincipal={null}
-                initialSecundaria={null}
-                onSave={(t: any, p: any, s: any) => setNewFixedCategory({ tipo: t, principal: p, secundaria: s })}
-              />
-            </div>
-            <button type="submit" className="btn btn-primary">
-              <Plus size={20} />
-              Agregar fijo
-            </button>
-          </form>
-
-          <div className="settings-list compact">
-            {fixedExpenses.length === 0 ? (
-              <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Aún no tienes gastos fijos configurados.</p>
-            ) : (
-              fixedExpenses.map(item => (
-                <div key={item.id} className="settings-list-row">
-                  {editingFixedId === item.id ? (
-                    <div className="settings-fixed-expense-edit">
-                      <input
-                        type="text"
-                        className="input"
-                        value={editFixedName}
-                        onChange={(e) => setEditFixedName(e.target.value)}
-                        placeholder="Nombre"
-                      />
-                      <input
-                        type="text"
-                        className="input"
-                        value={editFixedKeyword}
-                        onChange={(e) => setEditFixedKeyword(e.target.value)}
-                        placeholder="Palabra opcional"
-                      />
-                      <div className="settings-rule-category">
-                        <CascadingCategorySelector
-                          initialPrincipal={editFixedCategory.principal}
-                          initialSecundaria={editFixedCategory.secundaria}
-                          onSave={(t: any, p: any, s: any) => setEditFixedCategory({ tipo: t, principal: p, secundaria: s })}
-                        />
-                      </div>
-                      <div className="settings-row-actions">
-                        <button
-                          className="btn btn-primary"
-                          onClick={() => handleSaveFixedExpense(item.id)}
-                          type="button"
-                        >
-                          <Save size={18} />
-                          Guardar
-                        </button>
-                        <button
-                          className="btn btn-outline"
-                          onClick={cancelEditFixedExpense}
-                          type="button"
-                        >
-                          <X size={18} />
-                          Cancelar
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div style={{ minWidth: 0 }}>
-                        <span style={{ fontWeight: 900, display: 'block', marginBottom: '0.25rem' }}>{item.name}</span>
-                        <span style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', fontWeight: 650 }}>
-                          {item.categoria_principal
-                            ? `${item.tipo_movimiento || 'Egreso'} > ${item.categoria_principal}${item.categoria_secundaria ? ` > ${item.categoria_secundaria}` : ''}`
-                            : 'Falta vincular categoría'}
-                          {item.keyword ? ` · "${item.keyword}"` : ''}
-                        </span>
-                      </div>
-                      <div className="settings-row-actions">
-                        <button
-                          className="btn btn-outline"
-                          onClick={() => startEditFixedExpense(item)}
-                          type="button"
-                          title="Editar gasto fijo"
-                        >
-                          <Pencil size={18} />
-                          Editar
-                        </button>
-                        <button
-                          className="btn"
-                          style={{ padding: '0.5rem', color: 'var(--danger)', border: 'none', boxShadow: 'none' }}
-                          onClick={() => handleDeleteFixedExpense(item.id)}
-                          type="button"
-                          title="Eliminar gasto fijo"
-                        >
-                          <Trash2 size={20} />
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        </CollapsibleSection>
 
         {/* Contactos Frecuentes */}
         <CollapsibleSection id="contactos" icon={Users} title="Contactos Conocidos" subtitle="Personas frecuentes para transferencias" description="Agrega RUTs de amigos o familiares. Cuando importes, el sistema clasificará automáticamente los traspasos a ellos como 'Transferencias a Otras Personas'." defaultCollapsed={true}>

@@ -5,12 +5,13 @@ import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { TransactionTypeBadge } from '../components/TransactionTypeBadge';
 import { AVAILABLE_BANKS, useBanks } from '../contexts/BankContext';
-import { Search, Edit2, Plus, X, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Search, Edit2, Plus, X, ChevronRight, CheckCircle2, UploadCloud } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useActionQueue } from '../hooks/useActionQueue';
 import SmartAssistant from '../components/SmartAssistant';
 import { useTaxonomy } from '../hooks/useTaxonomy';
 import { useSettings } from '../contexts/SettingsContext';
+import ImportModal from '../components/ImportModal';
 
 const normalizeBankName = (value: any) => String(value || '')
   .normalize('NFD')
@@ -398,6 +399,7 @@ export default function Transactions() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   
   useEffect(() => {
     const q = searchParams.get('search');
@@ -411,7 +413,7 @@ export default function Transactions() {
 
   
   const [filterPeriod, setFilterPeriod] = useState('all');
-  const [viewMode, setViewMode] = useState<'individual' | 'bulk' | 'assistant'>('assistant');
+  const [viewMode, setViewMode] = useState<'individual' | 'bulk' | 'assistant'>('individual');
   const [bulkSearchTerm, setBulkSearchTerm] = useState('');
   const [bulkFilterMode, setBulkFilterMode] = useState<string>('unclassified');
 
@@ -789,13 +791,23 @@ export default function Transactions() {
   return (
     <div className="transactions-page">
       <div className="header-container transactions-header">
-        <div>
-          <h1 style={{ margin: '0 0 0.75rem 0', fontSize: '2.5rem' }}>Transacciones</h1>
-          {uncatCount > 0 && (
-            <div style={{ display: 'inline-block', backgroundColor: '#fef08a', color: '#854d0e', padding: '0.5rem 1rem', borderRadius: '2rem', border: '2px solid black', fontWeight: 800, fontSize: '0.875rem' }}>
-              Faltan {uncatCount} transacciones por clasificar
-            </div>
-          )}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1.5rem', flexWrap: 'wrap' }}>
+          <div>
+            <h1 style={{ margin: '0 0 0.75rem 0', fontSize: '2.5rem' }}>Transacciones</h1>
+            {uncatCount > 0 && (
+              <div style={{ display: 'inline-block', backgroundColor: '#fef08a', color: '#854d0e', padding: '0.5rem 1rem', borderRadius: '2rem', border: '2px solid black', fontWeight: 800, fontSize: '0.875rem' }}>
+                Faltan {uncatCount} transacciones por clasificar
+              </div>
+            )}
+          </div>
+          <button 
+            className="btn btn-primary" 
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.25rem' }}
+            onClick={() => setIsImportModalOpen(true)}
+          >
+            <UploadCloud size={20} />
+            Importar Cartola
+          </button>
         </div>
         
         <div className="responsive-tabs">
@@ -1082,6 +1094,12 @@ export default function Transactions() {
         </div>
       )}
 
+      {isImportModalOpen && (
+        <ImportModal onClose={() => {
+          setIsImportModalOpen(false);
+          fetchTransactions();
+        }} />
+      )}
     </div>
   );
 }

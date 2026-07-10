@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { AVAILABLE_BANKS, useBanks } from '../contexts/BankContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { CascadingCategorySelector } from './Transactions';
+import { FixedExpensesConfigModal } from '../components/FixedExpensesConfigModal';
 
 const parseLocalDate = (dateStr: string) => {
   if (!dateStr) return new Date();
@@ -226,9 +227,62 @@ export default function Accounts() {
 
     toast.success('Movimiento corregido');
   };
+  const [showManualForm, setShowManualForm] = useState(false);
+  const [manualAmount, setManualAmount] = useState('');
+  const [manualDate, setManualDate] = useState('');
+  const [manualBank, setManualBank] = useState(activeBank || '');
+  const [isSubmittingManual, setIsSubmittingManual] = useState(false);
+
+  const handleManualPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !selectedStatusId || !manualAmount || !manualDate || !manualBank) return;
+
+    const selectedExpense = fixedExpenses.find(f => f.id === selectedStatusId);
+    if (!selectedExpense) return;
+
+    try {
+      setIsSubmittingManual(true);
+      
+      const newTransaction = {
+        user_id: user.id,
+        date: manualDate,
+        amount: -Math.abs(Number(manualAmount)),
+        type: 'egreso',
+        description: `Pago manual - ${selectedExpense.name}`,
+        original_description: `Pago manual - ${selectedExpense.name}`,
+        bank: manualBank,
+        tipo_movimiento: 'Egreso',
+        categoria_principal: selectedExpense.categoria_principal,
+        categoria_secundaria: selectedExpense.categoria_secundaria,
+        raw_data: { is_manual: true }
+      };
+
+      const { data, error } = await supabase.from('transactions').insert([newTransaction]).select('*').single();
+      
+      if (error) throw error;
+      
+      toast.success('Pago manual registrado');
+      setShowManualForm(false);
+      setManualAmount('');
+      setManualDate('');
+      
+      // Update local state to reflect the new transaction immediately
+      setTransactions(prev => [...prev, data]);
+      
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Error al registrar pago manual');
+    } finally {
+      setIsSubmittingManual(false);
+    }
+  };
+
+  const [showConfigModal, setShowConfigModal] = useState(false);
 
   return (
     <div style={{ maxWidth: '1180px', margin: '0 auto', padding: '2rem 1rem 4rem' }}>
+      {showConfigModal && <FixedExpensesConfigModal onClose={() => setShowConfigModal(false)} />}
+      
       <div className="header-container" style={{ marginBottom: '2rem' }}>
         <div>
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.45rem' }}>
@@ -241,6 +295,11 @@ export default function Accounts() {
         </div>
 
         <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <button className="btn btn-outline" type="button" onClick={() => setShowConfigModal(true)} style={{ marginRight: '0.5rem' }}>
+            <Settings size={18} />
+            Configurar Cuentas
+          </button>
+          
           <button className="btn btn-outline" type="button" onClick={() => shiftMonth(-1)} style={{ padding: '0.65rem' }}>
             <ChevronLeft size={20} />
           </button>
@@ -370,7 +429,42 @@ export default function Accounts() {
               <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem' }}>Pagos asociados del periodo</h3>
               {selectedStatus.currentPayments.length === 0 ? (
                 <div style={{ border: '2px dashed #cbd5e1', borderRadius: '9px', padding: '1rem', backgroundColor: '#f8fafc', color: '#64748b', fontWeight: 800, marginBottom: '1.2rem' }}>
-                  No encontré movimientos asociados a esta cuenta en el periodo seleccionado.
+                  <p style={{ margin: '0 0 1rem' }}>No encontré movimientos asociados a esta cuenta en el periodo seleccionado.</p>
+                  
+                  {!showManualForm ? (
+                    <button className="btn btn-primary" onClick={() => setShowManualForm(true)}>
+                      Registrar Pago Manual
+                    </button>
+                  ) : (
+                    <form onSubmit={handleManualPayment} style={{ display: 'grid', gap: '0.75rem', backgroundColor: '#fff', padding: '1rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                      <h4 style={{ margin: 0 }}>Registrar Pago Manual</h4>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>Fecha</label>
+                        <input type="date" className="input" style={{ width: '100%' }} value={manualDate} onChange={e => setManualDate(e.target.value)} required min={range.start.toISOString().split('T')[0]} max={range.end.toISOString().split('T')[0]} />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>Monto</label>
+                        <input type="number" className="input" style={{ width: '100%' }} value={manualAmount} onChange={e => setManualAmount(e.target.value)} required min="0" placeholder="Ej: 15000" />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>Medio de Pago (Banco)</label>
+                        <select className="input" style={{ width: '100%' }} value={manualBank} onChange={e => setManualBank(e.target.value)} required>
+                          <option value="">Selecciona un banco...</option>
+                          {connectedBanks.map(b => (
+                            <option key={b} value={b}>{b}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                        <button type="submit" className="btn btn-primary" disabled={isSubmittingManual} style={{ flex: 1 }}>
+                          {isSubmittingManual ? 'Guardando...' : 'Guardar'}
+                        </button>
+                        <button type="button" className="btn" onClick={() => setShowManualForm(false)} style={{ backgroundColor: '#e2e8f0', color: 'black' }}>
+                          Cancelar
+                        </button>
+                      </div>
+                    </form>
+                  )}
                 </div>
               ) : (
                 <div style={{ overflowX: 'auto', marginBottom: '1.2rem' }}>

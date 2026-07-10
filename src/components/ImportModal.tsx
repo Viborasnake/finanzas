@@ -3,11 +3,10 @@ import { createPortal } from 'react-dom';
 import { useDropzone } from 'react-dropzone';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
-import { UploadCloud, CheckCircle2, AlertTriangle, Edit2 } from 'lucide-react';
+import { UploadCloud, CheckCircle2, AlertTriangle, Edit2, X } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
-import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { extractAndNormalizeRUT } from '../utils/rutParser';
 import { applyRules } from '../utils/classificationRules';
@@ -27,7 +26,11 @@ interface Transaction {
   raw_data: any;
 }
 
-export default function CSVImport() {
+interface ImportModalProps {
+  onClose?: () => void;
+}
+
+export default function ImportModal({ onClose }: ImportModalProps = {}) {
   const [data, setData] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +39,6 @@ export default function CSVImport() {
   const { user } = useAuth();
   const { classificationRules } = useSettings();
   const { activeBank, setActiveBank } = useBanks();
-  const navigate = useNavigate();
 
   type ImportStep = 'upload' | 'confirm' | 'preview';
   const [step, setStep] = useState<ImportStep>('upload');
@@ -66,6 +68,14 @@ export default function CSVImport() {
       fetchData();
     }
   }, [user]);
+
+
+
+  const parseLocalDate = (dateStr: string) => {
+    if (!dateStr) return new Date();
+    const [y, m, d] = dateStr.split('T')[0].split('-');
+    return new Date(parseInt(y), parseInt(m) - 1, parseInt(d), 12, 0, 0);
+  };
 
   const parseScotiabankDate = (dateStr: string) => {
     if (!dateStr) return null;
@@ -557,21 +567,27 @@ export default function CSVImport() {
 
       // Buscar rango de fechas de la subida para limitar la consulta
       const dates = data.map(t => new Date(t.date).getTime());
-      const minDateStr = new Date(Math.min(...dates)).toISOString().split('T')[0] + 'T00:00:00.000Z';
-      const maxDateStr = new Date(Math.max(...dates)).toISOString().split('T')[0] + 'T23:59:59.999Z';
 
-      // Obtener transacciones que ya existen en este rango de fechas
+      // Obtener transacciones que ya existen en este rango de fechas (+/- 5 días para atrapar manuales)
+      const minDateObj = new Date(Math.min(...dates));
+      minDateObj.setDate(minDateObj.getDate() - 5);
+      const minDateStrPadded = minDateObj.toISOString().split('T')[0] + 'T00:00:00.000Z';
+      
+      const maxDateObj = new Date(Math.max(...dates));
+      maxDateObj.setDate(maxDateObj.getDate() + 5);
+      const maxDateStrPadded = maxDateObj.toISOString().split('T')[0] + 'T23:59:59.999Z';
+
       const { data: existing, error: fetchError } = await supabase
         .from('transactions')
-        .select('date, amount, raw_data')
+        .select('id, date, amount, raw_data, tipo_movimiento, categoria_principal, categoria_secundaria')
         .eq('user_id', user.id)
         .eq('bank', activeBank)
-        .gte('date', minDateStr)
-        .lte('date', maxDateStr);
+        .gte('date', minDateStrPadded)
+        .lte('date', maxDateStrPadded);
 
       if (fetchError) throw fetchError;
 
-      // Crear firmas únicas para lo que ya existe
+      // Crear firmas únicas para lo que ya existe (para evitar doble importación de cartola)
       const existingSet = new Set(existing?.map(t => {
         const descKey = Object.keys(t.raw_data || {}).find(k => k.toLowerCase().includes('descripc') || k.toLowerCase().includes('movimiento') || k.toLowerCase().includes('detalle')) || '';
         const origDesc = t.raw_data ? (t.raw_data[descKey] || '') : '';
@@ -583,15 +599,57 @@ export default function CSVImport() {
         const sig = `${t.date}_${t.amount}_${t.original_description}`;
         return !existingSet.has(sig);
       });
+      
+      // Deduplicación inteligente de pagos manuales
+      const manualTransactions = existing?.filter(t => t.raw_data && t.raw_data.is_manual) || [];
+      const manualIdsToDelete: string[] = [];
+      const manualMatches = new Map<string, any>();
+
+      newTransactions.forEach(t => {
+        const tDate = parseLocalDate(t.date).getTime();
+        const match = manualTransactions.find(m => {
+          if (manualIdsToDelete.includes(m.id)) return false;
+          if (m.amount !== t.amount) return false; // El monto debe ser idéntico
+          const mDate = parseLocalDate(m.date).getTime();
+          const diffDays = Math.abs(tDate - mDate) / (1000 * 60 * 60 * 24);
+          return diffDays <= 5; // Margen de 5 días
+        });
+
+        if (match) {
+          manualIdsToDelete.push(match.id);
+          const sig = `${t.date}_${t.amount}_${t.original_description}`;
+          manualMatches.set(sig, match);
+        }
+      });
 
       if (newTransactions.length === 0) {
         toast.success("No hay datos nuevos. ¡Todas estas transacciones ya estaban en tu sistema!");
-        navigate('/transactions');
+        if (onClose) onClose();
         return;
       }
 
       const { error } = await supabase.from('transactions').insert(
         newTransactions.map(t => {
+          const sig = `${t.date}_${t.amount}_${t.original_description}`;
+          const manualMatch = manualMatches.get(sig);
+
+          if (manualMatch) {
+            // Heredar categorías del pago manual
+            return {
+              user_id: user.id,
+              bank: activeBank,
+              date: t.date,
+              description: t.description,
+              original_description: t.original_description,
+              amount: t.amount,
+              type: t.type,
+              raw_data: t.raw_data,
+              tipo_movimiento: manualMatch.tipo_movimiento,
+              categoria_principal: manualMatch.categoria_principal,
+              categoria_secundaria: manualMatch.categoria_secundaria
+            };
+          }
+
           const descForCheck = (t.original_description || t.description || '').toLowerCase();
           
           let tipo_movimiento = null;
@@ -628,20 +686,12 @@ export default function CSVImport() {
             }
           }
 
-          if (!tipo_movimiento) {
-            const ruleMatch = applyRules(descForCheck, classificationRules);
-            if (ruleMatch) {
-              tipo_movimiento = ruleMatch.tipo_movimiento;
-              categoria_principal = ruleMatch.categoria_principal;
-              categoria_secundaria = ruleMatch.categoria_secundaria;
-            }
-          }
-
           return {
             user_id: user.id,
             bank: activeBank,
             date: t.date,
             description: t.description,
+            original_description: t.original_description,
             amount: t.amount,
             type: t.type,
             raw_data: t.raw_data,
@@ -654,9 +704,15 @@ export default function CSVImport() {
 
       if (error) throw error;
       
+      // Eliminar los pagos manuales que fueron reemplazados
+      if (manualIdsToDelete.length > 0) {
+        await supabase.from('transactions').delete().in('id', manualIdsToDelete);
+        toast.success(`Se reemplazaron ${manualIdsToDelete.length} pagos manuales con los movimientos oficiales.`);
+      }
+      
       const omitidas = data.length - newTransactions.length;
       toast.success(`Se guardaron ${newTransactions.length} nuevas transacciones.` + (omitidas > 0 ? ` (Se omitieron ${omitidas} duplicadas)` : ''));
-      navigate('/transactions');
+      if (onClose) onClose();
     } catch (err: any) {
       setError(err.message || "Error al guardar en la base de datos.");
     } finally {
@@ -726,9 +782,16 @@ export default function CSVImport() {
     multiple: false
   });
 
-  return (
-    <div>
-      <h1 style={{ marginBottom: '1.5rem', fontSize: '2rem' }}>Importar Cartola Bancaria</h1>
+  const content = (
+    <div style={{ backgroundColor: 'var(--bg-color)', minHeight: '100%', padding: '2rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+        <h1 style={{ margin: 0, fontSize: '2rem' }}>Importar Cartola Bancaria</h1>
+        {onClose && (
+          <button className="btn btn-outline" onClick={onClose} style={{ padding: '0.5rem' }}>
+            <X size={24} />
+          </button>
+        )}
+      </div>
       
       {error && (
         <div style={{ backgroundColor: 'var(--danger)', color: 'white', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', border: '2px solid black', boxShadow: '4px 4px 0px black', display: 'flex', alignItems: 'center', gap: '0.75rem', fontWeight: 600 }}>
@@ -912,5 +975,30 @@ export default function CSVImport() {
         document.body
       )}
     </div>
+  );
+
+  return createPortal(
+    <div className="modal-overlay" style={{
+      position: 'fixed',
+      top: 0, left: 0, right: 0, bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 9999,
+      padding: '2rem'
+    }}>
+      <div className="card" style={{
+        width: '100%',
+        maxWidth: '1200px',
+        maxHeight: '90vh',
+        overflowY: 'auto',
+        position: 'relative',
+        backgroundColor: 'var(--bg-color)'
+      }}>
+        {content}
+      </div>
+    </div>,
+    document.body
   );
 }
