@@ -130,9 +130,11 @@ export default function Accounts() {
 
     const categoryTokenMatches = (categoryPath: string, itemValue: any) => {
       const itemNorm = normalizeText(itemValue);
-      if (!itemNorm) return true;
+      if (!itemNorm) return true; // empty secundaria = wildcard
+      if (!categoryPath) return false; // no category on tx = no match
       return categoryPath.split('|').some(part => {
         const partNorm = normalizeText(part);
+        if (!partNorm) return false;
         return partNorm === itemNorm || partNorm.includes(itemNorm) || itemNorm.includes(partNorm);
       });
     };
@@ -148,13 +150,18 @@ export default function Accounts() {
         tx.category_secundaria
       ].filter(Boolean).join('|');
 
+      // Primary match: the transaction's category matches the fixed expense's configured category
       const linkedCategoryMatches = categoryTokenMatches(categoryPath, item.categoria_principal)
         && categoryTokenMatches(categoryPath, item.categoria_secundaria);
       if (linkedCategoryMatches) return true;
 
+      // Fallback: only use name/keyword match if the tx has NO category assigned yet
+      // This avoids matching categorized transactions of another type
+      if (categoryPath) return false;
+
       const desc = descriptionText(tx);
       const descTokens = desc.split(/[^a-z0-9]+/).filter(Boolean);
-      const nameTokens = normalizeText(item.name).split(/[^a-z0-9]+/).filter(token => token.length >= 3);
+      const nameTokens = normalizeText(item.name).split(/[^a-z0-9]+/).filter(token => token.length >= 4);
       const nameMatches = nameTokens.length > 0 && nameTokens.some(token => descTokens.includes(token));
       const keywordMatches = normalizeText(item.keyword) && desc.includes(normalizeText(item.keyword));
       return Boolean(nameMatches || keywordMatches);
