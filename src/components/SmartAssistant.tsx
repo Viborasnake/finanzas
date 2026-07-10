@@ -34,6 +34,7 @@ type Suggestion = {
   rut?: string | null;
   keyword: string;
   banks: string[];
+  transactions: any[];
 };
 
 const HEURISTICS: Array<{ test: RegExp; reason: string; proposal: Proposal; confidence: number }> = [
@@ -108,7 +109,8 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
           reason: 'Coincide con una regla persistente guardada',
           kind: 'rule',
           proposal: existingRule,
-          keyword: description
+          keyword: description,
+          transactions: group
         };
       }
 
@@ -133,7 +135,8 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
           },
           contactName: inferredName,
           rut,
-          keyword: description
+          keyword: description,
+          transactions: group
         };
       }
 
@@ -151,7 +154,8 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
           reason: group.length > 1 ? `${heuristic.reason}; aparece ${group.length} veces` : heuristic.reason,
           kind: 'merchant',
           proposal: heuristic.proposal,
-          keyword: description
+          keyword: description,
+          transactions: group
         };
       }
 
@@ -172,7 +176,8 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
             categoria_principal: 'Sin Especificar',
             categoria_secundaria: 'Sin Especificar'
           },
-          keyword: description
+          keyword: description,
+          transactions: group
         };
       }
 
@@ -350,10 +355,29 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
                 <span key={b} style={{ background: 'var(--pastel-blue)' }}>🏦 {b}</span>
               ))}
             </div>
-            <p style={{ margin: 0, fontSize: '0.83rem', color: '#334155', display: 'flex', alignItems: 'flex-start', gap: '0.4rem' }}>
-              <Lightbulb size={15} style={{ flexShrink: 0, marginTop: 2, color: '#d97706' }} />
+            <p style={{ margin: 0, fontSize: '0.9rem', color: '#334155', display: 'flex', alignItems: 'flex-start', gap: '0.4rem' }}>
+              <Lightbulb size={16} style={{ flexShrink: 0, marginTop: 2, color: '#d97706' }} />
               {current.reason}
             </p>
+
+            {current.count > 1 && (
+              <div style={{ marginTop: '1rem', borderTop: '2px dashed var(--border-color)', paddingTop: '1rem' }}>
+                <p className="assistant-section-label" style={{ marginBottom: '0.5rem' }}>Detalle de movimientos ({current.count})</p>
+                <div style={{ maxHeight: '160px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.35rem', paddingRight: '0.5rem' }}>
+                  {current.transactions.map((t, idx) => (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', padding: '0.4rem 0.6rem', background: '#fff', border: '1.5px solid var(--border-color)', borderRadius: 6 }}>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        <span style={{ color: '#64748b', fontWeight: 700, fontSize: '0.75rem' }}>{t.date}</span>
+                        {t.bank && <span style={{ color: '#3b82f6', fontWeight: 800, fontSize: '0.7rem' }}>{t.bank.substring(0,3).toUpperCase()}</span>}
+                      </div>
+                      <span style={{ fontWeight: 800, color: t.type === 'ingreso' ? '#15803d' : '#b91c1c' }}>
+                        {t.type === 'ingreso' ? '+' : '-'}${Math.abs(t.amount).toLocaleString('es-CL')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Columna derecha: selector editable */}

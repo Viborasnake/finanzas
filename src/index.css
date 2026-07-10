@@ -623,7 +623,7 @@ select.input {
   border-radius: 999px;
   background: #fff;
   box-shadow: 2px 2px 0 #000;
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   font-weight: 900;
 }
 
@@ -747,7 +747,7 @@ select.input {
 
 .assistant-card-header h3 {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 1.25rem;
   font-weight: 900;
   text-transform: uppercase;
   word-break: break-word;
@@ -756,10 +756,10 @@ select.input {
 .assistant-confidence {
   display: inline-flex;
   align-items: center;
-  padding: 0.3rem 0.8rem;
+  padding: 0.35rem 0.8rem;
   border: 2px solid var(--border-color);
   border-radius: 999px;
-  font-size: 0.78rem;
+  font-size: 0.85rem;
   font-weight: 900;
   white-space: nowrap;
   flex-shrink: 0;
