@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { AVAILABLE_BANKS, useBanks } from '../contexts/BankContext';
-import { Edit2, Trash2, Plus, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Edit2, Trash2, Plus, AlertCircle, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export function InitialAdjustmentManager() {
@@ -209,12 +209,9 @@ export function InitialAdjustmentManager() {
             <span style={{ display: 'block', color: '#64748b', fontSize: '0.82rem', fontWeight: 800 }}>Configura el saldo base para que cuadre todo</span>
           </div>
         </div>
-        <button type="button" style={{ background: 'transparent', border: 'none', boxShadow: 'none', padding: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer', color: '#000' }}>
-          {isCollapsed ? (
-            <>Mostrar <ChevronDown size={24} strokeWidth={4} /></>
-          ) : (
-            <>Ocultar <ChevronUp size={24} strokeWidth={4} /></>
-          )}
+        <button type="button" style={{ background: 'transparent', border: 'none', boxShadow: 'none', padding: 0, display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontWeight: 900, fontSize: '0.9rem', cursor: 'pointer', color: 'var(--text-primary)' }}>
+          {isCollapsed ? 'Mostrar' : 'Ocultar'}
+          <ChevronDown size={18} strokeWidth={3} style={{ transform: isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform 0.2s' }} />
         </button>
       </div>
       

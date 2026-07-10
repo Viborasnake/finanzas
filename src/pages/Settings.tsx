@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, Trash2, Save, X, BadgeCheck, Landmark, Tags, Users, Wand2, CalendarCheck, Pencil, Activity, CheckCircle2, ChevronRight, Settings as SettingsIcon, FileSpreadsheet, Sparkles, ChevronDown, ChevronUp, Wallet } from 'lucide-react';
+import { Plus, Trash2, Save, X, BadgeCheck, Landmark, Tags, Users, Wand2, CalendarCheck, Pencil, Activity, CheckCircle2, ChevronRight, Settings as SettingsIcon, FileSpreadsheet, Sparkles, ChevronDown, Wallet } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { extractAndNormalizeRUT } from '../utils/rutParser';
 import type { ClassificationRule } from '../utils/classificationRules';
@@ -44,12 +44,9 @@ const CollapsibleSection = ({ id, icon: Icon, title, subtitle, description, defa
             <span style={{ display: 'block', color: '#64748b', fontSize: '0.82rem', fontWeight: 800, marginTop: '0.25rem' }}>{subtitle}</span>
           </div>
         </div>
-        <button type="button" style={{ background: 'transparent', border: 'none', boxShadow: 'none', padding: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer', color: '#000' }}>
-          {collapsed ? (
-            <>Mostrar <ChevronDown size={24} strokeWidth={4} /></>
-          ) : (
-            <>Ocultar <ChevronUp size={24} strokeWidth={4} /></>
-          )}
+        <button type="button" style={{ background: 'transparent', border: 'none', boxShadow: 'none', padding: 0, display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontWeight: 900, fontSize: '0.9rem', cursor: 'pointer', color: 'var(--text-primary)' }}>
+          {collapsed ? 'Mostrar' : 'Ocultar'}
+          <ChevronDown size={18} strokeWidth={3} style={{ transform: collapsed ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform 0.2s' }} />
         </button>
       </div>
       {!collapsed && (
