@@ -609,7 +609,7 @@ export default function Dashboard() {
         unclassifiedCount,
         availableCats: Array.from(availableCats).sort(),
         insights: {
-          balance: (ingresos + aportePropio) - (gastosTotales + movimientoInternoEgreso),
+          balance: ingresos - gastosTotales,
           maxIncomeDesc,
           maxIncomeAmount,
           maxRecurringDesc,
@@ -1173,12 +1173,11 @@ export default function Dashboard() {
     const p = stats.prev;
 
     // Income Logic
-    const totalEntradas = c.ingresos + c.aportePropio;
+    const totalEntradas = c.ingresos;
     const incomeData: { name: string; value: number; isGray?: boolean }[] = [
       { name: 'Sueldo', value: c.sueldo },
       { name: 'Honorarios', value: c.honorarios },
-      { name: 'Otros Ingresos', value: c.ingresosOtros },
-      { name: 'Ingreso Propio', value: c.aportePropio, isGray: true }
+      { name: 'Otros Ingresos', value: c.ingresosOtros }
     ];
 
     // Expense Logic
@@ -1187,12 +1186,11 @@ export default function Dashboard() {
     const others = sorted.slice(3).reduce((acc, curr) => acc + curr.amount, 0);
     const sinClasificarAmount = c.topCatsPrincipal.find(x => x.name === 'Sin Clasificar')?.amount || 0;
     const totalOtros = others + sinClasificarAmount;
-    const totalSalidas = top3.reduce((a, b) => a + b.amount, 0) + totalOtros + c.movimientoInternoEgreso;
+    const totalSalidas = top3.reduce((a, b) => a + b.amount, 0) + totalOtros;
     
     const expenseData: { name: string; value: number; isGray?: boolean }[] = [
       ...top3.map(cat => ({ name: cat.name, value: cat.amount })),
-      ...(totalOtros > 0 ? [{ name: 'Otros Egresos', value: totalOtros }] : []),
-      { name: 'Egreso Propio', value: c.movimientoInternoEgreso, isGray: true }
+      ...(totalOtros > 0 ? [{ name: 'Otros Egresos', value: totalOtros }] : [])
     ];
 
     return (
@@ -1206,17 +1204,17 @@ export default function Dashboard() {
               </div>
               <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: '"Montserrat", sans-serif', display: 'flex', alignItems: 'center' }}>
                 Ingresos
-                <InfoTooltip content="Total de dinero que ha entrado a tus cuentas. Los traspasos entre tus propias cuentas o retiros de inversión (Aporte Propio) se desglosan aparte." />
+                <InfoTooltip content="Total de ingresos reales. Los traspasos entre tus propias cuentas o retiros de inversión se contabilizan por separado." />
               </h3>
             </div>
-            {renderTrendBadge(totalEntradas, p.ingresos + p.aportePropio, false)}
+            {renderTrendBadge(totalEntradas, p.ingresos, false)}
           </div>
           <p style={{ margin: c.aportePropio > 0 ? '0 0 0.25rem 0' : '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '-1px' }}>
             ${totalEntradas.toLocaleString('es-CL')}
           </p>
           {c.aportePropio > 0 && (
             <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 700, marginBottom: '1.5rem', position: 'relative', zIndex: 10 }}>
-              *Incluye ${c.aportePropio.toLocaleString('es-CL')} de aportes propios (Mov. Interno / Inversión)
+              *Adicionalmente recibiste ${c.aportePropio.toLocaleString('es-CL')} por movimientos internos o rescate de inversiones
             </div>
           )}
           
@@ -1271,17 +1269,17 @@ export default function Dashboard() {
               </div>
               <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: '"Montserrat", sans-serif', display: 'flex', alignItems: 'center' }}>
                 Egresos
-                <InfoTooltip content="Dinero que ha salido de tus cuentas. Las transferencias a tus propias cuentas o depósitos de inversión (Egreso Propio) no se consideran gastos reales." />
+                <InfoTooltip content="Total de gastos reales. Las transferencias a tus propias cuentas o depósitos de inversión se contabilizan por separado." />
               </h3>
             </div>
-            {renderTrendBadge(totalSalidas, p.gastos + p.movimientoInternoEgreso, true)}
+            {renderTrendBadge(totalSalidas, p.gastosTotales, true)}
           </div>
           <p style={{ margin: c.movimientoInternoEgreso > 0 ? '0 0 0.25rem 0' : '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '-1px' }}>
             ${totalSalidas.toLocaleString('es-CL')}
           </p>
           {c.movimientoInternoEgreso > 0 && (
             <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 700, marginBottom: '1.5rem', position: 'relative', zIndex: 10 }}>
-              *Incluye ${c.movimientoInternoEgreso.toLocaleString('es-CL')} de movimientos internos o inversiones
+              *Adicionalmente enviaste ${c.movimientoInternoEgreso.toLocaleString('es-CL')} a movimientos internos o inversiones
             </div>
           )}
           
