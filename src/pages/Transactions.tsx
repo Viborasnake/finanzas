@@ -5,7 +5,7 @@ import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { TransactionTypeBadge } from '../components/TransactionTypeBadge';
 import { AVAILABLE_BANKS, useBanks } from '../contexts/BankContext';
-import { Search, Edit2, Plus, X, ChevronRight, CheckCircle2, UploadCloud, Scissors } from 'lucide-react';
+import { Search, Edit2, Plus, X, ChevronRight, CheckCircle2, UploadCloud, Scissors, Undo2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useActionQueue } from '../hooks/useActionQueue';
 import SmartAssistant from '../components/SmartAssistant';
@@ -483,6 +483,63 @@ export default function Transactions() {
       loading: 'Dividiendo transacción...',
       success: '¡Transacción dividida exitosamente!',
       error: (err) => `Error al dividir: ${err?.message || err?.details || 'Error desconocido'}`
+    });
+  };
+
+  const handleRestoreSplit = async (tx: any) => {
+    const splitGroupId = tx.raw_data?.split_group_id;
+    if (!splitGroupId) return;
+
+    const restorePromise = async () => {
+      // Find all transactions in this split group
+      const { data: groupTxs, error: fetchError } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user!.id)
+        .contains('raw_data', { split_group_id: splitGroupId });
+
+      if (fetchError) throw fetchError;
+      if (!groupTxs || groupTxs.length === 0) return;
+
+      const originalTx = groupTxs.find(t => !t.raw_data?.is_split_child);
+      if (!originalTx) throw new Error("No se encontró la transacción original");
+
+      const childIds = groupTxs.filter(t => t.raw_data?.is_split_child).map(t => t.id);
+
+      // 1. Delete all child parts
+      if (childIds.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('transactions')
+          .delete()
+          .in('id', childIds);
+        
+        if (deleteError) throw deleteError;
+      }
+
+      // 2. Restore original transaction
+      const newRawData = { ...originalTx.raw_data };
+      const originalAmount = newRawData.original_amount;
+      delete newRawData.split_group_id;
+      delete newRawData.original_amount;
+      delete newRawData.is_split_child;
+
+      const { error: updateError } = await supabase
+        .from('transactions')
+        .update({
+          amount: originalTx.type === 'egreso' ? -Math.abs(originalAmount) : Math.abs(originalAmount),
+          raw_data: newRawData
+        })
+        .eq('id', originalTx.id);
+
+      if (updateError) throw updateError;
+
+      await fetchTransactions();
+    };
+
+    toast.promise(restorePromise(), {
+      loading: 'Restaurando transacción original...',
+      success: '¡Transacción restaurada exitosamente!',
+      error: (err) => `Error al restaurar: ${err?.message || err?.details || 'Error desconocido'}`
     });
   };
 
@@ -1157,16 +1214,29 @@ export default function Transactions() {
                       <td data-label="Monto" style={{ padding: '1rem', fontWeight: 900, color: tx.type === 'ingreso' ? 'var(--success)' : 'var(--danger)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
                           <span>{new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(tx.amount)}</span>
-                          <button 
-                            onClick={() => setSplittingTx(tx)}
-                            className="btn-icon"
-                            title="Dividir transacción"
-                            style={{ padding: '0.25rem', opacity: 0.6 }}
-                            onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
-                            onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.6')}
-                          >
-                            <Scissors size={14} />
-                          </button>
+                          {tx.raw_data?.split_group_id ? (
+                            <button 
+                              onClick={() => handleRestoreSplit(tx)}
+                              className="btn-icon"
+                              title="Restaurar transacción original"
+                              style={{ padding: '0.25rem', opacity: 0.6, color: '#ef4444' }}
+                              onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+                              onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.6')}
+                            >
+                              <Undo2 size={14} />
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={() => setSplittingTx(tx)}
+                              className="btn-icon"
+                              title="Dividir transacción"
+                              style={{ padding: '0.25rem', opacity: 0.6 }}
+                              onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+                              onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.6')}
+                            >
+                              <Scissors size={14} />
+                            </button>
+                          )}
                         </div>
                       </td>
                       <td data-label="Clasificación" style={{ padding: '1rem' }}>
