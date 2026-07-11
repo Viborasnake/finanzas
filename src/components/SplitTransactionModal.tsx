@@ -148,7 +148,7 @@ export default function SplitTransactionModal({ transaction, onClose, onSave }: 
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.25rem' }}>Categoría</label>
-                    <div style={{ border: '2px solid #000', borderRadius: '6px', overflow: 'hidden', backgroundColor: '#fff' }}>
+                    <div>
                       <CategoryWrapper 
                         initialTipo={part.tipo_movimiento}
                         initialPrincipal={part.categoria_principal}
@@ -194,7 +194,7 @@ export default function SplitTransactionModal({ transaction, onClose, onSave }: 
 
 function CategoryWrapper({ initialTipo, initialPrincipal, initialSecundaria, onSave }: any) {
   return (
-    <div style={{ padding: '0.15rem' }}>
+    <div>
       <CascadingCategorySelector 
         initialTipo={initialTipo}
         initialPrincipal={initialPrincipal}
