@@ -607,7 +607,10 @@ export default function Transactions() {
                           (filterPeriod.length === 4 ? yStr === filterPeriod : mStr === filterPeriod);
 
     const matchesType = filterType === 'all' || (filterType === 'expense' ? t.type === 'egreso' : t.type === 'ingreso');
-    const matchesStatus = filterStatus === 'all' || (filterStatus === 'classified' ? !!t.tipo_movimiento : !t.tipo_movimiento);
+    const matchesStatus = filterStatus === 'all' || 
+                          (filterStatus === 'classified' ? !!t.tipo_movimiento : 
+                           filterStatus === 'split' ? !!t.raw_data?.split_group_id : 
+                           !t.tipo_movimiento);
     const matchesBank = filterBank === 'all' || t.bank === filterBank;
     return matchesSearch && matchesPeriod && matchesType && matchesStatus && matchesBank;
   });
@@ -1083,6 +1086,7 @@ export default function Transactions() {
               <option value="all">Todas las transacciones</option>
               <option value="classified">Clasificadas</option>
               <option value="unclassified">Por clasificar</option>
+              <option value="split">Divididas</option>
             </select>
             
             {connectedBanks.length > 1 && (
@@ -1137,11 +1141,18 @@ export default function Transactions() {
                           />
                           <Edit2 size={16} color="#94a3b8" />
                         </div>
-                        {rawDesc && tx.description !== rawDesc && (
-                          <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem' }}>
-                            Orig: {rawDesc}
-                          </div>
-                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
+                          {rawDesc && tx.description !== rawDesc && (
+                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                              Orig: {rawDesc}
+                            </div>
+                          )}
+                          {tx.raw_data?.split_group_id && (
+                            <div style={{ fontSize: '0.65rem', fontWeight: 800, backgroundColor: '#fef08a', color: '#854d0e', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid #ca8a04', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <Scissors size={10} /> Dividida
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td data-label="Monto" style={{ padding: '1rem', fontWeight: 900, color: tx.type === 'ingreso' ? 'var(--success)' : 'var(--danger)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
