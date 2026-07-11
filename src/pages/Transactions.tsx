@@ -457,7 +457,6 @@ export default function Transactions() {
         user_id: user!.id,
         date: splittingTx.date,
         description: splittingTx.description,
-        original_description: splittingTx.original_description,
         amount: splittingTx.type === 'egreso' ? -Math.abs(p.amount) : Math.abs(p.amount),
         type: splittingTx.type,
         bank: splittingTx.bank,
@@ -483,7 +482,7 @@ export default function Transactions() {
     toast.promise(splitPromise(), {
       loading: 'Dividiendo transacción...',
       success: '¡Transacción dividida exitosamente!',
-      error: 'Error al dividir la transacción'
+      error: (err) => `Error al dividir: ${err?.message || err?.details || 'Error desconocido'}`
     });
   };
 
