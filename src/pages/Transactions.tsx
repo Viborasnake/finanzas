@@ -440,6 +440,7 @@ export default function Transactions() {
       // 1. Update the original transaction
       const { error: updateError } = await supabase.from('transactions').update({
         amount: splittingTx.type === 'egreso' ? -Math.abs(firstPart.amount) : Math.abs(firstPart.amount),
+        date: firstPart.date || splittingTx.date,
         tipo_movimiento: firstPart.tipo_movimiento,
         categoria_principal: firstPart.categoria_principal,
         categoria_secundaria: firstPart.categoria_secundaria,
@@ -455,7 +456,7 @@ export default function Transactions() {
       // 2. Insert new parts
       const newRows = otherParts.map(p => ({
         user_id: user!.id,
-        date: splittingTx.date,
+        date: p.date || splittingTx.date,
         description: splittingTx.description,
         amount: splittingTx.type === 'egreso' ? -Math.abs(p.amount) : Math.abs(p.amount),
         type: splittingTx.type,

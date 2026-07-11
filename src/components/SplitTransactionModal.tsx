@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Plus, Scissors, Save } from 'lucide-react';
 import { CascadingCategorySelector } from '../pages/Transactions';
 
 interface SplitPart {
   id: string;
   amount: number;
+  date?: string;
   tipo_movimiento: string;
   categoria_principal: string;
   categoria_secundaria: string;
@@ -26,6 +28,7 @@ export default function SplitTransactionModal({ transaction, onClose, onSave }: 
       {
         id: crypto.randomUUID(),
         amount: Math.round(totalAmount / 2),
+        date: transaction.date,
         tipo_movimiento: transaction.tipo_movimiento || '',
         categoria_principal: transaction.categoria_principal || '',
         categoria_secundaria: transaction.categoria_secundaria || ''
@@ -33,6 +36,7 @@ export default function SplitTransactionModal({ transaction, onClose, onSave }: 
       {
         id: crypto.randomUUID(),
         amount: totalAmount - Math.round(totalAmount / 2),
+        date: transaction.date,
         tipo_movimiento: '',
         categoria_principal: '',
         categoria_secundaria: ''
@@ -49,6 +53,7 @@ export default function SplitTransactionModal({ transaction, onClose, onSave }: 
       {
         id: crypto.randomUUID(),
         amount: remainder,
+        date: transaction.date,
         tipo_movimiento: '',
         categoria_principal: '',
         categoria_secundaria: ''
@@ -83,8 +88,8 @@ export default function SplitTransactionModal({ transaction, onClose, onSave }: 
   const remainder = totalAmount - currentSum;
   const isValid = remainder === 0 && parts.every(p => p.amount > 0 && p.tipo_movimiento);
 
-  return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '1rem' }}>
+  return createPortal(
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: '1rem' }}>
       <div style={{ backgroundColor: '#fff', border: '3px solid #000', borderRadius: '12px', width: '100%', maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '8px 8px 0px #000', display: 'flex', flexDirection: 'column' }}>
         
         {/* Header */}
@@ -133,16 +138,25 @@ export default function SplitTransactionModal({ transaction, onClose, onSave }: 
                   )}
                 </div>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.25rem' }}>Fecha</label>
+                    <input 
+                      type="date" 
+                      value={part.date || transaction.date}
+                      onChange={(e) => updatePart(part.id, 'date', e.target.value)}
+                      style={{ width: '100%', padding: '0.5rem', border: '2px solid #000', borderRadius: '6px', fontWeight: 700, fontSize: '0.9rem', backgroundColor: '#fff', outline: 'none' }}
+                    />
+                  </div>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.25rem' }}>Monto</label>
                     <div style={{ position: 'relative' }}>
-                      <span style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', fontWeight: 800 }}>$</span>
+                      <span style={{ position: 'absolute', left: '0.5rem', top: '50%', transform: 'translateY(-50%)', fontWeight: 800 }}>$</span>
                       <input 
                         type="number" 
                         value={part.amount || ''}
                         onChange={(e) => updatePart(part.id, 'amount', parseInt(e.target.value) || 0)}
-                        style={{ width: '100%', padding: '0.5rem 0.5rem 0.5rem 1.5rem', border: '2px solid #000', borderRadius: '6px', fontWeight: 700, fontSize: '1rem', backgroundColor: '#fff', outline: 'none' }}
+                        style={{ width: '100%', padding: '0.5rem 0.5rem 0.5rem 1.25rem', border: '2px solid #000', borderRadius: '6px', fontWeight: 700, fontSize: '1rem', backgroundColor: '#fff', outline: 'none' }}
                       />
                     </div>
                   </div>
@@ -188,7 +202,8 @@ export default function SplitTransactionModal({ transaction, onClose, onSave }: 
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
