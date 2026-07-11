@@ -68,6 +68,7 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
   const [currentIndex, setCurrentIndex] = useState(0);
   const [saving, setSaving] = useState(false);
   const [overrideProposal, setOverrideProposal] = useState<Proposal | null>(null);
+  const [editingTxId, setEditingTxId] = useState<string | null>(null);
 
   // Reset override when suggestion changes
   useEffect(() => {
@@ -185,8 +186,8 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
     }).filter(Boolean).sort((a: any, b: any) => b.confidence - a.confidence || b.count - a.count) as Suggestion[];
   }, [transactions, classificationRules]);
 
-  const current = suggestions[currentIndex];
-
+  const safeIndex = Math.min(currentIndex, Math.max(0, suggestions.length - 1));
+  const current = suggestions[safeIndex];
 
 
   const saveRule = async (suggestion: Suggestion) => {
@@ -221,7 +222,7 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
       if (error) throw error;
       toast.success(`${suggestion.count} movimiento${suggestion.count === 1 ? '' : 's'} clasificado${suggestion.count === 1 ? '' : 's'}`);
       await onRefresh();
-      setCurrentIndex(0);
+      // Mantenemos el currentIndex, si se pasa del largo, se maneja en el render
     } catch (e: any) {
       toast.error('Error al aplicar sugerencia: ' + e.message);
     } finally {
@@ -229,23 +230,24 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
     }
   };
 
-  const applyHighConfidence = async () => {
-    const strong = suggestions.filter(s => s.confidence >= 85);
-    if (!strong.length) {
-      toast.error('No hay sugerencias de alta confianza.');
-      return;
-    }
+
+
+  const applySingleTx = async (txId: string, proposal: Proposal) => {
+    if (!user) return;
     setSaving(true);
     try {
-      for (const suggestion of strong) {
-        await saveRule(suggestion);
-        await supabase.from('transactions').update(suggestion.proposal).eq('user_id', user!.id).in('id', suggestion.ids);
-      }
-      toast.success(`Se aplicaron ${strong.length} sugerencias de alta confianza`);
+      const { error } = await supabase
+        .from('transactions')
+        .update(proposal)
+        .eq('user_id', user.id)
+        .eq('id', txId);
+
+      if (error) throw error;
+      toast.success('Movimiento individual clasificado');
       await onRefresh();
-      setCurrentIndex(0);
+      setEditingTxId(null);
     } catch (e: any) {
-      toast.error('Error al aplicar lote: ' + e.message);
+      toast.error('Error: ' + e.message);
     } finally {
       setSaving(false);
     }
@@ -292,8 +294,8 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
     );
   }
 
-  const strongCount = suggestions.filter(s => s.confidence >= 85).length;
-  const progress = (currentIndex / suggestions.length) * 100;
+
+  const progress = (safeIndex / suggestions.length) * 100;
   const confidenceClass = current.confidence >= 85 ? 'confidence-high' : current.confidence >= 70 ? 'confidence-mid' : 'confidence-low';
 
   return (
@@ -302,15 +304,9 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
       {/* Header: progreso + acciones globales */}
       <div className="assistant-header-row">
         <span className="assistant-progress-label">
-          <strong>{currentIndex + 1}</strong> de {suggestions.length} sugerencias
+          <strong>{safeIndex + 1}</strong> de {suggestions.length} sugerencias
         </span>
         <div className="assistant-actions" style={{ marginTop: 0 }}>
-          {strongCount > 0 && (
-            <button className="btn btn-primary" style={{ fontSize: '0.78rem', padding: '0.3rem 0.9rem' }} onClick={applyHighConfidence} disabled={saving}>
-              <Check size={14} />
-              Aplicar {strongCount} de alta confianza
-            </button>
-          )}
           <button className="btn btn-outline" style={{ fontSize: '0.78rem', padding: '0.3rem 0.9rem', backgroundColor: 'white' }} onClick={handleRescan} disabled={saving}>
             <RefreshCw size={14} />
             Re-escanear
@@ -364,17 +360,50 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
               <div style={{ marginTop: '1rem', borderTop: '2px dashed var(--border-color)', paddingTop: '1rem' }}>
                 <p className="assistant-section-label" style={{ marginBottom: '0.5rem' }}>Detalle de movimientos ({current.count})</p>
                 <div style={{ maxHeight: '160px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.35rem', paddingRight: '0.5rem' }}>
-                  {current.transactions.map((t, idx) => (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', padding: '0.4rem 0.6rem', background: '#fff', border: '1.5px solid var(--border-color)', borderRadius: 6 }}>
-                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                        <span style={{ color: '#64748b', fontWeight: 700, fontSize: '0.75rem' }}>{t.date}</span>
-                        {t.bank && <span style={{ color: '#3b82f6', fontWeight: 800, fontSize: '0.7rem' }}>{t.bank.substring(0,3).toUpperCase()}</span>}
+                  {current.transactions.map((t, idx) => {
+                    if (editingTxId === t.id) {
+                      return (
+                        <div key={idx} style={{ background: '#f8fafc', border: '2px solid var(--border-color)', borderRadius: 8, padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>Clasificar "{t.description}"</span>
+                            <button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }} onClick={() => setEditingTxId(null)}>Cancelar</button>
+                          </div>
+                          <div style={{ border: '2px solid #000', borderRadius: '4px', overflow: 'hidden' }}>
+                            <CascadingCategorySelector
+                              initialPrincipal="Sin Especificar"
+                              initialSecundaria="Sin Especificar"
+                              contextDescription={t.description}
+                              onSave={async (tipo: string, princ: string, sec: string) => {
+                                await applySingleTx(t.id, { tipo_movimiento: tipo, categoria_principal: princ, categoria_secundaria: sec });
+                              }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    }
+                    
+                    return (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', padding: '0.4rem 0.6rem', background: '#fff', border: '1.5px solid var(--border-color)', borderRadius: 6 }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                          <span style={{ color: '#64748b', fontWeight: 700, fontSize: '0.75rem' }}>{t.date}</span>
+                          {t.bank && <span style={{ color: '#3b82f6', fontWeight: 800, fontSize: '0.7rem' }}>{t.bank.substring(0,3).toUpperCase()}</span>}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <span style={{ fontWeight: 800, color: t.type === 'ingreso' ? '#15803d' : '#b91c1c' }}>
+                            {t.type === 'ingreso' ? '+' : '-'}${Math.abs(t.amount).toLocaleString('es-CL')}
+                          </span>
+                          <button 
+                            className="btn btn-outline" 
+                            style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem', backgroundColor: 'var(--pastel-yellow)' }}
+                            onClick={() => setEditingTxId(t.id)}
+                            title="Clasificar individualmente"
+                          >
+                            ✏️ Editar
+                          </button>
+                        </div>
                       </div>
-                      <span style={{ fontWeight: 800, color: t.type === 'ingreso' ? '#15803d' : '#b91c1c' }}>
-                        {t.type === 'ingreso' ? '+' : '-'}${Math.abs(t.amount).toLocaleString('es-CL')}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
