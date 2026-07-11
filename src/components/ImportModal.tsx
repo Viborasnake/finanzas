@@ -717,7 +717,8 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
       const existingSet = new Set(existing?.map(t => {
         const descKey = Object.keys(t.raw_data || {}).find(k => k.toLowerCase().includes('descripc') || k.toLowerCase().includes('movimiento') || k.toLowerCase().includes('detalle')) || '';
         const origDesc = t.raw_data ? (t.raw_data[descKey] || '') : '';
-        return `${t.date}_${t.amount}_${String(origDesc).trim()}`;
+        const amountToUse = t.raw_data && typeof t.raw_data.original_amount !== 'undefined' ? t.raw_data.original_amount : t.amount;
+        return `${t.date}_${amountToUse}_${String(origDesc).trim()}`;
       }));
 
       // Filtrar las transacciones entrantes contra las firmas

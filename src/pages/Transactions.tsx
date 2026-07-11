@@ -5,13 +5,14 @@ import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { TransactionTypeBadge } from '../components/TransactionTypeBadge';
 import { AVAILABLE_BANKS, useBanks } from '../contexts/BankContext';
-import { Search, Edit2, Plus, X, ChevronRight, CheckCircle2, UploadCloud } from 'lucide-react';
+import { Search, Edit2, Plus, X, ChevronRight, CheckCircle2, UploadCloud, Scissors } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useActionQueue } from '../hooks/useActionQueue';
 import SmartAssistant from '../components/SmartAssistant';
 import { useTaxonomy } from '../hooks/useTaxonomy';
 import { useSettings } from '../contexts/SettingsContext';
 import ImportModal from '../components/ImportModal';
+import SplitTransactionModal from '../components/SplitTransactionModal';
 
 const normalizeBankName = (value: any) => String(value || '')
   .normalize('NFD')
@@ -426,6 +427,65 @@ export default function Transactions() {
   const [viewMode, setViewMode] = useState<'individual' | 'bulk' | 'assistant'>('individual');
   const [bulkSearchTerm, setBulkSearchTerm] = useState('');
   const [bulkFilterMode, setBulkFilterMode] = useState<string>('unclassified');
+  const [splittingTx, setSplittingTx] = useState<any>(null);
+
+  const handleSaveSplit = async (parts: any[]) => {
+    if (!splittingTx) return;
+    const originalAmount = splittingTx.raw_data?.original_amount || splittingTx.amount;
+    const splitGroupId = crypto.randomUUID();
+
+    const [firstPart, ...otherParts] = parts;
+
+    const splitPromise = async () => {
+      // 1. Update the original transaction
+      const { error: updateError } = await supabase.from('transactions').update({
+        amount: splittingTx.type === 'egreso' ? -Math.abs(firstPart.amount) : Math.abs(firstPart.amount),
+        tipo_movimiento: firstPart.tipo_movimiento,
+        categoria_principal: firstPart.categoria_principal,
+        categoria_secundaria: firstPart.categoria_secundaria,
+        raw_data: { 
+          ...splittingTx.raw_data, 
+          original_amount: originalAmount,
+          split_group_id: splitGroupId
+        }
+      }).eq('id', splittingTx.id);
+
+      if (updateError) throw updateError;
+
+      // 2. Insert new parts
+      const newRows = otherParts.map(p => ({
+        user_id: user!.id,
+        date: splittingTx.date,
+        description: splittingTx.description,
+        original_description: splittingTx.original_description,
+        amount: splittingTx.type === 'egreso' ? -Math.abs(p.amount) : Math.abs(p.amount),
+        type: splittingTx.type,
+        bank: splittingTx.bank,
+        is_shared: splittingTx.is_shared,
+        tipo_movimiento: p.tipo_movimiento,
+        categoria_principal: p.categoria_principal,
+        categoria_secundaria: p.categoria_secundaria,
+        raw_data: {
+          ...splittingTx.raw_data,
+          original_amount: originalAmount,
+          split_group_id: splitGroupId,
+          is_split_child: true
+        }
+      }));
+
+      const { error: insertError } = await supabase.from('transactions').insert(newRows);
+      if (insertError) throw insertError;
+
+      await fetchTransactions();
+      setSplittingTx(null);
+    };
+
+    toast.promise(splitPromise(), {
+      loading: 'Dividiendo transacción...',
+      success: '¡Transacción dividida exitosamente!',
+      error: 'Error al dividir la transacción'
+    });
+  };
 
   const { user } = useAuth();
   const { activeBank, connectedBanks, dashboardScope } = useBanks();
@@ -1085,7 +1145,19 @@ export default function Transactions() {
                         )}
                       </td>
                       <td data-label="Monto" style={{ padding: '1rem', fontWeight: 900, color: tx.type === 'ingreso' ? 'var(--success)' : 'var(--danger)' }}>
-                        {new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(tx.amount)}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                          <span>{new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(tx.amount)}</span>
+                          <button 
+                            onClick={() => setSplittingTx(tx)}
+                            className="btn-icon"
+                            title="Dividir transacción"
+                            style={{ padding: '0.25rem', opacity: 0.6 }}
+                            onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+                            onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.6')}
+                          >
+                            <Scissors size={14} />
+                          </button>
+                        </div>
                       </td>
                       <td data-label="Clasificación" style={{ padding: '1rem' }}>
                         <CascadingCategorySelector 
@@ -1139,6 +1211,14 @@ export default function Transactions() {
           setIsImportModalOpen(false);
           fetchTransactions();
         }} />
+      )}
+
+      {splittingTx && (
+        <SplitTransactionModal 
+          transaction={splittingTx}
+          onClose={() => setSplittingTx(null)}
+          onSave={handleSaveSplit}
+        />
       )}
     </div>
   );
