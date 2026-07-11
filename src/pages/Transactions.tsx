@@ -231,7 +231,7 @@ export function CascadingCategorySelector({ initialPrincipal, initialSecundaria,
       {isOpen && createPortal(
         <div
           className="portal-dropdown"
-          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.38)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.38)', zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
           onMouseDown={() => setIsOpen(false)}
         >
           <div
