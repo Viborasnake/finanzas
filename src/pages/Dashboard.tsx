@@ -21,6 +21,8 @@ import MindMapChart from '../components/MindMapChart';
 import LaikaPet from '../components/LaikaPet';
 import { useTaxonomy } from '../hooks/useTaxonomy';
 import { AVAILABLE_BANKS } from '../contexts/BankContext';
+import { toast } from 'react-hot-toast';
+import { CascadingCategorySelector } from './Transactions';
 
 type CategoryLevel = 'principal' | 'secundaria' | 'detalle';
 
@@ -199,6 +201,32 @@ export default function Dashboard() {
   const [categoryLevel, setCategoryLevel] = useState<CategoryLevel>('principal');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [detailsModal, setDetailsModal] = useState<{ isOpen: boolean; title: string; transactions: any[]; } | null>(null);
+  const [editingTxId, setEditingTxId] = useState<string | null>(null);
+
+  const applySingleTx = async (txId: string, proposal: any) => {
+    if (!user || !detailsModal) return;
+    try {
+      const { error } = await supabase
+        .from('transactions')
+        .update(proposal)
+        .eq('user_id', user.id)
+        .eq('id', txId);
+
+      if (error) throw error;
+      toast.success('Clasificado individualmente');
+      
+      const updatedTx = { ...detailsModal.transactions.find(t => t.id === txId), ...proposal };
+      setDetailsModal(prev => prev ? {
+        ...prev,
+        transactions: prev.transactions.map(t => t.id === txId ? updatedTx : t)
+      } : null);
+
+      fetchTransactions(); // refresca dashboard silenciosamente
+      setEditingTxId(null);
+    } catch (e: any) {
+      toast.error('Error: ' + e.message);
+    }
+  };
 
   const toggleCategory = (name: string) => {
     setSelectedCategories(prev =>
@@ -1730,6 +1758,29 @@ export default function Dashboard() {
                       const bankLabel = bankInfo?.label || bankId;
                       const bankColor = bankInfo?.color || '#94a3b8';
 
+                      if (editingTxId === t.id) {
+                        return (
+                          <tr key={t.id} style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #000' }}>
+                            <td colSpan={isConsolidated ? 4 : 3} style={{ padding: '1rem' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                                <span style={{ fontWeight: 800, fontSize: '0.95rem' }}>Clasificar "{t.description || t.original_description}"</span>
+                                <button className="btn btn-outline" style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem' }} onClick={() => setEditingTxId(null)}>Cancelar</button>
+                              </div>
+                              <div style={{ border: '2px solid #000', borderRadius: '6px', overflow: 'hidden' }}>
+                                <CascadingCategorySelector
+                                  initialPrincipal={t.categoria_principal || "Sin Especificar"}
+                                  initialSecundaria={t.categoria_secundaria || "Sin Especificar"}
+                                  contextDescription={t.description || t.original_description}
+                                  onSave={async (tipo: string, princ: string, sec: string) => {
+                                    await applySingleTx(t.id, { tipo_movimiento: tipo, categoria_principal: princ, categoria_secundaria: sec });
+                                  }}
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      }
+
                       return (
                         <tr key={t.id} style={{ borderBottom: i === detailsModal.transactions.length - 1 ? 'none' : '1px solid #e2e8f0', backgroundColor: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
                           <td style={{ padding: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap', fontSize: '0.9rem' }}>{t.date}</td>
@@ -1748,11 +1799,11 @@ export default function Dashboard() {
                               <button 
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setDetailsModal(null);
-                                  navigate('/transactions?search=' + encodeURIComponent(t.description || t.original_description || ''));
+                                  setEditingTxId(t.id);
                                 }}
                                 className="btn-icon"
-                                title="Corregir categoría"
+                                title="Clasificar aquí mismo"
+                                style={{ padding: '0.2rem' }}
                               >
                                 <Edit2 size={14} strokeWidth={3} />
                               </button>
