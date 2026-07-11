@@ -491,7 +491,8 @@ export default function Dashboard() {
       txs.forEach(t => {
         const isInternal = t.tipo_movimiento === 'Movimiento Interno' || 
                            t.categoria_secundaria === 'Transferencias Propias' || 
-                           t.categoria_secundaria === 'Transferencia personal';
+                           t.categoria_secundaria === 'Transferencia personal' ||
+                           t.tipo_movimiento === 'Ahorro/Inversión';
         const isInvestment = t.tipo_movimiento === 'Ahorro/Inversión';
         const isUnclassified = !t.categoria_principal || t.categoria_principal === 'Sin Clasificar';
 
@@ -1205,7 +1206,7 @@ export default function Dashboard() {
               </div>
               <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: '"Montserrat", sans-serif', display: 'flex', alignItems: 'center' }}>
                 Ingresos
-                <InfoTooltip content="Total de dinero que ha entrado a tus cuentas. Los traspasos entre tus propias cuentas (Aporte Propio) se desglosan aparte." />
+                <InfoTooltip content="Total de dinero que ha entrado a tus cuentas. Los traspasos entre tus propias cuentas o retiros de inversión (Aporte Propio) se desglosan aparte." />
               </h3>
             </div>
             {renderTrendBadge(totalEntradas, p.ingresos + p.aportePropio, false)}
@@ -1215,7 +1216,7 @@ export default function Dashboard() {
           </p>
           {c.aportePropio > 0 && (
             <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 700, marginBottom: '1.5rem', position: 'relative', zIndex: 10 }}>
-              *Incluye ${c.aportePropio.toLocaleString('es-CL')} de aportes propios (Mov. Interno)
+              *Incluye ${c.aportePropio.toLocaleString('es-CL')} de aportes propios (Mov. Interno / Inversión)
             </div>
           )}
           
@@ -1270,7 +1271,7 @@ export default function Dashboard() {
               </div>
               <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: '"Montserrat", sans-serif', display: 'flex', alignItems: 'center' }}>
                 Egresos
-                <InfoTooltip content="Dinero que ha salido de tus cuentas. Los traspasos entre tus cuentas y aportes a inversiones (Mov. Interno / Ahorro) no se consideran gastos reales." />
+                <InfoTooltip content="Dinero que ha salido de tus cuentas. Las transferencias a tus propias cuentas o depósitos de inversión (Egreso Propio) no se consideran gastos reales." />
               </h3>
             </div>
             {renderTrendBadge(totalSalidas, p.gastos + p.movimientoInternoEgreso, true)}
@@ -1280,7 +1281,7 @@ export default function Dashboard() {
           </p>
           {c.movimientoInternoEgreso > 0 && (
             <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 700, marginBottom: '1.5rem', position: 'relative', zIndex: 10 }}>
-              *Incluye ${c.movimientoInternoEgreso.toLocaleString('es-CL')} de movimientos internos
+              *Incluye ${c.movimientoInternoEgreso.toLocaleString('es-CL')} de movimientos internos o inversiones
             </div>
           )}
           
