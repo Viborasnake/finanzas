@@ -353,7 +353,7 @@ export default function Login() {
 
           {/* Tabs */}
           {!isPasswordRecovery && (
-            <div className="auth-tabs" role="tablist" aria-label="Acceso a MisFinanzas" style={{ display: 'flex', backgroundColor: '#fff', borderRadius: '2rem', border: '2px solid black', marginBottom: '2.5rem', padding: '0.25rem', boxShadow: '4px 4px 0px black' }}>
+            <div className="auth-tabs" role="tablist" aria-label="Acceso a MisFinanzas" style={{ display: 'flex', backgroundColor: '#fff', borderRadius: '999px', border: '2px solid black', marginBottom: '2.5rem', padding: '0.25rem', boxShadow: '4px 4px 0px black' }}>
               <button
                 type="button"
                 role="tab"

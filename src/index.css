@@ -34,6 +34,7 @@
   --warning-surface: #fef3c7;
   --warning-text: #854d0e;
   
+  /* Shape system: icons 4px, controls 8px, surfaces 12px, semantic pills only. */
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
@@ -4569,7 +4570,7 @@ select.input {
 
   .responsive-tabs {
     flex-direction: row;
-    border-radius: 2rem;
+    border-radius: var(--radius-pill);
   }
   .responsive-tabs button {
     flex: 1 1 0;
@@ -4737,7 +4738,7 @@ select.input {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   overflow: hidden;
   border: 2px solid #000;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-pill);
   background: #fff;
   box-shadow: var(--shadow-sm);
 }
