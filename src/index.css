@@ -73,6 +73,14 @@ html,
   max-width: 100%;
 }
 
+/* A slightly denser desktop scale keeps data-heavy screens scannable without
+   shrinking mobile touch targets or changing the browser's zoom level. */
+@media (min-width: 1025px) {
+  html {
+    font-size: 15px;
+  }
+}
+
 img,
 canvas {
   max-width: 100%;
