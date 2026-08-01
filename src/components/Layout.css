@@ -189,6 +189,22 @@
   overflow-y: auto;
 }
 
+.sidebar-nav-section + .sidebar-nav-section {
+  margin-top: 0.55rem;
+  padding-top: 0.6rem;
+  border-top: 1.5px solid rgba(0,0,0,0.1);
+}
+
+.sidebar-nav-label,
+.mobile-nav-label {
+  padding: 0 1rem 0.15rem;
+  color: #475569;
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .sidebar-footer {
   padding: 0.75rem 0.75rem 1rem;
   border-top: 1.5px solid rgba(0,0,0,0.12);
@@ -248,6 +264,15 @@
 
 .sidebar.collapsed .nav-item span {
   display: none;
+}
+
+.sidebar.collapsed .sidebar-nav-label {
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-nav-section + .sidebar-nav-section {
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
 }
 
 /* Hide Bank Indicator text when collapsed */
@@ -453,6 +478,17 @@
     background-color: #000;
     color: #fff;
     box-shadow: 4px 4px 0px var(--primary);
+  }
+
+  .mobile-nav-section + .mobile-nav-section {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1.5px solid #cbd5e1;
+  }
+
+  .mobile-nav-label {
+    margin-bottom: 0.35rem;
+    padding-left: 1.25rem;
   }
   
   .mobile-nav-item .icon-container {

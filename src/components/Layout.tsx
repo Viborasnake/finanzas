@@ -7,13 +7,19 @@ import { useSettings } from '../contexts/settingsContextValue';
 import { RutOnboardingModal } from './RutOnboardingModal';
 import './Layout.css'; 
 
-const navItems = [
-  { name: 'Vista Light', path: '/light', icon: <Sparkles size={20} /> },
-  { name: 'Dashboard', path: '/', icon: <LayoutDashboard size={20} /> },
-  { name: 'Transacciones', path: '/transactions', icon: <Receipt size={20} /> },
-  { name: 'Cuentas', path: '/accounts', icon: <CalendarCheck size={20} /> },
-  { name: 'Importar cartola', path: '/import', icon: <FileSpreadsheet size={20} /> },
-  { name: 'Configuración', path: '/settings', icon: <Settings size={20} /> },
+const overviewNavItems = [
+  { name: 'Mi mes', path: '/light', icon: <Sparkles size={20} /> },
+  { name: 'Resumen financiero', path: '/', icon: <LayoutDashboard size={20} /> },
+];
+
+const managementNavItems = [
+  { name: 'Movimientos', path: '/transactions', icon: <Receipt size={20} /> },
+  { name: 'Importar movimientos', path: '/import', icon: <FileSpreadsheet size={20} /> },
+  { name: 'Pagos fijos', path: '/accounts', icon: <CalendarCheck size={20} /> },
+];
+
+const systemNavItems = [
+  { name: 'Ajustes', path: '/settings', icon: <Settings size={20} /> },
 ];
 
 function BankIndicator() {
@@ -201,14 +207,19 @@ export default function Layout() {
     };
   }, [isMobileMenuOpen]);
 
-  const menuItems = [...navItems];
+  const systemMenuItems = [...systemNavItems];
   if (isAdmin) {
-    menuItems.push({
+    systemMenuItems.push({
       name: 'Administración',
       path: '/admin',
       icon: <Shield size={20} />
     });
   }
+  const navSections = [
+    { label: 'Resumen', items: overviewNavItems },
+    { label: 'Gestión', items: managementNavItems },
+    { label: 'Sistema', items: systemMenuItems },
+  ];
 
   const handleSignOut = async () => {
     await signOut();
@@ -247,22 +258,27 @@ export default function Layout() {
         <BankIndicator />
         
         <nav className="sidebar-nav" aria-label="Navegación principal">
-          {menuItems.map((item) => {
-            const isActive = location.pathname === item.path;
-            return (
-              <div key={item.path}>
-                <Link 
-                  to={item.path} 
-                  className={`nav-item ${isActive ? 'active' : ''}`}
-                  title={isCollapsed ? item.name : undefined}
-                  aria-current={isActive ? 'page' : undefined}
-                >
-                  {item.icon}
-                  <span>{item.name}</span>
-                </Link>
-              </div>
-            )
-          })}
+          {navSections.map((section) => (
+            <div className="sidebar-nav-section" key={section.label}>
+              <div className="sidebar-nav-label">{section.label}</div>
+              {section.items.map((item) => {
+                const isActive = location.pathname === item.path;
+                return (
+                  <div key={item.path}>
+                    <Link
+                      to={item.path}
+                      className={`nav-item ${isActive ? 'active' : ''}`}
+                      title={isCollapsed ? item.name : undefined}
+                      aria-current={isActive ? 'page' : undefined}
+                    >
+                      {item.icon}
+                      <span>{item.name}</span>
+                    </Link>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         <div className="sidebar-footer">
@@ -303,21 +319,27 @@ export default function Layout() {
             <div style={{ padding: '0 0.5rem', marginBottom: '1rem' }}>
               <BankIndicator />
             </div>
-            {menuItems.map((item) => {
-              const isActive = location.pathname === item.path;
-              return (
-              <div key={item.path}>
-                <Link 
-                  to={item.path} 
-                  className={`mobile-nav-item ${isActive ? 'active' : ''}`}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  aria-current={isActive ? 'page' : undefined}
-                >
-                  <div className="icon-container">{item.icon}</div>
-                  <span>{item.name}</span>
-                </Link>
+            {navSections.map((section) => (
+              <div className="mobile-nav-section" key={section.label}>
+                <div className="mobile-nav-label">{section.label}</div>
+                {section.items.map((item) => {
+                  const isActive = location.pathname === item.path;
+                  return (
+                    <div key={item.path}>
+                      <Link
+                        to={item.path}
+                        className={`mobile-nav-item ${isActive ? 'active' : ''}`}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        aria-current={isActive ? 'page' : undefined}
+                      >
+                        <div className="icon-container">{item.icon}</div>
+                        <span>{item.name}</span>
+                      </Link>
+                    </div>
+                  );
+                })}
               </div>
-            )})}
+            ))}
             
             <div className="mobile-nav-footer">
               {user && (
