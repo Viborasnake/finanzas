@@ -1296,7 +1296,7 @@ export default function Transactions() {
             </div>
             <div className="transactions-summary">
               <span>{duplicateGroups.length} grupo{duplicateGroups.length === 1 ? '' : 's'} para revisar</span>
-              <span>{duplicateTransactionCount} eliminación{duplicateTransactionCount === 1 ? '' : 'es'} sugerida{duplicateTransactionCount === 1 ? '' : 's'}</span>
+              <span>{duplicateTransactionCount} {duplicateTransactionCount === 1 ? 'eliminación sugerida' : 'eliminaciones sugeridas'}</span>
             </div>
           </div>
 
