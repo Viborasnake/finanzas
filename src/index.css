@@ -4355,7 +4355,7 @@ select.input {
     min-width: 0;
   }
 
-  .transactions-header {
+  .header-container.transactions-header {
     flex-direction: column;
     align-items: stretch;
   }
@@ -4561,7 +4561,7 @@ select.input {
 }
 
 @media (min-width: 1500px) {
-  .transactions-header {
+  .header-container.transactions-header {
     flex-direction: row;
     align-items: flex-end;
   }
