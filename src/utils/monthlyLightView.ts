@@ -1,6 +1,7 @@
 import type { FixedExpense } from '../contexts/settingsContextValue.ts';
 import { evaluateAccountMatch } from './fixedExpenseMatching.ts';
 import { parseLocalDateInput } from './localDate.ts';
+import { getOpeningBalanceSnapshot } from './balanceSnapshot.ts';
 
 export interface LightTransaction {
   id: string;
@@ -10,6 +11,7 @@ export interface LightTransaction {
   amount: number;
   type?: string | null;
   bank?: string | null;
+  created_at?: string | null;
   tipo_movimiento?: string | null;
   categoria_principal?: string | null;
   categoria_secundaria?: string | null;
@@ -88,9 +90,11 @@ export const getRecentMonthOptions = (now = new Date(), previousMonths = 6) => (
 export const buildMonthlyLightSummary = (
   transactions: LightTransaction[],
   fixedExpenses: FixedExpense[],
-  now = new Date()
+  now = new Date(),
+  bankIds = Array.from(new Set(transactions.map(transaction => transaction.bank).filter((bank): bank is string => Boolean(bank))))
 ) => {
   const range = getMonthRange(now);
+  const openingBalance = getOpeningBalanceSnapshot(transactions, range.start, bankIds);
   const monthTransactions = transactions.filter(transaction => {
     const date = parseLocalDateInput(transaction.date);
     return date >= range.start && date <= range.end;
@@ -136,6 +140,7 @@ export const buildMonthlyLightSummary = (
 
   return {
     range,
+    openingBalance,
     transactionCount: monthTransactions.length,
     totalIncome,
     receivedTransferAmount,

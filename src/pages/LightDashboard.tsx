@@ -52,16 +52,29 @@ export default function LightDashboard() {
     setLoadError(null);
     try {
       const results = await Promise.all(bankIds.map(async bank => {
-        const { data, error } = await supabase
-          .from('transactions')
-          .select('id,date,description,amount,type,bank,tipo_movimiento,categoria_principal,categoria_secundaria,raw_data')
-          .eq('user_id', user.id)
-          .eq('bank', bank)
-          .gte('date', monthRange.startInput)
-          .lte('date', monthRange.endInput)
-          .order('date', { ascending: false });
-        if (error) throw error;
-        return (data || []) as LightTransaction[];
+        const [monthResult, priorResult] = await Promise.all([
+          supabase
+            .from('transactions')
+            .select('id,date,created_at,description,amount,type,bank,tipo_movimiento,categoria_principal,categoria_secundaria,raw_data')
+            .eq('user_id', user.id)
+            .eq('bank', bank)
+            .gte('date', monthRange.startInput)
+            .lte('date', monthRange.endInput)
+            .order('date', { ascending: false }),
+          supabase
+            .from('transactions')
+            .select('id,date,created_at,description,amount,type,bank,tipo_movimiento,categoria_principal,categoria_secundaria,raw_data')
+            .eq('user_id', user.id)
+            .eq('bank', bank)
+            .lt('date', monthRange.startInput)
+            .not('raw_data', 'is', null)
+            .order('date', { ascending: false })
+            .order('created_at', { ascending: false })
+            .limit(100)
+        ]);
+        if (monthResult.error) throw monthResult.error;
+        if (priorResult.error) throw priorResult.error;
+        return [...(monthResult.data || []), ...(priorResult.data || [])] as LightTransaction[];
       }));
       setTransactions(results.flat());
     } catch (error) {
@@ -78,8 +91,8 @@ export default function LightDashboard() {
   }, [fetchTransactions]);
 
   const summary = useMemo(
-    () => buildMonthlyLightSummary(transactions, fixedExpenses, selectedMonth.date),
-    [fixedExpenses, selectedMonth.date, transactions]
+    () => buildMonthlyLightSummary(transactions, fixedExpenses, selectedMonth.date, scopedBankKey.split('|').filter(Boolean)),
+    [fixedExpenses, scopedBankKey, selectedMonth.date, transactions]
   );
   const commitmentTotal = summary.fixedExpenseStatuses.length;
   const commitmentProgress = commitmentTotal > 0
@@ -144,13 +157,25 @@ export default function LightDashboard() {
 
       <section className={`light-balance-card ${summary.balance < 0 ? 'is-negative' : ''}`} aria-labelledby="light-balance-title">
         <div>
-          <span className="light-card-label" id="light-balance-title">{summary.balance < 0 ? 'Uso de saldo previo estimado' : 'Disponible después de gastos'}</span>
+          <span className="light-card-label" id="light-balance-title">{summary.balance < 0
+            ? summary.openingBalance.total >= Math.abs(summary.balance) ? 'Uso de saldo previo estimado' : 'Diferencia por cubrir'
+            : 'Disponible después de gastos'}</span>
           <strong>{formatMoney(summary.balance < 0 ? Math.abs(summary.balance) : summary.balance)}</strong>
           <p>{summary.transactionCount === 0
             ? `No hay movimientos registrados en ${summary.range.label}.`
             : summary.balance >= 0
               ? 'Ingresos y transferencias recibidas, menos gastos reales del mes.'
-              : 'Es la parte de los gastos cubierta con dinero que ya estaba en tus cuentas.'}</p>
+              : summary.openingBalance.total >= Math.abs(summary.balance)
+                ? `Cubierto por el saldo inicial detectado de ${formatMoney(summary.openingBalance.total)}.`
+                : 'Los saldos iniciales detectados todavía no explican toda la diferencia.'}</p>
+          {summary.openingBalance.detectedBankCount > 0 && (
+            <small className="light-opening-balance">
+              Saldo inicial detectado en {summary.openingBalance.detectedBankCount} de {summary.openingBalance.bankCount} banco{summary.openingBalance.bankCount === 1 ? '' : 's'}.
+            </small>
+          )}
+          {summary.openingBalance.missingBanks.length > 0 && (
+            <Link className="light-balance-link" to="/settings#ajuste">Completar saldo inicial pendiente</Link>
+          )}
         </div>
         <Gauge size={58} strokeWidth={1.8} aria-hidden="true" />
       </section>

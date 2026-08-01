@@ -21,8 +21,12 @@ const fixedExpenses = [
 
 const transactions = [
   {
+    id: 'opening', date: '2026-07-31', created_at: '2026-08-01T00:00:00Z', description: 'Último movimiento previo', amount: 50_000,
+    type: 'ingreso', bank: 'Scotiabank', raw_data: { saldo: '450.000,00' }
+  },
+  {
     id: 'salary', date: '2026-08-01', description: 'Sueldo', amount: 2_000_000,
-    type: 'ingreso', tipo_movimiento: 'Ingreso', categoria_principal: 'Sueldo'
+    type: 'ingreso', bank: 'Scotiabank', tipo_movimiento: 'Ingreso', categoria_principal: 'Sueldo'
   },
   {
     id: 'mortgage-payment', date: '2026-08-05', description: 'Pago hipotecario', amount: -600_000,
@@ -47,7 +51,7 @@ const transactions = [
 ];
 
 test('la vista Light suma transferencias propias recibidas y excluye las enviadas de los gastos', () => {
-  const summary = buildMonthlyLightSummary(transactions, fixedExpenses, new Date(2026, 7, 15));
+  const summary = buildMonthlyLightSummary(transactions, fixedExpenses, new Date(2026, 7, 15), ['Scotiabank']);
 
   assert.equal(summary.transactionCount, 5);
   assert.equal(summary.totalIncome, 2_000_000);
@@ -56,6 +60,8 @@ test('la vista Light suma transferencias propias recibidas y excluye las enviada
   assert.equal(summary.totalAvailable, 2_300_000);
   assert.equal(summary.totalExpenses, 800_000);
   assert.equal(summary.balance, 1_500_000);
+  assert.equal(summary.openingBalance.total, 450_000);
+  assert.equal(summary.openingBalance.complete, true);
   assert.deepEqual(summary.categories.map(category => category.name), ['Vivienda', 'Alimentación']);
 });
 
@@ -82,7 +88,7 @@ test('ofrece el mes actual y al menos los seis meses anteriores', () => {
 test('recalcula el resumen al seleccionar un mes anterior', () => {
   const july = buildMonthlyLightSummary(transactions, fixedExpenses, new Date(2026, 6, 1));
 
-  assert.equal(july.transactionCount, 1);
+  assert.equal(july.transactionCount, 2);
   assert.equal(july.totalExpenses, 999_999);
-  assert.equal(july.totalIncome, 0);
+  assert.equal(july.totalIncome, 50_000);
 });

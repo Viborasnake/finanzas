@@ -21,6 +21,7 @@ import { useTaxonomy } from '../hooks/useTaxonomy';
 import { toast } from 'react-hot-toast';
 import { Dialog } from '../components/Dialog';
 import { getSuggestedDashboardPeriod } from '../utils/dashboardPeriod';
+import { getOpeningBalanceSnapshot } from '../utils/balanceSnapshot';
 
 const MindMapChart = lazy(() => import('../components/MindMapChart'));
 const CascadingCategorySelector = lazy(() => import('./Transactions').then(module => ({
@@ -496,6 +497,11 @@ export default function Dashboard() {
       prevRange: previous
     };
   }, [dateRange]);
+
+  const openingBalance = useMemo(
+    () => getOpeningBalanceSnapshot(transactions, currentRange.start, dashboardBankKey.split('|').filter(Boolean)),
+    [transactions, currentRange.start, dashboardBankKey]
+  );
 
   const filteredTransactions = useMemo(() => {
     const { start, end } = dateRange;
@@ -1205,6 +1211,8 @@ export default function Dashboard() {
     const ingresosReales = stats.current.ingresos - stats.current.aportePropio;
     
     const isDeficit = balance < 0;
+    const deficitAmount = Math.abs(balance);
+    const coveredByOpeningBalance = isDeficit && openingBalance.total >= deficitAmount;
     const incomePercent = ingresosReales > 0 ? Math.round((maxIncomeAmount / ingresosReales) * 100) : 0;
     const insightCount = 1 + (maxIncomeAmount > 0 ? 1 : 0) + (maxRecurringTotal > 0 ? 1 : 0);
 
@@ -1240,10 +1248,22 @@ export default function Dashboard() {
             <div className="dashboard-insight-card" style={{ backgroundColor: isDeficit ? '#fef2f2' : '#f0fdf4' }}>
               <Activity size={19} style={{ color: isDeficit ? 'var(--danger-text)' : 'var(--success-text)' }} />
               <div>
-                <span className="dashboard-insight-label">Saldo tras cobertura</span>
-                <strong>{isDeficit ? 'Faltante' : 'Disponible'} · ${Math.abs(balance).toLocaleString('es-CL')}</strong>
-                {stats.current.aportePropio > 0 && (
-                  <small>${stats.current.aportePropio.toLocaleString('es-CL')} de fondos propios ayudaron a cubrir el mes</small>
+                <span className="dashboard-insight-label">{isDeficit
+                  ? coveredByOpeningBalance ? 'Uso de saldo previo estimado' : 'Diferencia por cubrir'
+                  : 'Disponible después de gastos'}</span>
+                <strong>${Math.abs(balance).toLocaleString('es-CL')}</strong>
+                {coveredByOpeningBalance ? (
+                  <small>Cubierto por el saldo inicial detectado de ${openingBalance.total.toLocaleString('es-CL')}</small>
+                ) : stats.current.aportePropio > 0 ? (
+                  <small>${stats.current.aportePropio.toLocaleString('es-CL')} de fondos propios ayudaron a cubrir el periodo</small>
+                ) : null}
+                {openingBalance.detectedBankCount > 0 && (
+                  <small>Saldo inicial detectado en {openingBalance.detectedBankCount} de {openingBalance.bankCount} banco{openingBalance.bankCount === 1 ? '' : 's'}.</small>
+                )}
+                {openingBalance.missingBanks.length > 0 && (
+                  <button type="button" className="dashboard-insight-link" onClick={() => navigate('/settings#ajuste')}>
+                    Completar saldo inicial pendiente
+                  </button>
                 )}
               </div>
             </div>
