@@ -2199,6 +2199,10 @@ select.input {
   gap: 1.25rem;
 }
 
+.transactions-header > * {
+  min-width: 0;
+}
+
 .transactions-card {
   padding: 1.25rem;
   overflow: hidden;
@@ -4335,16 +4339,25 @@ select.input {
   }
 
   .transactions-actions {
-    width: auto;
-    display: flex;
+    width: 100%;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
-    flex-wrap: wrap;
     gap: 1rem;
   }
 
   .transactions-actions > .btn,
   .transactions-actions > .responsive-tabs {
     width: auto;
+  }
+
+  .transactions-actions > .responsive-tabs {
+    min-width: 0;
+  }
+
+  .transactions-header {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .dashboard-kpi-amount {
@@ -4464,6 +4477,8 @@ select.input {
     border-radius: 2rem;
   }
   .responsive-tabs button {
+    flex: 1 1 0;
+    min-width: 0;
     border-bottom: none;
     border-left: var(--border-width) solid var(--border-color);
     font-size: 1rem;
@@ -4542,6 +4557,18 @@ select.input {
   .category-create-preview,
   .category-create-form .btn {
     grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 1500px) {
+  .transactions-header {
+    flex-direction: row;
+    align-items: flex-end;
+  }
+
+  .transactions-actions {
+    width: auto;
+    grid-template-columns: auto minmax(620px, 1fr);
   }
 }
 
