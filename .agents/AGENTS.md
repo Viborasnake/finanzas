@@ -126,6 +126,7 @@ Las normalizaciones ya no se ejecutan desde el frontend. Están versionadas en `
 *   Muestra un toast con botón Deshacer durante 6 segundos.
 *   Ejecuta la acción real en BD solo si el usuario no deshace.
 *   Se usa en `Transactions.tsx` para ediciones inline.
+*   La categorización de alias repetidos usa un único `Dialog` modal; nunca debe volver a implementarse como múltiples toasts infinitos porque se acumulan y dejan decisiones pendientes sin resolver.
 
 ### Laika Pet (`LaikaPet.tsx`)
 *   Mascota visual del proyecto. Renderiza PNG de la carpeta `src/assets/laika/`.

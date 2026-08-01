@@ -543,6 +543,17 @@ const formatPeriodLabel = (period: string) => {
     .replace(/^./, value => value.toUpperCase());
 };
 
+interface PendingCategoryConfirmation {
+  id: string;
+  currentDesc: string;
+  tipo: string;
+  principal: string | null;
+  secundaria: string | null;
+  previousTransaction: any;
+  affectedTransactions: any[];
+  othersCount: number;
+}
+
 export default function Transactions() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -567,6 +578,7 @@ export default function Transactions() {
   const [bulkSearchTerm, setBulkSearchTerm] = useState('');
   const [bulkFilterMode, setBulkFilterMode] = useState<string>('unclassified');
   const [splittingTx, setSplittingTx] = useState<any>(null);
+  const [pendingCategoryConfirmation, setPendingCategoryConfirmation] = useState<PendingCategoryConfirmation | null>(null);
   const [pendingDeletion, setPendingDeletion] = useState<null | {
     ids: string[];
     title: string;
@@ -903,89 +915,16 @@ export default function Transactions() {
     const othersCount = transactions.filter(t => t.id !== id && t.description === currentDesc).length;
 
     if (othersCount > 0 && tipo) {
-      const cancelCategorize = (toastId: string) => {
-        toast.dismiss(toastId);
-        setTransactions(prev => prev.map(tx => tx.id === id ? prevTx : tx));
-      };
-
-      toast.custom((t) => (
-        <div className="confirm-toast">
-          <div className="confirm-toast-header">
-            <h3>Categorización Múltiple</h3>
-            <button type="button" className="btn-icon" onClick={() => cancelCategorize(t.id)} title="Cerrar" aria-label="Cerrar confirmación de categoría">
-              <X size={16} />
-            </button>
-          </div>
-          <p style={{ margin: '0.5rem 0 1.5rem' }}>
-            Hay otras {othersCount} transacciones con el alias "{currentDesc}". ¿Quieres aplicarles esta misma categoría?
-          </p>
-          <div className="confirm-toast-actions">
-            <button 
-              type="button"
-              className="btn btn-outline" 
-              style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', backgroundColor: '#fff' }} 
-              onClick={() => cancelCategorize(t.id)}
-            >
-              Cancelar
-            </button>
-            <button 
-              type="button"
-              className="btn btn-outline" 
-              style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }} 
-              onClick={() => {
-                toast.dismiss(t.id);
-                dispatchAction({
-                  id: id,
-                  message: `1 transacción clasificada`,
-                  execute: async () => {
-                    const { error } = await supabase.from('transactions').update({ tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria }).eq('id', id);
-                    if (error) throw error;
-                  },
-                  onUndo: () => setTransactions(prev => prev.map(tx => tx.id === id ? prevTx : tx))
-                });
-              }}
-            >
-              Solo a esta
-            </button>
-            <button 
-              type="button"
-              className="btn btn-primary" 
-              style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }} 
-              onClick={() => {
-                toast.dismiss(t.id);
-                
-                const affectedTxs = transactions.filter(tx => tx.id === id || tx.description === currentDesc);
-                
-                setTransactions(prev => prev.map(tx => {
-                  if (tx.description === currentDesc) {
-                    return { ...tx, tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria };
-                  }
-                  return tx;
-                }));
-
-                dispatchAction({
-                  id: `bulk-cat-${currentDesc}`,
-                  message: `${othersCount + 1} transacciones clasificadas`,
-                  execute: async () => {
-                    const { error: e1 } = await supabase.from('transactions').update({ tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria }).eq('id', id);
-                    const sameDescriptionIds = affectedTxs.map(tx => tx.id);
-                    const { error: e2 } = await supabase.from('transactions').update({ tipo_movimiento: tipo, categoria_principal: principal, categoria_secundaria: secundaria }).in('id', sameDescriptionIds);
-                    if (e1 || e2) throw new Error("Update error");
-                  },
-                  onUndo: () => {
-                    setTransactions(prev => prev.map(tx => {
-                      const oldTx = affectedTxs.find(old => old.id === tx.id);
-                      return oldTx ? oldTx : tx;
-                    }));
-                  }
-                });
-              }}
-            >
-              Sí, a todas
-            </button>
-          </div>
-        </div>
-      ), { duration: Infinity });
+      setPendingCategoryConfirmation({
+        id,
+        currentDesc,
+        tipo,
+        principal,
+        secundaria,
+        previousTransaction: prevTx,
+        affectedTransactions: transactions.filter(tx => tx.id === id || tx.description === currentDesc),
+        othersCount
+      });
     } else {
       dispatchAction({
         id: id,
@@ -997,6 +936,73 @@ export default function Transactions() {
         onUndo: () => setTransactions(prev => prev.map(tx => tx.id === id ? prevTx : tx))
       });
     }
+  };
+
+  const cancelCategoryConfirmation = () => {
+    if (!pendingCategoryConfirmation) return;
+    const { id, previousTransaction } = pendingCategoryConfirmation;
+    setTransactions(prev => prev.map(tx => tx.id === id ? previousTransaction : tx));
+    setPendingCategoryConfirmation(null);
+  };
+
+  const confirmCategoryForOne = () => {
+    if (!pendingCategoryConfirmation) return;
+    const confirmation = pendingCategoryConfirmation;
+    setPendingCategoryConfirmation(null);
+    dispatchAction({
+      id: confirmation.id,
+      message: '1 transacción clasificada',
+      execute: async () => {
+        const { error } = await supabase
+          .from('transactions')
+          .update({
+            tipo_movimiento: confirmation.tipo,
+            categoria_principal: confirmation.principal,
+            categoria_secundaria: confirmation.secundaria
+          })
+          .eq('id', confirmation.id);
+        if (error) throw error;
+      },
+      onUndo: () => setTransactions(prev => prev.map(tx => (
+        tx.id === confirmation.id ? confirmation.previousTransaction : tx
+      )))
+    });
+  };
+
+  const confirmCategoryForAll = () => {
+    if (!pendingCategoryConfirmation) return;
+    const confirmation = pendingCategoryConfirmation;
+    const affectedIds = new Set(confirmation.affectedTransactions.map(tx => tx.id));
+    setPendingCategoryConfirmation(null);
+    setTransactions(prev => prev.map(tx => affectedIds.has(tx.id) ? {
+      ...tx,
+      tipo_movimiento: confirmation.tipo,
+      categoria_principal: confirmation.principal,
+      categoria_secundaria: confirmation.secundaria
+    } : tx));
+
+    dispatchAction({
+      id: `bulk-cat-${confirmation.currentDesc}`,
+      message: `${confirmation.othersCount + 1} transacciones clasificadas`,
+      execute: async () => {
+        const { error } = await supabase
+          .from('transactions')
+          .update({
+            tipo_movimiento: confirmation.tipo,
+            categoria_principal: confirmation.principal,
+            categoria_secundaria: confirmation.secundaria
+          })
+          .eq('user_id', user!.id)
+          .in('id', Array.from(affectedIds));
+        if (error) throw error;
+      },
+      onUndo: () => {
+        setTransactions(prev => prev.map(tx => {
+          const oldTx = confirmation.affectedTransactions.find(old => old.id === tx.id);
+          return oldTx || tx;
+        }));
+      }
+    });
   };
 
   const handleDescriptionBlur = async (id: string, currentDesc: string, rawDesc: string) => {
@@ -1678,6 +1684,31 @@ export default function Transactions() {
           onSave={handleSaveSplit}
         />
       )}
+
+      <Dialog
+        open={Boolean(pendingCategoryConfirmation)}
+        onClose={cancelCategoryConfirmation}
+        labelledBy="multiple-category-title"
+        describedBy="multiple-category-description"
+        panelStyle={{ width: 'min(94vw, 620px)' }}
+      >
+        <div className="dialog-header">
+          <h3 id="multiple-category-title">Categorización múltiple</h3>
+          <button type="button" className="dialog-close" onClick={cancelCategoryConfirmation} title="Cerrar" aria-label="Cerrar confirmación de categoría">
+            <X size={18} />
+          </button>
+        </div>
+        <div style={{ padding: '1.25rem' }}>
+          <p id="multiple-category-description" style={{ margin: 0, fontWeight: 650, lineHeight: 1.55 }}>
+            Hay otras {pendingCategoryConfirmation?.othersCount || 0} transacciones con el alias “{pendingCategoryConfirmation?.currentDesc}”. ¿Quieres aplicarles esta misma categoría?
+          </p>
+          <div className="confirm-toast-actions" style={{ marginTop: '1.5rem' }}>
+            <button type="button" className="btn btn-outline" onClick={cancelCategoryConfirmation}>Cancelar</button>
+            <button type="button" className="btn btn-outline" onClick={confirmCategoryForOne}>Solo a esta</button>
+            <button type="button" className="btn btn-primary" onClick={confirmCategoryForAll}>Sí, a todas</button>
+          </div>
+        </div>
+      </Dialog>
 
       <ConfirmDialog
         open={Boolean(pendingDeletion)}
