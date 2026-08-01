@@ -29,7 +29,7 @@ import {
   type CaptureOcrLine,
   type CaptureTransactionCandidate
 } from '../utils/transactionCapture.ts';
-import { hashImportFile } from '../utils/transactionIdentity';
+import { assignStatementOriginIdentities, hashImportFile } from '../utils/transactionIdentity';
 import { CascadingCategorySelector } from '../pages/Transactions';
 
 interface TransactionCaptureImportProps {
@@ -305,13 +305,22 @@ export default function TransactionCaptureImport({ onComplete }: TransactionCapt
         return;
       }
 
-      const rows = rowsToSave.map(candidate => {
+      const rowsWithOrigin = assignStatementOriginIdentities(rowsToSave.map(candidate => ({
+        ...candidate,
+        date: candidate.date!,
+        amount: candidate.amount!,
+        type: 'egreso' as const,
+        originalDescription: candidate.originalDescription || candidate.description.trim()
+      })), selectedBank);
+      const rows = rowsWithOrigin.map(candidate => {
         return {
           date: candidate.date,
           description: candidate.description.trim(),
           amount: candidate.amount,
           type: 'egreso',
           source_row_key: candidate.sourceRowKey,
+          source_origin_key: candidate.sourceOriginKey,
+          candidate_fingerprint: candidate.candidateFingerprint,
           raw_data: {
             original_description: candidate.originalDescription || candidate.description.trim(),
             currency: candidate.currency,
@@ -328,7 +337,9 @@ export default function TransactionCaptureImport({ onComplete }: TransactionCapt
             },
             _source: {
               kind: 'card_activity_screenshot',
-              original_description: candidate.originalDescription || candidate.description.trim()
+              original_description: candidate.originalDescription || candidate.description.trim(),
+              candidate_fingerprint: candidate.candidateFingerprint,
+              origin_key: candidate.sourceOriginKey
             }
           },
           tipo_movimiento: candidate.category.tipo,

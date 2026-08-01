@@ -42,7 +42,7 @@ La fuente de verdad es `supabase/migrations/`. Para una instalación nueva se ap
 | `auth.users` | Usuarios de Supabase Auth |
 | `public.profiles` | Perfil extendido: `id`, `email`, `full_name`, `created_at`, `status` ('active'|'paused') |
 | `public.user_settings` | Config por usuario: `user_id` (PK), `rut`, `banks` (array), `main_bank`, `custom_categories` (JSONB), `classification_rules` (JSONB legacy - migrado a tabla), `created_at` |
-| `public.transactions` | Todos los movimientos: `id`, `user_id`, `date`, `description`, `original_description`, `amount`, `type` ('ingreso'|'egreso'), `bank`, `tipo_movimiento`, `categoria_principal`, `categoria_secundaria`, `raw_data` (JSONB), `category_id` (legacy), `is_shared`, `created_at` |
+| `public.transactions` | Movimientos y derivados; además de los datos financieros conserva lote, fila, fingerprint y `source_origin_key` para mantener la identidad después de dividir o cambiar fechas |
 | `public.known_contacts` | Contactos por RUT: `id`, `user_id`, `name`, `rut`, `alias`, `created_at` |
 | `public.classification_rules` | Reglas de clasificación en BD: `id`, `user_id`, `bank`, `condition_type` ('contains'), `condition_value` (keyword), `category_tipo`, `category_principal`, `category_secundaria` |
 | `public.categories` | Tabla legacy (usada solo por MigrationAudit). No usar en features nuevas. |
@@ -63,6 +63,8 @@ La fuente de verdad es `supabase/migrations/`. Para una instalación nueva se ap
 | `admin_delete_user(target_user_id)` | Borra usuario desde auth.users (admin only) |
 | `is_current_user_admin()` | Indica si el usuario autenticado está registrado en `admin_users` |
 | `ingest_statement_transactions(p_bank, p_file_hash, p_rows, p_source_kind)` | Inserta cartolas o capturas de forma atómica e idempotente |
+| `split_transaction(p_transaction_id, p_parts, p_candidate_fingerprint, p_source_origin_key)` | Divide atómicamente y preserva monto, fecha e identidad originales |
+| `restore_split_transaction(p_split_group_id)` | Restaura atómicamente el movimiento original y elimina sus partes |
 
 ---
 
@@ -103,6 +105,13 @@ Las normalizaciones ya no se ejecutan desde el frontend. Están versionadas en `
 *   La página `Accounts.tsx` cruza los gastos fijos contra las transacciones del mes seleccionado.
 *   Matching por: categoria, description tokens, o keyword configurada en el gasto fijo.
 *   Muestra histórico de 8 meses por item.
+*   La fecha de cada movimiento puede corregirse desde Transacciones para asignar pagos atrasados al mes correspondiente.
+
+### Revisión de duplicados
+*   `buildDuplicateReviewGroups()` colapsa un grupo dividido como un solo movimiento lógico antes de comparar.
+*   Coincidencias débiles se muestran para revisión y nunca se borran automáticamente.
+*   Si una división coincide con una reimportación completa, se recomienda conservar la división y eliminar solamente el movimiento reimportado.
+*   Toda eliminación requiere confirmación explícita escribiendo `ELIMINAR`.
 
 ### Smart Assistant (`SmartAssistant.tsx`)
 *   Analiza transacciones sin categorizar y propone clasificaciones.

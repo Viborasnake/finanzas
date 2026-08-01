@@ -55,9 +55,33 @@ test('las RPC críticas existen en la cadena versionada', () => {
     'admin_update_user_details',
     'admin_delete_user',
     'ingest_statement_transactions',
+    'split_transaction',
+    'restore_split_transaction',
   ]) {
     assert.match(allMigrations, new RegExp(`FUNCTION public\\.${rpc}\\b`, 'i'));
   }
+});
+
+test('la identidad de origen sobrevive a divisiones y bloquea su reimportación', () => {
+  const migration = readMigration('20260801144656_prevent_split_reimport_and_review_duplicates.sql');
+
+  assert.match(migration, /ADD COLUMN IF NOT EXISTS source_origin_key text/i);
+  assert.match(migration, /existing\.raw_data \? 'split_group_id'/i);
+  assert.match(migration, /split_skipped_count integer/i);
+  assert.match(migration, /FUNCTION public\.split_transaction\b/i);
+  assert.match(migration, /FUNCTION public\.restore_split_transaction\b/i);
+  assert.match(migration, /REVOKE ALL ON FUNCTION public\.split_transaction[\s\S]*FROM PUBLIC, anon, authenticated/i);
+});
+
+test('las divisiones históricas recuperan identidad desde la fila bancaria original', () => {
+  const migration = readMigration('20260801145106_backfill_legacy_split_origins.sql');
+
+  assert.match(migration, /raw_data ->> 'fecha'/i);
+  assert.match(migration, /raw_data ->> 'original_amount'/i);
+  assert.match(migration, /raw_data ->> 'descripcion'/i);
+  assert.match(migration, /candidate_fingerprint/i);
+  assert.match(migration, /source_origin_key/i);
+  assert.match(migration, /'split_group_id'/i);
 });
 
 test('la versión final de delete_user fija search_path y permisos', () => {

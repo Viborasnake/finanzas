@@ -3659,6 +3659,18 @@ select.input {
   }
 }
 
+@media (max-width: 900px) {
+  .duplicate-review-entry {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .duplicate-review-entry {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 .settings-fixed-expense-form {
   display: grid;
   grid-template-columns: 1fr;

@@ -8,6 +8,8 @@ MisFinanzas es una plataforma moderna e inteligente para el control y seguimient
 *   **Clasificador Inteligente:** Sugerencias explicables, reglas persistentes, creación de categorías y corrección desde el mismo flujo.
 *   **Dashboard Consolidado:** Reportes por banco o consolidados, con contexto de periodo y desglose de movimientos.
 *   **Cuentas:** Seguimiento mensual de gastos fijos vinculados por categoría, historial y corrección de asociaciones.
+*   **Revisión de Duplicados:** Agrupa coincidencias para revisión, conserva las divisiones procesadas y permite eliminar registros únicamente con confirmación explícita.
+*   **Trazabilidad de Cartolas:** Cada fila importada mantiene una identidad de origen que evita reimportar el monto original después de dividirlo o cambiarlo de periodo.
 *   **Panel de Administración Seguro:** Panel de control de usuarios para la cuenta de administración principal (`viborasnake@gmail.com`) con permisos para pausar accesos, editar detalles, reenviar restablecimiento de credenciales y eliminar cuentas definitivamente.
 
 ---
@@ -51,7 +53,7 @@ npm run lint
 npm run build
 ```
 
-Las pruebas de `tests/` cubren la lógica financiera pura que no debe depender de la interfaz. La línea base de QA responsive y accesibilidad está en `docs/design-qa-baseline.md`.
+Las pruebas de `tests/` cubren la lógica financiera pura que no debe depender de la interfaz, incluida la identidad de origen y la revisión de duplicados. La línea base de QA responsive y accesibilidad está en `docs/design-qa-baseline.md`.
 
 ---
 

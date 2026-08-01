@@ -18,6 +18,7 @@ import {
   isSupportedImportFile
 } from '../utils/importFileTypes';
 import {
+  assignStatementOriginIdentities,
   buildStrongTransactionIdentity,
   buildTransactionCandidateFingerprint,
   hashImportFile,
@@ -782,12 +783,12 @@ export default function ImportModal({ onClose, presentation = 'dialog' }: Import
         return identity ? [identity] : [];
       });
 
-      const sourceRows = data.map(t => ({
+      const sourceRows = assignStatementOriginIdentities(data.map(t => ({
         ...t,
         bank: importBank,
         sourceFileHash: selectedFileHash,
         sourceRowKey: t.sourceRowKey
-      }));
+      })), importBank);
       const exactPartition = partitionByStrongIdentity(sourceRows, existingStrongIdentities);
 
       // Similar financial attributes are candidates for review, not proof of a
@@ -806,35 +807,28 @@ export default function ImportModal({ onClose, presentation = 'dialog' }: Import
         existingCandidateFingerprints.set(fingerprint, t);
       });
 
+      let splitMatchesOmittedInClient = 0;
+      let potentialExistingMatches = 0;
       const newTransactions = exactPartition.accepted.filter(t => {
-        const fp = buildTransactionCandidateFingerprint({
-          bank: importBank,
-          date: t.date,
-          amount: t.amount,
-          type: t.type,
-          originalDescription: t.original_description
-        });
-        const match = existingCandidateFingerprints.get(fp);
+        const match = existingCandidateFingerprints.get(t.candidateFingerprint);
         if (match) {
           if (match.raw_data?.split_group_id) {
-            // Es una transacción que fue dividida. La descartamos silenciosamente.
+            // The server repeats this check globally. Keeping the client check
+            // makes the preview summary immediate when the split is nearby.
             exactPartition.repeated.push(t);
+            splitMatchesOmittedInClient += 1;
             return false;
           }
           if (match.raw_data?.is_manual) {
             // Es un pago manual, lo conservamos para que se pueda enlazar más abajo
             return true;
           }
-          // Es un duplicado probable (cartola solapada). Lo omitimos automáticamente.
-          exactPartition.repeated.push(t);
-          return false;
+          // Similar financial attributes are evidence for review, not a safe
+          // identity. Preserve the row and surface the candidate afterwards.
+          potentialExistingMatches += 1;
         }
         return true;
       });
-
-      // Ya no insertamos duplicados probables, pero los contamos para el log si existieran.
-      // potentialExistingMatches ahora será 0 ya que los filtramos arriba.
-      const potentialExistingMatches = 0;
       
       // Deduplicación inteligente de pagos manuales
       const manualTransactions = existing?.filter(t => t.raw_data && t.raw_data.is_manual) || [];
@@ -860,7 +854,10 @@ export default function ImportModal({ onClose, presentation = 'dialog' }: Import
 
       if (newTransactions.length === 0) {
         const bankReady = await finalizeImportedBank(importBank);
-        toast.success("No hay datos nuevos. ¡Todas estas transacciones ya estaban en tu sistema!");
+        toast.success(splitMatchesOmittedInClient > 0
+          ? `${splitMatchesOmittedInClient} movimiento${splitMatchesOmittedInClient === 1 ? '' : 's'} ya ${splitMatchesOmittedInClient === 1 ? 'había sido dividido' : 'habían sido divididos'}. No se volvió a cargar el monto original.`
+          : 'No hay datos nuevos. Todas estas transacciones ya estaban en tu sistema.',
+        { duration: 6500 });
         if (bankReady && onClose) onClose();
         return;
       }
@@ -868,13 +865,7 @@ export default function ImportModal({ onClose, presentation = 'dialog' }: Import
       const rowsToImport = newTransactions.map(t => {
         const sig = `${t.date}_${t.amount}_${t.original_description}`;
         const manualMatch = manualMatches.get(sig);
-        const candidateFingerprint = buildTransactionCandidateFingerprint({
-          bank: importBank,
-          date: t.date,
-          amount: t.amount,
-          type: t.type,
-          originalDescription: t.original_description
-        });
+        const candidateFingerprint = t.candidateFingerprint;
 
         if (manualMatch) {
           // A fuzzy match may inherit the user's classification, but the manual
@@ -885,12 +876,14 @@ export default function ImportModal({ onClose, presentation = 'dialog' }: Import
             amount: t.amount,
             type: t.type,
             source_row_key: t.sourceRowKey,
+            source_origin_key: t.sourceOriginKey,
             candidate_fingerprint: candidateFingerprint,
             raw_data: {
               ...t.raw_data,
               _source: {
                 ...(t.raw_data?._source || {}),
                 candidate_fingerprint: candidateFingerprint,
+                origin_key: t.sourceOriginKey,
                 manual_candidate_id: manualMatch.id
               }
             },
@@ -929,12 +922,14 @@ export default function ImportModal({ onClose, presentation = 'dialog' }: Import
           amount: t.amount,
           type: t.type,
           source_row_key: t.sourceRowKey,
+          source_origin_key: t.sourceOriginKey,
           candidate_fingerprint: candidateFingerprint,
           raw_data: {
             ...t.raw_data,
             _source: {
               ...(t.raw_data?._source || {}),
-              candidate_fingerprint: candidateFingerprint
+              candidate_fingerprint: candidateFingerprint,
+              origin_key: t.sourceOriginKey
             }
           },
           tipo_movimiento,
@@ -957,6 +952,7 @@ export default function ImportModal({ onClose, presentation = 'dialog' }: Import
       const importSummary = Array.isArray(importResult) ? importResult[0] : importResult;
       const insertedCount = Number(importSummary?.inserted_count || 0);
       const serverSkippedCount = Number(importSummary?.skipped_count || 0);
+      const serverSplitSkippedCount = Number(importSummary?.split_skipped_count || 0);
       const replayed = Boolean(importSummary?.replayed);
       const omittedCount = exactPartition.repeated.length + serverSkippedCount;
 
@@ -969,8 +965,12 @@ export default function ImportModal({ onClose, presentation = 'dialog' }: Import
       if (manualCandidateIds.length > 0) {
         toast(`Se conservaron ${manualCandidateIds.length} pagos manuales como posibles coincidencias para revisión.`);
       }
+      const splitSkippedCount = splitMatchesOmittedInClient + serverSplitSkippedCount;
+      if (splitSkippedCount > 0) {
+        toast.success(`${splitSkippedCount} movimiento${splitSkippedCount === 1 ? '' : 's'} no se importaron porque ya ${splitSkippedCount === 1 ? 'había sido dividido' : 'habían sido divididos'}.`, { duration: 6500 });
+      }
       if (potentialExistingMatches > 0) {
-        toast(`Detectamos ${potentialExistingMatches} movimientos similares. Se conservaron porque podrían ser válidos.`);
+        toast(`Detectamos ${potentialExistingMatches} movimientos similares. Revísalos en Transacciones > Posibles duplicados.`, { duration: 6500 });
       }
       if (bankReady && onClose) onClose();
     } catch (err: any) {

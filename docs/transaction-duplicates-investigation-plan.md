@@ -4,10 +4,21 @@
 
 - Producto: MisFinanzas
 - Alcance: ingesta, persistencia, cálculo financiero y resolución funcional de posibles duplicados
-- Estado: diagnóstico del repositorio y auditoría del esquema remoto completados; caso concreto pendiente
-- Implementación: contención cliente y migración de ingesta idempotente preparadas, aún no desplegadas
-- Reparación de datos: no ejecutada
-- Causa del caso observado: no confirmada, porque todavía no se cuenta con el par concreto de transacciones, sus identificadores ni evidencia de producción
+- Estado: causa crítica reproducida; corrección funcional y migraciones desplegadas en Supabase
+- Implementación: redirección post-importación, revisión asistida, borrado confirmado, edición de fecha e identidad persistente de divisiones completadas
+- Reparación de datos: las dos divisiones históricas sin trazabilidad fueron respaldadas con identidad de origen; no se eliminaron transacciones automáticamente
+- Causa del caso crítico: la búsqueda previa estaba limitada a una ventana de ±5 días; una parte dividida reasignada a otro mes podía quedar fuera y perder la detección débil del cliente
+
+## Actualización del 1 de agosto de 2026
+
+- La migración `20260801144656_prevent_split_reimport_and_review_duplicates.sql` agrega `source_origin_key`, independiente del hash del archivo regenerado.
+- La migración `20260801145106_backfill_legacy_split_origins.sql` reconstruye esa identidad para las dos divisiones históricas usando los campos bancarios originales conservados en `raw_data`.
+- La división y restauración pasan a RPCs atómicas y conservan monto, fecha, descripción e identidad originales.
+- La RPC de ingesta omite en servidor una fila cuyo origen ya produjo una división y devuelve `split_skipped_count` para informarlo explícitamente.
+- Transacciones incorpora la vista “Posibles duplicados”, que colapsa las partes de una división antes de comparar y no elimina coincidencias débiles automáticamente.
+- La eliminación individual o sugerida requiere confirmación escrita.
+- Una prueba transaccional contra el esquema remoto dividió un movimiento sintético en meses distintos, intentó reimportarlo desde otro hash y verificó `inserted_count = 0` y `split_skipped_count = 1`; luego hizo rollback completo.
+- La verificación posterior al despliegue confirmó `2` raíces divididas y `2` con identidad de origen.
 
 Este trabajo debe ejecutarse antes de seguir ampliando las fuentes de importación. El riesgo no es solamente visual: los registros duplicados alimentan directamente dashboard, cuentas, categorías y reportes.
 

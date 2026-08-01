@@ -64,7 +64,7 @@ export default function ImportRoute() {
         role="tabpanel"
         aria-labelledby={`import-source-${source}-tab`}
       >
-        {source === 'statement' && <ImportModal presentation="page" />}
+        {source === 'statement' && <ImportModal presentation="page" onClose={() => navigate('/transactions?review=recent')} />}
         {source === 'capture' && <TransactionCaptureImport onComplete={() => navigate('/transactions')} />}
       </div>
     </div>

@@ -14,6 +14,15 @@ export interface StrongIdentityPartition<T> {
   repeated: T[];
 }
 
+export interface StatementOriginRow extends TransactionIdentityInput {
+  sourceRowKey: string;
+}
+
+export interface StatementOriginIdentity {
+  candidateFingerprint: string;
+  sourceOriginKey: string;
+}
+
 const normalizeWhitespace = (value: unknown) => String(value ?? '').trim().replace(/\s+/g, ' ');
 
 export const normalizeIdentityText = (value: unknown) => normalizeWhitespace(value)
@@ -61,6 +70,33 @@ export const buildTransactionCandidateFingerprint = (input: TransactionIdentityI
   normalizeIdentifier(input.type),
   normalizeIdentityText(input.originalDescription)
 ].join('|');
+
+/**
+ * Gives equal-looking rows a stable occurrence number inside one statement.
+ * The resulting key survives a regenerated file hash while keeping two valid,
+ * identical movements in the same statement distinct from one another.
+ */
+export const assignStatementOriginIdentities = <T extends StatementOriginRow>(
+  rows: T[],
+  bank: string
+): Array<T & StatementOriginIdentity> => {
+  const occurrences = new Map<string, number>();
+
+  return rows.map(row => {
+    const candidateFingerprint = buildTransactionCandidateFingerprint({
+      ...row,
+      bank
+    });
+    const occurrence = (occurrences.get(candidateFingerprint) || 0) + 1;
+    occurrences.set(candidateFingerprint, occurrence);
+
+    return {
+      ...row,
+      candidateFingerprint,
+      sourceOriginKey: `${candidateFingerprint}|OCC|${occurrence}`
+    };
+  });
+};
 
 export const partitionByStrongIdentity = <T extends TransactionIdentityInput>(
   rows: T[],

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  assignStatementOriginIdentities,
   buildStrongTransactionIdentity,
   buildTransactionCandidateFingerprint,
   hashImportFile,
@@ -74,4 +75,21 @@ test('genera el mismo hash para el mismo contenido de archivo', async () => {
   assert.equal(first, second);
   assert.notEqual(first, other);
   assert.match(first, /^[a-f0-9]{64}$/);
+});
+
+test('distingue ocurrencias iguales dentro de una cartola y conserva su origen entre descargas', () => {
+  const rows = [
+    { ...baseMovement, sourceRowKey: 'row:20' },
+    { ...baseMovement, sourceRowKey: 'row:21' }
+  ];
+  const firstImport = assignStatementOriginIdentities(rows, 'Scotiabank');
+  const regeneratedImport = assignStatementOriginIdentities([
+    { ...baseMovement, sourceRowKey: 'row:35' },
+    { ...baseMovement, sourceRowKey: 'row:36' }
+  ], 'Scotiabank');
+
+  assert.match(firstImport[0].sourceOriginKey, /\|OCC\|1$/);
+  assert.match(firstImport[1].sourceOriginKey, /\|OCC\|2$/);
+  assert.equal(firstImport[0].sourceOriginKey, regeneratedImport[0].sourceOriginKey);
+  assert.equal(firstImport[1].sourceOriginKey, regeneratedImport[1].sourceOriginKey);
 });

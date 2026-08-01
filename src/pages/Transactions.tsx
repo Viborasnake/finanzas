@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/authContextValue';
 import { AVAILABLE_BANKS, useBanks } from '../contexts/bankContextValue';
-import { Search, Edit2, Plus, X, ChevronRight, CheckCircle2, UploadCloud, Scissors, Undo2 } from 'lucide-react';
+import { Search, Edit2, Plus, X, ChevronRight, CheckCircle2, UploadCloud, Scissors, Undo2, Trash2, ShieldAlert } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useActionQueue } from '../hooks/useActionQueue';
 import SmartAssistant from '../components/SmartAssistant';
@@ -11,6 +11,9 @@ import { useTaxonomy } from '../hooks/useTaxonomy';
 import { useSettings } from '../contexts/settingsContextValue';
 import SplitTransactionModal from '../components/SplitTransactionModal';
 import { Dialog } from '../components/Dialog';
+import { ConfirmDialog } from '../components/ConfirmDialog';
+import { buildTransactionCandidateFingerprint } from '../utils/transactionIdentity';
+import { buildDuplicateReviewGroups } from '../utils/transactionDuplicates';
 
 const normalizeBankName = (value: any) => String(value || '')
   .normalize('NFD')
@@ -560,57 +563,46 @@ export default function Transactions() {
   
   const [filterPeriod, setFilterPeriod] = useState('all');
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<'individual' | 'bulk' | 'assistant'>('individual');
+  const [viewMode, setViewMode] = useState<'individual' | 'bulk' | 'assistant' | 'duplicates'>('individual');
   const [bulkSearchTerm, setBulkSearchTerm] = useState('');
   const [bulkFilterMode, setBulkFilterMode] = useState<string>('unclassified');
   const [splittingTx, setSplittingTx] = useState<any>(null);
+  const [pendingDeletion, setPendingDeletion] = useState<null | {
+    ids: string[];
+    title: string;
+    description: string;
+  }>(null);
 
   const handleSaveSplit = async (parts: any[]) => {
     if (!splittingTx) return;
-    const originalAmount = splittingTx.raw_data?.original_amount || splittingTx.amount;
-    const splitGroupId = crypto.randomUUID();
-
-    const [firstPart, ...otherParts] = parts;
 
     const splitPromise = async () => {
-      // 1. Update the original transaction
-      const { error: updateError } = await supabase.from('transactions').update({
-        amount: splittingTx.type === 'egreso' ? -Math.abs(firstPart.amount) : Math.abs(firstPart.amount),
-        date: firstPart.date || splittingTx.date,
-        tipo_movimiento: firstPart.tipo_movimiento,
-        categoria_principal: firstPart.categoria_principal,
-        categoria_secundaria: firstPart.categoria_secundaria,
-        raw_data: { 
-          ...splittingTx.raw_data, 
-          original_amount: originalAmount,
-          split_group_id: splitGroupId
-        }
-      }).eq('id', splittingTx.id);
+      const candidateFingerprint = splittingTx.candidate_fingerprint
+        || splittingTx.raw_data?._source?.candidate_fingerprint
+        || buildTransactionCandidateFingerprint({
+          bank: splittingTx.bank,
+          date: splittingTx.raw_data?.original_date || splittingTx.date,
+          amount: splittingTx.raw_data?.original_amount ?? splittingTx.amount,
+          type: splittingTx.type,
+          originalDescription: splittingTx.raw_data?.original_description || splittingTx.description
+        });
+      const sourceOriginKey = splittingTx.source_origin_key
+        || splittingTx.raw_data?._source?.origin_key
+        || `${candidateFingerprint}|OCC|1`;
 
-      if (updateError) throw updateError;
-
-      // 2. Insert new parts
-      const newRows = otherParts.map(p => ({
-        user_id: user!.id,
-        date: p.date || splittingTx.date,
-        description: splittingTx.description,
-        amount: splittingTx.type === 'egreso' ? -Math.abs(p.amount) : Math.abs(p.amount),
-        type: splittingTx.type,
-        bank: splittingTx.bank,
-        is_shared: splittingTx.is_shared,
-        tipo_movimiento: p.tipo_movimiento,
-        categoria_principal: p.categoria_principal,
-        categoria_secundaria: p.categoria_secundaria,
-        raw_data: {
-          ...splittingTx.raw_data,
-          original_amount: originalAmount,
-          split_group_id: splitGroupId,
-          is_split_child: true
-        }
-      }));
-
-      const { error: insertError } = await supabase.from('transactions').insert(newRows);
-      if (insertError) throw insertError;
+      const { error } = await supabase.rpc('split_transaction', {
+        p_transaction_id: splittingTx.id,
+        p_candidate_fingerprint: candidateFingerprint,
+        p_source_origin_key: sourceOriginKey,
+        p_parts: parts.map(part => ({
+          amount: Math.abs(part.amount),
+          date: part.date || splittingTx.date,
+          tipo_movimiento: part.tipo_movimiento,
+          categoria_principal: part.categoria_principal,
+          categoria_secundaria: part.categoria_secundaria
+        }))
+      });
+      if (error) throw error;
 
       await fetchTransactions();
       setSplittingTx(null);
@@ -628,47 +620,10 @@ export default function Transactions() {
     if (!splitGroupId) return;
 
     const restorePromise = async () => {
-      // Find all transactions in this split group
-      const { data: groupTxs, error: fetchError } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('user_id', user!.id)
-        .contains('raw_data', { split_group_id: splitGroupId });
-
-      if (fetchError) throw fetchError;
-      if (!groupTxs || groupTxs.length === 0) return;
-
-      const originalTx = groupTxs.find(t => !t.raw_data?.is_split_child);
-      if (!originalTx) throw new Error("No se encontró la transacción original");
-
-      const childIds = groupTxs.filter(t => t.raw_data?.is_split_child).map(t => t.id);
-
-      // 1. Delete all child parts
-      if (childIds.length > 0) {
-        const { error: deleteError } = await supabase
-          .from('transactions')
-          .delete()
-          .in('id', childIds);
-        
-        if (deleteError) throw deleteError;
-      }
-
-      // 2. Restore original transaction
-      const newRawData = { ...originalTx.raw_data };
-      const originalAmount = newRawData.original_amount;
-      delete newRawData.split_group_id;
-      delete newRawData.original_amount;
-      delete newRawData.is_split_child;
-
-      const { error: updateError } = await supabase
-        .from('transactions')
-        .update({
-          amount: originalTx.type === 'egreso' ? -Math.abs(originalAmount) : Math.abs(originalAmount),
-          raw_data: newRawData
-        })
-        .eq('id', originalTx.id);
-
-      if (updateError) throw updateError;
+      const { error } = await supabase.rpc('restore_split_transaction', {
+        p_split_group_id: splitGroupId
+      });
+      if (error) throw error;
 
       await fetchTransactions();
     };
@@ -769,6 +724,67 @@ export default function Transactions() {
       fetchRequestRef.current += 1;
     };
   }, [fetchTransactions]);
+
+  const duplicateGroups = useMemo(
+    () => buildDuplicateReviewGroups(transactions),
+    [transactions]
+  );
+
+  const duplicateTransactionCount = useMemo(() => (
+    new Set(duplicateGroups.flatMap(group => group.recommendedDeleteIds)).size
+  ), [duplicateGroups]);
+
+  const handleDateChange = async (transactionId: string, nextDate: string) => {
+    const previous = transactions.find(transaction => transaction.id === transactionId);
+    if (!previous || !nextDate || previous.date === nextDate) return;
+
+    setTransactions(current => current.map(transaction => (
+      transaction.id === transactionId ? { ...transaction, date: nextDate } : transaction
+    )));
+
+    const { error } = await supabase
+      .from('transactions')
+      .update({ date: nextDate })
+      .eq('id', transactionId);
+
+    if (error) {
+      setTransactions(current => current.map(transaction => (
+        transaction.id === transactionId ? { ...transaction, date: previous.date } : transaction
+      )));
+      toast.error('No pudimos cambiar la fecha del movimiento.');
+      return;
+    }
+
+    toast.success('Fecha actualizada. El pago se asignará al periodo correspondiente.');
+  };
+
+  const confirmDeleteTransactions = async () => {
+    if (!pendingDeletion || pendingDeletion.ids.length === 0) return;
+
+    const { error } = await supabase
+      .from('transactions')
+      .delete()
+      .in('id', pendingDeletion.ids);
+    if (error) throw error;
+
+    const deletedIds = new Set(pendingDeletion.ids);
+    setTransactions(current => current.filter(transaction => !deletedIds.has(transaction.id)));
+    toast.success(`${pendingDeletion.ids.length} movimiento${pendingDeletion.ids.length === 1 ? '' : 's'} eliminado${pendingDeletion.ids.length === 1 ? '' : 's'}.`);
+  };
+
+  const requestTransactionDeletion = (transaction: any) => {
+    const splitGroupId = transaction.raw_data?.split_group_id;
+    const ids = splitGroupId
+      ? transactions.filter(item => item.raw_data?.split_group_id === splitGroupId).map(item => item.id)
+      : [transaction.id];
+    setPendingDeletion({
+      ids,
+      title: splitGroupId ? 'Eliminar división completa' : 'Eliminar transacción',
+      description: splitGroupId
+        ? `Se eliminarán las ${ids.length} partes de “${transaction.description}”. Esta acción corregirá los totales y reportes.`
+        : `Se eliminará “${transaction.description}” por ${new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(transaction.amount)}. Esta acción no se puede deshacer.`
+    });
+  };
 
 
 
@@ -1101,6 +1117,11 @@ export default function Transactions() {
                 Faltan {uncatCount} transacciones por clasificar
               </div>
             )}
+            {searchParams.get('review') === 'recent' && (
+              <div role="status" style={{ marginTop: '0.75rem', maxWidth: 620, padding: '0.75rem 1rem', border: '2px solid #000', borderRadius: 8, background: '#dcfce7', boxShadow: '2px 2px 0 #000', fontWeight: 750 }}>
+                Importación completada. Tus movimientos ya están disponibles aquí; revisa las coincidencias si el sistema detectó posibles duplicados.
+              </div>
+            )}
           </div>
         </div>
         
@@ -1132,6 +1153,14 @@ export default function Transactions() {
             aria-pressed={viewMode === 'assistant'}
           >
             Asistente Inteligente
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('duplicates')}
+            className={viewMode === 'duplicates' ? 'active' : ''}
+            aria-pressed={viewMode === 'duplicates'}
+          >
+            Posibles duplicados{duplicateGroups.length > 0 ? ` (${duplicateGroups.length})` : ''}
           </button>
         </div>
       </div>
@@ -1251,6 +1280,93 @@ export default function Transactions() {
               )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {viewMode === 'duplicates' && (
+        <div className="card transactions-card">
+          <div className="transactions-card-header">
+            <div>
+              <h2 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <ShieldAlert size={24} aria-hidden="true" /> Revisión automatizada de duplicados
+              </h2>
+              <p style={{ fontWeight: 600, color: '#475569', margin: 0, maxWidth: 760 }}>
+                El sistema agrupa coincidencias por banco, fecha original, monto, tipo y descripción. No elimina nada sin tu confirmación y trata una división completa como un solo movimiento lógico.
+              </p>
+            </div>
+            <div className="transactions-summary">
+              <span>{duplicateGroups.length} grupo{duplicateGroups.length === 1 ? '' : 's'} para revisar</span>
+              <span>{duplicateTransactionCount} eliminación{duplicateTransactionCount === 1 ? '' : 'es'} sugerida{duplicateTransactionCount === 1 ? '' : 's'}</span>
+            </div>
+          </div>
+
+          {duplicateGroups.length === 0 ? (
+            <div style={{ padding: '2.5rem 1rem', textAlign: 'center', fontWeight: 750, color: '#475569' }}>
+              No encontramos coincidencias que requieran revisión.
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gap: '1rem' }}>
+              {duplicateGroups.map((group, groupIndex) => (
+                <section key={group.key} style={{ border: '2px solid #000', borderRadius: 10, overflow: 'hidden', background: '#fff' }}>
+                  <div style={{ padding: '0.9rem 1rem', borderBottom: '2px solid #000', background: group.containsSplit ? '#fef3c7' : '#f8fafc', display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div>
+                      <strong>Coincidencia {groupIndex + 1}</strong>
+                      <div style={{ marginTop: '0.2rem', fontSize: '0.85rem', color: '#475569', fontWeight: 650 }}>{group.reason}</div>
+                    </div>
+                    {group.recommendedDeleteIds.length > 0 && (
+                      <button
+                        type="button"
+                        className="btn"
+                        style={{ background: '#fecaca', color: '#991b1b' }}
+                        onClick={() => setPendingDeletion({
+                          ids: group.recommendedDeleteIds,
+                          title: 'Eliminar original reimportada',
+                          description: 'Se conservará la transacción dividida y se eliminará el movimiento completo reimportado. Los totales volverán a considerar solamente las partes procesadas.'
+                        })}
+                      >
+                        <Trash2 size={17} aria-hidden="true" /> Corregir reimportación
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ display: 'grid' }}>
+                    {group.entries.map(entry => {
+                      const keep = entry.key === group.keepEntryKey;
+                      return (
+                        <div key={entry.key} className="duplicate-review-entry" style={{ padding: '1rem', borderBottom: '1px solid #cbd5e1', display: 'grid', gridTemplateColumns: 'minmax(180px, 1.7fr) repeat(3, minmax(110px, auto)) auto', gap: '1rem', alignItems: 'center' }}>
+                          <div>
+                            <strong>{entry.description}</strong>
+                            <div style={{ marginTop: '0.35rem', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                              {keep && group.containsSplit && <span style={{ padding: '0.15rem 0.45rem', border: '1px solid #166534', borderRadius: 999, background: '#dcfce7', color: '#166534', fontSize: '0.72rem', fontWeight: 850 }}>Conservar división</span>}
+                              {entry.isSplit && <span style={{ padding: '0.15rem 0.45rem', border: '1px solid #a16207', borderRadius: 999, background: '#fef3c7', color: '#854d0e', fontSize: '0.72rem', fontWeight: 850 }}>Dividida · {entry.transactionIds.length} partes</span>}
+                            </div>
+                          </div>
+                          <span style={{ fontWeight: 700 }}>{entry.bank}</span>
+                          <span style={{ fontWeight: 700 }}>{entry.date}</span>
+                          <span style={{ fontWeight: 900 }}>{new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(entry.amount)}</span>
+                          <button
+                            type="button"
+                            className="btn-icon"
+                            onClick={() => setPendingDeletion({
+                              ids: entry.transactionIds,
+                              title: entry.isSplit ? 'Eliminar división completa' : 'Eliminar movimiento candidato',
+                              description: entry.isSplit
+                                ? `Se eliminarán las ${entry.transactionIds.length} partes de “${entry.description}”.`
+                                : `Se eliminará “${entry.description}” del ${entry.date}. Verifica antes que sea realmente el duplicado.`
+                            })}
+                            title="Eliminar este registro"
+                            aria-label={`Eliminar ${entry.description} del ${entry.date}`}
+                            style={{ color: '#b91c1c' }}
+                          >
+                            <Trash2 size={17} aria-hidden="true" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )}
         </div>
       )}
       
@@ -1373,11 +1489,12 @@ export default function Transactions() {
             <table className="responsive-table transactions-table">
               <thead>
                 <tr>
-                  <th style={{ width: '110px' }}>Fecha</th>
+                  <th style={{ width: '145px' }}>Fecha / periodo</th>
                   {connectedBanks.length > 1 && <th style={{ width: '140px' }}>Banco</th>}
                   <th>Descripción (Editable)</th>
                   <th style={{ width: '140px' }}>Monto</th>
                   <th style={{ width: '360px' }}>Clasificación</th>
+                  <th style={{ width: '72px' }}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -1388,7 +1505,17 @@ export default function Transactions() {
 
                   return (
                     <tr key={tx.id} style={{ backgroundColor: i % 2 === 0 ? 'white' : 'rgba(0,0,0,0.02)' }} className="table-row">
-                      <td data-label="Fecha" style={{ padding: '1rem', fontWeight: 600 }}>{tx.date}</td>
+                      <td data-label="Fecha" style={{ padding: '1rem', fontWeight: 600 }}>
+                        <input
+                          type="date"
+                          className="input"
+                          value={String(tx.date).split('T')[0]}
+                          aria-label={`Cambiar fecha de ${tx.description}`}
+                          title="Cambia esta fecha para asignar el pago al mes correcto"
+                          onChange={event => void handleDateChange(tx.id, event.target.value)}
+                          style={{ minWidth: 132, padding: '0.45rem', fontSize: '0.82rem', fontWeight: 750 }}
+                        />
+                      </td>
                       {connectedBanks.length > 1 && (
                         <td data-label="Banco" style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.55rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#fff', boxShadow: '1px 1px 0 #000', fontSize: '0.72rem', fontWeight: 900 }}>
@@ -1464,12 +1591,24 @@ export default function Transactions() {
                           onSave={(t: any, p: any, s: any) => handleCategorize(tx.id, tx.description, t, p, s)}
                         />
                       </td>
+                      <td data-label="Acciones" style={{ padding: '1rem', textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          className="btn-icon"
+                          onClick={() => requestTransactionDeletion(tx)}
+                          title={tx.raw_data?.split_group_id ? 'Eliminar división completa' : 'Eliminar transacción'}
+                          aria-label={tx.raw_data?.split_group_id ? `Eliminar división completa de ${tx.description}` : `Eliminar ${tx.description}`}
+                          style={{ color: '#b91c1c' }}
+                        >
+                          <Trash2 size={17} aria-hidden="true" />
+                        </button>
+                      </td>
                     </tr>
                   )
                 })}
                 {paginatedTransactions.length === 0 && (
                   <tr>
-                    <td colSpan={5} style={{ padding: '3rem', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                    <td colSpan={connectedBanks.length > 1 ? 6 : 5} style={{ padding: '3rem', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)' }}>
                       No se encontraron transacciones.
                     </td>
                   </tr>
@@ -1511,6 +1650,16 @@ export default function Transactions() {
           onSave={handleSaveSplit}
         />
       )}
+
+      <ConfirmDialog
+        open={Boolean(pendingDeletion)}
+        title={pendingDeletion?.title || 'Eliminar transacción'}
+        description={pendingDeletion?.description || ''}
+        confirmLabel="Eliminar definitivamente"
+        confirmationText="ELIMINAR"
+        onClose={() => setPendingDeletion(null)}
+        onConfirm={confirmDeleteTransactions}
+      />
     </div>
   );
 }
