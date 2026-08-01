@@ -1030,7 +1030,7 @@ export default function Transactions() {
             Hay otras {othersCount} transacciones originales iguales. ¿Renombrar todas a "{currentDesc}"?
           </p>
           <div className="confirm-toast-actions">
-            <button 
+            <button
               type="button"
               className="btn btn-outline" 
               onClick={() => cancelRename(t.id)}
@@ -1038,7 +1038,7 @@ export default function Transactions() {
             >
               Cancelar
             </button>
-            <button 
+            <button
               type="button"
               className="btn btn-outline" 
               onClick={() => {
@@ -1141,45 +1141,43 @@ export default function Transactions() {
         </div>
         
         <div className="transactions-actions">
-          <button 
-            type="button"
-            className="btn btn-primary" 
-            style={{ padding: '0.65rem 1rem', backgroundColor: '#e2e8f0', color: '#0f172a', fontWeight: 800, border: '2px solid #000', boxShadow: '3px 3px 0 #000' }}
-            onClick={() => navigate('/import')}
-            aria-label="Importar una cartola bancaria"
-          >
-            <UploadCloud size={20} />
-            Importar Cartola
-          </button>
-        
-        <div className="responsive-tabs">
-          <button 
-            type="button"
-            onClick={() => setViewMode('individual')}
-            className={viewMode === 'individual' ? 'active' : ''}
-            aria-pressed={viewMode === 'individual'}
-          >
-            Lista Individual
-          </button>
-          <button 
-            type="button"
-            onClick={() => setViewMode('assistant')}
-            className={viewMode === 'assistant' ? 'active' : ''}
-            aria-pressed={viewMode === 'assistant'}
-          >
-            Asistente Inteligente
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('duplicates')}
-            className={viewMode === 'duplicates' ? 'active' : ''}
-            aria-pressed={viewMode === 'duplicates'}
-          >
-            Posibles duplicados{duplicateGroups.length > 0 ? ` (${duplicateGroups.length})` : ''}
-          </button>
+          <div className="responsive-tabs" aria-label="Acciones de transacciones">
+            <button
+              type="button"
+              className="transactions-import-tab"
+              onClick={() => navigate('/import')}
+              aria-label="Importar una cartola bancaria"
+            >
+              <UploadCloud size={18} aria-hidden="true" />
+              Importar Cartola
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('individual')}
+              className={viewMode === 'individual' ? 'active' : ''}
+              aria-pressed={viewMode === 'individual'}
+            >
+              Lista Individual
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('assistant')}
+              className={viewMode === 'assistant' ? 'active' : ''}
+              aria-pressed={viewMode === 'assistant'}
+            >
+              Asistente Inteligente
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('duplicates')}
+              className={viewMode === 'duplicates' ? 'active' : ''}
+              aria-pressed={viewMode === 'duplicates'}
+            >
+              Posibles duplicados{duplicateGroups.length > 0 ? ` (${duplicateGroups.length})` : ''}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
 
       {viewMode === 'assistant' && (
         <SmartAssistant transactions={transactions} onRefresh={fetchTransactions} />

@@ -1321,6 +1321,10 @@ select.input {
 .responsive-tabs button {
   min-height: 44px;
   padding: 0.75rem 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
   border: none;
   border-bottom: var(--border-width) solid var(--border-color);
   background: transparent;
@@ -1337,6 +1341,11 @@ select.input {
 .responsive-tabs button.active {
   background: var(--text-primary);
   color: var(--surface-color);
+}
+
+.responsive-tabs .transactions-import-tab {
+  background: #e2e8f0;
+  color: #0f172a;
 }
 
 /* Responsive Table - Mobile First Clean Grid View */
@@ -4348,10 +4357,8 @@ select.input {
 
   .transactions-actions {
     width: 100%;
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
+    display: block;
     align-items: center;
-    gap: 1rem;
   }
 
   .transactions-actions > .btn,
@@ -4360,6 +4367,7 @@ select.input {
   }
 
   .transactions-actions > .responsive-tabs {
+    width: 100%;
     min-width: 0;
   }
 
@@ -4576,7 +4584,7 @@ select.input {
 
   .transactions-actions {
     width: auto;
-    grid-template-columns: auto minmax(620px, 1fr);
+    min-width: 820px;
   }
 }
 
