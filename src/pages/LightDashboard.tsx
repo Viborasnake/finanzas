@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/authContextValue';
 import { AVAILABLE_BANKS, useBanks } from '../contexts/bankContextValue';
 import { useSettings } from '../contexts/settingsContextValue';
 import { supabase } from '../services/supabase';
-import { buildMonthlyLightSummary, getCurrentMonthRange, type LightTransaction } from '../utils/monthlyLightView';
+import { buildMonthlyLightSummary, getMonthRange, getRecentMonthOptions, type LightTransaction } from '../utils/monthlyLightView';
 
 const formatMoney = (value: number) => new Intl.NumberFormat('es-CL', {
   style: 'currency',
@@ -25,7 +25,14 @@ export default function LightDashboard() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showAllPayments, setShowAllPayments] = useState(false);
-  const monthRange = useMemo(() => getCurrentMonthRange(), []);
+  const monthOptions = useMemo(() => getRecentMonthOptions(new Date(), 6), []);
+  const [selectedMonthKey, setSelectedMonthKey] = useState(() => getRecentMonthOptions(new Date(), 6)[0].key);
+  const selectedMonth = useMemo(
+    () => monthOptions.find(option => option.key === selectedMonthKey) || monthOptions[0],
+    [monthOptions, selectedMonthKey]
+  );
+  const monthRange = useMemo(() => getMonthRange(selectedMonth.date), [selectedMonth.date]);
+  const isCurrentMonth = selectedMonthKey === monthOptions[0].key;
   const isConsolidated = dashboardScope === 'all' && connectedBanks.length > 1;
   const scopedBanks = isConsolidated ? connectedBanks : (activeBank ? [activeBank] : []);
   const scopedBankKey = scopedBanks.join('|');
@@ -71,8 +78,8 @@ export default function LightDashboard() {
   }, [fetchTransactions]);
 
   const summary = useMemo(
-    () => buildMonthlyLightSummary(transactions, fixedExpenses),
-    [fixedExpenses, transactions]
+    () => buildMonthlyLightSummary(transactions, fixedExpenses, selectedMonth.date),
+    [fixedExpenses, selectedMonth.date, transactions]
   );
   const commitmentTotal = summary.fixedExpenseStatuses.length;
   const commitmentProgress = commitmentTotal > 0
@@ -109,7 +116,22 @@ export default function LightDashboard() {
           <h1>Tu mes, sin ruido</h1>
           <p>Solo lo esencial de {summary.range.label}: pagos importantes y panorama general de gastos.</p>
         </div>
-        <div className="light-month-pill"><CalendarCheck size={18} aria-hidden="true" /> {summary.range.label} · {scopeLabel}</div>
+        <label className="light-month-pill" htmlFor="light-month-selector">
+          <CalendarCheck size={18} aria-hidden="true" />
+          <span className="sr-only">Mes de la Vista Light</span>
+          <select
+            id="light-month-selector"
+            value={selectedMonthKey}
+            onChange={event => {
+              setSelectedMonthKey(event.target.value);
+              setShowAllPayments(false);
+            }}
+          >
+            {monthOptions.map(option => <option key={option.key} value={option.key}>{option.label}</option>)}
+          </select>
+          <span aria-hidden="true">·</span>
+          <span>{scopeLabel}</span>
+        </label>
       </header>
 
       {loadError && (
@@ -125,7 +147,7 @@ export default function LightDashboard() {
           <span className="light-card-label" id="light-balance-title">Balance del mes</span>
           <strong>{formatMoney(summary.balance)}</strong>
           <p>{summary.transactionCount === 0
-            ? 'Aún no hay movimientos registrados en el mes en curso.'
+            ? `No hay movimientos registrados en ${summary.range.label}.`
             : summary.balance >= 0 ? 'Ingresos menos gastos reales del mes.' : 'Este mes los gastos superan a los ingresos registrados.'}</p>
         </div>
         <Gauge size={58} strokeWidth={1.8} aria-hidden="true" />
@@ -171,7 +193,7 @@ export default function LightDashboard() {
                       <strong>{status.item.name}</strong>
                       <small>{status.state === 'paid'
                         ? `Registrado ${formatShortDate(status.lastPaymentDate)}`
-                        : status.state === 'pending' ? 'Aún no aparece este mes' : 'Falta vincular una categoría'}</small>
+                        : status.state === 'pending' ? (isCurrentMonth ? 'Aún no aparece este mes' : 'Sin registro en este mes') : 'Falta vincular una categoría'}</small>
                     </div>
                     <b>{status.state === 'paid' ? formatMoney(status.paidAmount) : status.state === 'pending' ? 'Pendiente' : 'Configurar'}</b>
                   </article>
@@ -212,7 +234,7 @@ export default function LightDashboard() {
               ))}
             </div>
           ) : (
-            <div className="light-empty"><ReceiptText size={30} aria-hidden="true" /><strong>No hay gastos registrados este mes</strong></div>
+            <div className="light-empty"><ReceiptText size={30} aria-hidden="true" /><strong>No hay gastos registrados en {summary.range.label}</strong></div>
           )}
           <Link className="light-link" to="/">Abrir análisis completo <ArrowRight size={17} aria-hidden="true" /></Link>
         </section>
@@ -225,7 +247,11 @@ export default function LightDashboard() {
           <p>{leadingCategory
             ? `${leadingCategory.name} concentra ${Math.round(leadingCategory.percentage)}% de tus gastos del mes.`
             : 'Cuando registres gastos, aquí verás el dato más importante del mes.'}
-            {summary.pendingCommitmentCount > 0 ? ` Te quedan ${summary.pendingCommitmentCount} pago${summary.pendingCommitmentCount === 1 ? '' : 's'} importante${summary.pendingCommitmentCount === 1 ? '' : 's'} por registrar.` : ''}
+            {summary.pendingCommitmentCount > 0
+              ? isCurrentMonth
+                ? ` Te quedan ${summary.pendingCommitmentCount} pago${summary.pendingCommitmentCount === 1 ? '' : 's'} importante${summary.pendingCommitmentCount === 1 ? '' : 's'} por registrar.`
+                : ` Hubo ${summary.pendingCommitmentCount} pago${summary.pendingCommitmentCount === 1 ? '' : 's'} importante${summary.pendingCommitmentCount === 1 ? '' : 's'} sin registro en ese mes.`
+              : ''}
           </p>
         </div>
       </section>

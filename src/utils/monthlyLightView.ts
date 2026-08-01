@@ -63,20 +63,31 @@ const isExcludedMovement = (transaction: LightTransaction) => {
     || secondary === 'transferencia personal';
 };
 
-export const getCurrentMonthRange = (now = new Date()) => ({
-  start: new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0),
-  end: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999),
-  startInput: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`,
-  endInput: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()).padStart(2, '0')}`,
-  label: now.toLocaleString('es-CL', { month: 'long', year: 'numeric' })
+export const getMonthRange = (month = new Date()) => ({
+  start: new Date(month.getFullYear(), month.getMonth(), 1, 0, 0, 0, 0),
+  end: new Date(month.getFullYear(), month.getMonth() + 1, 0, 23, 59, 59, 999),
+  startInput: `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}-01`,
+  endInput: `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}-${String(new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate()).padStart(2, '0')}`,
+  label: month.toLocaleString('es-CL', { month: 'long', year: 'numeric' })
 });
+
+export const getRecentMonthOptions = (now = new Date(), previousMonths = 6) => (
+  Array.from({ length: previousMonths + 1 }, (_, index) => {
+    const date = new Date(now.getFullYear(), now.getMonth() - index, 1, 12, 0, 0);
+    return {
+      key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
+      label: date.toLocaleString('es-CL', { month: 'long', year: 'numeric' }),
+      date
+    };
+  })
+);
 
 export const buildMonthlyLightSummary = (
   transactions: LightTransaction[],
   fixedExpenses: FixedExpense[],
   now = new Date()
 ) => {
-  const range = getCurrentMonthRange(now);
+  const range = getMonthRange(now);
   const monthTransactions = transactions.filter(transaction => {
     const date = parseLocalDateInput(transaction.date);
     return date >= range.start && date <= range.end;

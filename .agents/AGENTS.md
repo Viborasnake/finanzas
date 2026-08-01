@@ -17,7 +17,7 @@
 /reset-password → ResetPassword (public)
 /               → ProtectedRoute > Layout (Outlet)
   /             → Dashboard
-  /light        → LightDashboard (mes en curso, pagos importantes y gasto macro)
+  /light        → LightDashboard (mes actual + seis anteriores, pagos importantes y gasto macro)
   /transactions → Transactions
   /accounts     → Accounts (Gastos Fijos tracker)
   /import       → ImportRoute

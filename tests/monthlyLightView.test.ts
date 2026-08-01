@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildMonthlyLightSummary } from '../src/utils/monthlyLightView.ts';
+import { buildMonthlyLightSummary, getRecentMonthOptions } from '../src/utils/monthlyLightView.ts';
 
 const fixedExpenses = [
   {
@@ -62,4 +62,20 @@ test('la vista Light distingue pagos importantes registrados y pendientes', () =
   assert.equal(subscriptions?.state, 'pending');
   assert.equal(summary.paidCommitmentCount, 1);
   assert.equal(summary.pendingCommitmentCount, 1);
+});
+
+test('ofrece el mes actual y al menos los seis meses anteriores', () => {
+  const months = getRecentMonthOptions(new Date(2026, 7, 1), 6);
+
+  assert.equal(months.length, 7);
+  assert.equal(months[0].key, '2026-08');
+  assert.equal(months[6].key, '2026-02');
+});
+
+test('recalcula el resumen al seleccionar un mes anterior', () => {
+  const july = buildMonthlyLightSummary(transactions, fixedExpenses, new Date(2026, 6, 1));
+
+  assert.equal(july.transactionCount, 1);
+  assert.equal(july.totalExpenses, 999_999);
+  assert.equal(july.totalIncome, 0);
 });

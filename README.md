@@ -7,7 +7,7 @@ MisFinanzas es una plataforma moderna e inteligente para el control y seguimient
 *   **Extracción de PDF Local:** Procesamiento seguro de archivos PDF directamente en el navegador del usuario usando `pdfjs-dist` (legacy).
 *   **Clasificador Inteligente:** Sugerencias explicables, reglas persistentes, creación de categorías y corrección desde el mismo flujo.
 *   **Dashboard Consolidado:** Reportes por banco o consolidados, con contexto de periodo y desglose de movimientos.
-*   **Vista Light:** Resumen de baja carga cognitiva enfocado exclusivamente en el mes en curso, sus pagos importantes y las categorías macro de gasto.
+*   **Vista Light:** Resumen de baja carga cognitiva para el mes en curso o cualquiera de los seis meses anteriores, con pagos importantes y categorías macro de gasto.
 *   **Cuentas:** Seguimiento mensual de gastos fijos vinculados por categoría, historial y corrección de asociaciones.
 *   **Revisión de Duplicados:** Agrupa coincidencias, conserva las divisiones procesadas y permite corregir un registro, un grupo o el lote completo únicamente con confirmación explícita.
 *   **Trazabilidad de Cartolas:** Cada fila importada mantiene una identidad de origen que evita reimportar el monto original después de dividirlo o cambiarlo de periodo.
