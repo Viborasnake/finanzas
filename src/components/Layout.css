@@ -227,9 +227,6 @@
 .nav-item span {
   white-space: nowrap;
 }
-.sidebar-nav .nav-item:last-child {
-  border-bottom: 2px solid transparent;
-}
 .sidebar-footer .nav-item {
   margin-bottom: 1rem;
 }
