@@ -6,7 +6,7 @@ import { AVAILABLE_BANKS, useBanks, type Bank } from '../contexts/bankContextVal
 import { 
   ChevronRight, TrendingUp, TrendingDown, 
   Wallet, CreditCard, AlertTriangle, Sparkles, Activity, Search, X, Edit2,
-  ArrowUpRight, ArrowDownRight, Scale, PiggyBank, Calendar, Landmark, FileSpreadsheet, Tags, CheckCircle2, Settings, ChevronDown, RefreshCw
+  ArrowUpRight, ArrowDownRight, Scale, PiggyBank, Calendar, Landmark, FileSpreadsheet, Tags, CheckCircle2, Settings, ChevronDown, RefreshCw, Info
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -450,7 +450,7 @@ export default function Dashboard() {
         const report = classifyTransactionForReport(t);
         const catP = t.categoria_principal?.toLowerCase() || '';
         
-        if (conceptName === 'Ingreso Propio') return report.isInternalIncome;
+        if (conceptName === 'Transferencias y rescates') return report.isInternalIncome;
         if (!report.isRealIncome) return false;
         
         if (conceptName === 'Sueldo') return catP.includes('sueldo');
@@ -580,6 +580,7 @@ export default function Dashboard() {
 
         if (report.isInternalIncome) {
           aportePropio += report.amount;
+          ingresos += report.amount;
         } else if (report.isRealIncome) {
             ingresos += report.amount;
             
@@ -731,7 +732,7 @@ export default function Dashboard() {
 
       const item = byBank.get(bankName)!;
       const report = classifyTransactionForReport(t);
-      if (report.isRealIncome) item.ingresos += report.amount;
+      if (report.isRealIncome || report.isInternalIncome) item.ingresos += report.amount;
       if (report.isRealExpense) item.egresos += report.amount;
       if (report.isInternalIncome || report.isInternalExpense) item.internal += report.amount;
       item.count += 1;
@@ -756,7 +757,7 @@ export default function Dashboard() {
         const d = parseLocalDate(t.date);
         if (d >= bucket.start && d <= bucket.end) {
           const report = classifyTransactionForReport(t);
-          if (report.isRealIncome) ing += report.amount;
+          if (report.isRealIncome || report.isInternalIncome) ing += report.amount;
           if (report.isRealExpense) gas += report.amount;
         }
       });
@@ -814,7 +815,7 @@ export default function Dashboard() {
           const key = getKey(d);
           if (data[key]) {
             const report = classifyTransactionForReport(t);
-            if (report.isRealIncome) data[key].Ingresos += report.amount;
+            if (report.isRealIncome || report.isInternalIncome) data[key].Ingresos += report.amount;
             if (report.isRealExpense) data[key].Egresos += report.amount;
           }
         }
@@ -1201,10 +1202,10 @@ export default function Dashboard() {
   // BLOCK 2: INTELLIGENCE REPORT
   const renderIntelligenceReport = () => {
     const { balance, maxIncomeDesc, maxIncomeAmount, maxRecurringDesc, maxRecurringTotal } = stats.current.insights;
-    const ingresos = stats.current.ingresos;
+    const ingresosReales = stats.current.ingresos - stats.current.aportePropio;
     
     const isDeficit = balance < 0;
-    const incomePercent = ingresos > 0 ? Math.round((maxIncomeAmount / ingresos) * 100) : 0;
+    const incomePercent = ingresosReales > 0 ? Math.round((maxIncomeAmount / ingresosReales) * 100) : 0;
     const insightCount = 1 + (maxIncomeAmount > 0 ? 1 : 0) + (maxRecurringTotal > 0 ? 1 : 0);
 
     return (
@@ -1239,10 +1240,10 @@ export default function Dashboard() {
             <div className="dashboard-insight-card" style={{ backgroundColor: isDeficit ? '#fef2f2' : '#f0fdf4' }}>
               <Activity size={19} style={{ color: isDeficit ? 'var(--danger-text)' : 'var(--success-text)' }} />
               <div>
-                <span className="dashboard-insight-label">Balance</span>
-                <strong>{isDeficit ? 'Déficit' : 'Superávit'} · ${Math.abs(balance).toLocaleString('es-CL')}</strong>
+                <span className="dashboard-insight-label">Saldo tras cobertura</span>
+                <strong>{isDeficit ? 'Faltante' : 'Disponible'} · ${Math.abs(balance).toLocaleString('es-CL')}</strong>
                 {stats.current.aportePropio > 0 && (
-                  <small>${stats.current.aportePropio.toLocaleString('es-CL')} internos, excluidos del balance</small>
+                  <small>${stats.current.aportePropio.toLocaleString('es-CL')} de fondos propios ayudaron a cubrir el mes</small>
                 )}
               </div>
             </div>
@@ -1284,7 +1285,10 @@ export default function Dashboard() {
     const incomeData: { name: string; value: number; isGray?: boolean }[] = [
       { name: 'Sueldo', value: c.sueldo },
       { name: 'Honorarios', value: c.honorarios },
-      { name: 'Otros Ingresos', value: c.ingresosOtros }
+      { name: 'Otros Ingresos', value: c.ingresosOtros },
+      ...(c.aportePropio > 0
+        ? [{ name: 'Transferencias y rescates', value: c.aportePropio, isGray: true }]
+        : [])
     ];
 
     // Expense Logic
@@ -1301,7 +1305,12 @@ export default function Dashboard() {
     ];
 
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 350px), 1fr))', gap: '2rem', marginBottom: '3rem' }}>
+      <>
+        <aside style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '1rem', padding: '0.75rem 1rem', border: '2px solid #94a3b8', borderRadius: '10px', backgroundColor: '#f8fafc', color: '#334155', fontSize: '0.82rem', fontWeight: 700, lineHeight: 1.4 }}>
+          <Info size={18} strokeWidth={2.5} style={{ flexShrink: 0 }} aria-hidden="true" />
+          <span><strong>Criterio del resumen:</strong> las transferencias recibidas aumentan tus entradas disponibles; las transferencias propias enviadas quedan registradas, pero no cuentan como gasto.</span>
+        </aside>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 350px), 1fr))', gap: '2rem', marginBottom: '3rem' }}>
         {/* Ingresos Card */}
         <div style={{ ...neoCard, position: 'relative', overflow: 'hidden', paddingBottom: '7rem', marginBottom: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', position: 'relative', zIndex: 10 }}>
@@ -1310,20 +1319,15 @@ export default function Dashboard() {
                 <Wallet size={24} strokeWidth={2.5} />
               </div>
               <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: '"Montserrat", sans-serif', display: 'flex', alignItems: 'center' }}>
-                Ingresos
-                <InfoTooltip content="Total de ingresos reales. Los traspasos entre tus propias cuentas o retiros de inversión se contabilizan por separado." />
+                Entradas disponibles
+                <InfoTooltip content="Fondos recibidos en el periodo. Suma los ingresos reales y, por separado, las transferencias propias o rescates usados para cubrir el mes." />
               </h3>
             </div>
             {renderTrendBadge(totalEntradas, p.ingresos, false)}
           </div>
-          <p className="dashboard-kpi-amount" style={{ margin: c.aportePropio > 0 ? '0 0 0.25rem 0' : '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '0' }}>
+          <p className="dashboard-kpi-amount" style={{ margin: '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '0' }}>
             ${totalEntradas.toLocaleString('es-CL')}
           </p>
-          {c.aportePropio > 0 && (
-            <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 700, marginBottom: '1.5rem', position: 'relative', zIndex: 10 }}>
-              *Adicionalmente recibiste ${c.aportePropio.toLocaleString('es-CL')} por movimientos internos o rescate de inversiones
-            </div>
-          )}
           
           {totalEntradas > 0 && (
             <div style={{ position: 'relative', zIndex: 10, flex: 1, paddingBottom: '1rem' }}>
@@ -1365,7 +1369,7 @@ export default function Dashboard() {
                 </tbody>
                 <tfoot>
                   <tr style={{ backgroundColor: '#bbf7d0', borderTop: '2px solid #000' }}>
-                    <td style={{ padding: '0.75rem', fontWeight: 900, borderRight: '2px solid #000' }}>Total Entradas</td>
+                    <td style={{ padding: '0.75rem', fontWeight: 900, borderRight: '2px solid #000' }}>Total recibido</td>
                     <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 900 }}>${totalEntradas.toLocaleString('es-CL')}</td>
                   </tr>
                 </tfoot>
@@ -1447,7 +1451,8 @@ export default function Dashboard() {
           )}
           {renderSparkline('Egresos', '#fee2e2')}
         </div>
-      </div>
+        </div>
+      </>
     );
   };
 
@@ -1476,7 +1481,7 @@ export default function Dashboard() {
         </div>
 
         <div className="dashboard-bank-summary" aria-label="Totales consolidados">
-          <span><strong>${breakdownIncome.toLocaleString('es-CL')}</strong> ingresos reales</span>
+          <span><strong>${breakdownIncome.toLocaleString('es-CL')}</strong> entradas contabilizadas</span>
           <span><strong>${breakdownExpenses.toLocaleString('es-CL')}</strong> egresos reales</span>
           <span><strong>{periodMovements.length.toLocaleString('es-CL')}</strong> movimientos</span>
         </div>
@@ -1510,7 +1515,7 @@ export default function Dashboard() {
                   </div>
                 </dl>
                 <div className="dashboard-bank-card-footer">
-                  <span>${bank.internal.toLocaleString('es-CL')} internos, fuera del balance</span>
+                  <span>${bank.internal.toLocaleString('es-CL')} movimientos internos identificados</span>
                   <button type="button" className="btn btn-outline" onClick={() => showSingleBank(bank.bank)}>
                     Ver banco
                     <ChevronRight size={16} strokeWidth={3} />
@@ -1676,7 +1681,7 @@ export default function Dashboard() {
   // BLOCK 7: YEARLY CHART (rich version)
   const renderYearlyChart = () => {
     const year = dateRange.start.getFullYear();
-    const monthlyData: { mes: string; mesIdx: number; Ingresos: number; AportePropio: number; Egresos: number; Balance: number; tasaAhorro: number }[] = [];
+    const monthlyData: { mes: string; mesIdx: number; Ingresos: number; IngresoReal: number; AportePropio: number; Egresos: number; Balance: number; tasaAhorro: number }[] = [];
 
     const today = new Date();
     const maxMonth = year === today.getFullYear() ? today.getMonth() : 11;
@@ -1697,10 +1702,11 @@ export default function Dashboard() {
       monthlyData.push({
         mes: new Date(year, m, 1).toLocaleString('es-CL', { month: 'short' }),
         mesIdx: m,
-        Ingresos: ing,
+        Ingresos: ing + aporte,
+        IngresoReal: ing,
         AportePropio: aporte,
         Egresos: gas,
-        Balance: ing - gas,
+        Balance: ing + aporte - gas,
         tasaAhorro: ing > 0 ? Math.round(((ing - gas) / ing) * 100) : 0
       });
     }
@@ -1709,9 +1715,10 @@ export default function Dashboard() {
     if (!hasData) return null;
 
     const totalIng = monthlyData.reduce((a, d) => a + d.Ingresos, 0);
+    const totalRealIng = monthlyData.reduce((a, d) => a + d.IngresoReal, 0);
     const totalGas = monthlyData.reduce((a, d) => a + d.Egresos, 0);
     const totalBal = totalIng - totalGas;
-    const tasaAnual = totalIng > 0 ? Math.round(((totalIng - totalGas) / totalIng) * 100) : 0;
+    const tasaAnual = totalRealIng > 0 ? Math.round(((totalRealIng - totalGas) / totalRealIng) * 100) : 0;
 
     const monthsWithData = monthlyData.filter(d => d.Ingresos > 0 || d.Egresos > 0);
     const bestMonth = monthsWithData.reduce((best, d) => d.Balance > best.Balance ? d : best, monthsWithData[0]);
@@ -1731,11 +1738,11 @@ export default function Dashboard() {
         <div style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '10px', boxShadow: '4px 4px 0px #000', padding: '1rem', minWidth: '180px' }}>
           <div style={{ fontWeight: 900, fontSize: '1.1rem', marginBottom: '0.75rem', textTransform: 'capitalize', borderBottom: '2px solid #000', paddingBottom: '0.25rem' }}>{label}. {year}</div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', color: '#16a34a', fontWeight: 800 }}>
-            <span>Ingresos</span><span>${d.Ingresos.toLocaleString('es-CL')}</span>
+            <span>Entradas disponibles</span><span>${d.Ingresos.toLocaleString('es-CL')}</span>
           </div>
           {d.AportePropio > 0 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', color: '#15803d', fontSize: '0.8rem', fontWeight: 700 }}>
-              <span>└ Aportes</span><span>${d.AportePropio.toLocaleString('es-CL')}</span>
+              <span>└ Fondos propios</span><span>${d.AportePropio.toLocaleString('es-CL')}</span>
             </div>
           )}
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', color: '#e11d48', fontWeight: 800, marginTop: '0.25rem' }}>
@@ -1777,7 +1784,7 @@ export default function Dashboard() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
           <div style={{ ...kpiStyle, backgroundColor: '#f0fdf4' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', color: '#16a34a', letterSpacing: '0.05em' }}>Ingresos Totales</span>
+              <span style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', color: '#16a34a', letterSpacing: '0.05em' }}>Entradas disponibles</span>
               <ArrowUpRight size={20} color="#16a34a" />
             </div>
             <span style={{ fontSize: '1.5rem', fontWeight: 900, color: '#15803d' }}>${totalIng.toLocaleString('es-CL')}</span>
@@ -1795,7 +1802,7 @@ export default function Dashboard() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', color: totalBal >= 0 ? '#2563eb' : '#e11d48', letterSpacing: '0.05em', display: 'flex', alignItems: 'center' }}>
                 Balance Neto
-                <InfoTooltip content="Ingresos totales menos gastos totales. Si es positivo, ganaste más de lo que gastaste." />
+                <InfoTooltip content="Ingresos reales y fondos propios recibidos, menos gastos reales. Las transferencias salientes entre tus cuentas no se tratan como gasto." />
               </span>
               <Scale size={20} color={totalBal >= 0 ? '#2563eb' : '#e11d48'} />
             </div>

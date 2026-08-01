@@ -752,7 +752,7 @@ export default function Settings() {
               toast.loading('Escaneando transacciones...', { id: 'rescan' });
               try {
                 // 1. Obtener pendientes
-                const { data: txs, error: fetchErr } = await supabase.from('transactions').select('id, raw_data, description').eq('user_id', user.id).is('tipo_movimiento', null);
+                const { data: txs, error: fetchErr } = await supabase.from('transactions').select('id, raw_data, description, type').eq('user_id', user.id).is('tipo_movimiento', null);
                 if (fetchErr) throw fetchErr;
                 if (!txs || txs.length === 0) {
                   toast.success('No hay transacciones pendientes.', { id: 'rescan' });
@@ -770,9 +770,10 @@ export default function Settings() {
                   const my = myRut ? extractAndNormalizeRUT(myRut) : null;
                   
                   if (rutEx && my && rutEx === my) {
-                    tipo = 'Movimiento Interno';
-                    principal = desc.includes('fondo') ? 'Traspaso fondo' : 'Transferencia personal';
-                    secundaria = principal;
+                    const isIncoming = tx.type === 'ingreso';
+                    tipo = isIncoming ? 'Ingreso' : 'Egreso';
+                    principal = isIncoming ? 'Transferencias' : 'Transferencias Propias';
+                    secundaria = 'Transferencias Propias';
                   }
                   
                   if (!tipo) {

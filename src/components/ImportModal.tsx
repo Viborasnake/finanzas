@@ -902,9 +902,10 @@ export default function ImportModal({ onClose, presentation = 'dialog' }: Import
         const normalizedMyRut = myRut ? extractAndNormalizeRUT(myRut) : null;
 
         if (rutExtracted && normalizedMyRut && rutExtracted === normalizedMyRut) {
-          tipo_movimiento = 'Movimiento Interno';
-          categoria_principal = descForCheck.includes('fondo') ? 'Traspaso fondo' : 'Transferencia personal';
-          categoria_secundaria = categoria_principal;
+          const isIncoming = t.type === 'ingreso';
+          tipo_movimiento = isIncoming ? 'Ingreso' : 'Egreso';
+          categoria_principal = isIncoming ? 'Transferencias' : 'Transferencias Propias';
+          categoria_secundaria = 'Transferencias Propias';
         }
 
         if (!tipo_movimiento) {

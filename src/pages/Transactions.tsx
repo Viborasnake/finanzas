@@ -208,6 +208,16 @@ export function CascadingCategorySelector({ initialTipo, initialPrincipal, initi
     return '#f3f4f6';
   };
 
+  const getAccountingHint = (tipo: string, principal: string) => {
+    if (tipo === 'Ingreso' && principal === 'Transferencias') {
+      return 'Se suma a tus entradas disponibles. Si es una transferencia propia, el sistema la separa de tus ingresos reales.';
+    }
+    if (tipo === 'Egreso' && principal === 'Transferencias Propias') {
+      return 'Queda registrada para trazabilidad, pero el sistema no la suma a tus gastos reales.';
+    }
+    return null;
+  };
+
   const openPicker = () => {
     const current = selectedOption || ALL_OPTIONS.find(o => o.tipo === initialTipo && o.principal === initialPrincipal && o.secundaria === initialSecundaria);
     const tipo = current?.tipo || selectedTipo || 'Egreso';
@@ -448,6 +458,11 @@ export function CascadingCategorySelector({ initialTipo, initialPrincipal, initi
                         </button>
                         {isExpanded && (
                           <div className="category-tree-options">
+                            {getAccountingHint(selectedTipo, principal) && (
+                              <p style={{ margin: 0, padding: '0.75rem', backgroundColor: '#f8fafc', borderBottom: '2px solid #000', color: '#475569', fontSize: '0.78rem', fontWeight: 700, lineHeight: 1.4 }}>
+                                {getAccountingHint(selectedTipo, principal)}
+                              </p>
+                            )}
                             {(secundarias as string[]).map(secundaria => {
                               const active = selectedOption?.tipo === selectedTipo && selectedOption?.principal === principal && selectedOption?.secundaria === secundaria;
                               return (
