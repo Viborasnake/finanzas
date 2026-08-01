@@ -207,7 +207,10 @@ export default function Dashboard() {
   const dashboardBankKey = dashboardBanks.join('|');
   const activeBankInfo = AVAILABLE_BANKS.find(b => b.id === activeBank);
   const dashboardBankLabel = isConsolidated ? 'Todos los bancos' : (activeBankInfo?.label || 'Sin banco');
-  const [reportCollapsed, setReportCollapsed] = useState(() => localStorage.getItem('finanzas_report_collapsed') === 'true');
+  const [reportCollapsed, setReportCollapsed] = useState(() => {
+    const savedState = localStorage.getItem('finanzas_report_collapsed');
+    return savedState === null ? true : savedState === 'true';
+  });
   const [advancedOpen, setAdvancedOpen] = useState(() => localStorage.getItem('finanzas_advanced_open') === 'true');
   const [periodWasChosen, setPeriodWasChosen] = useState(() => sessionStorage.getItem('finanzas_dash_period_chosen') === 'true');
 
@@ -1202,14 +1205,16 @@ export default function Dashboard() {
     
     const isDeficit = balance < 0;
     const incomePercent = ingresos > 0 ? Math.round((maxIncomeAmount / ingresos) * 100) : 0;
+    const insightCount = 1 + (maxIncomeAmount > 0 ? 1 : 0) + (maxRecurringTotal > 0 ? 1 : 0);
 
     return (
-      <div style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '12px', padding: '1.5rem', boxShadow: '4px 4px 0px #000', marginBottom: '2.5rem' }}>
-        <div className="dashboard-section-heading" style={{ margin: reportCollapsed ? '0' : '0 0 1rem 0' }}>
+      <section className={`dashboard-intelligence-report ${reportCollapsed ? 'collapsed' : ''}`}>
+        <div className="dashboard-section-heading">
           <h2 className="dashboard-section-title-heading">
             <Sparkles fill="#fde047" color="#000" size={20} strokeWidth={2} />
-            <span className="dashboard-section-title">Reporte de inteligencia</span>
-            <InfoTooltip content="Análisis automático de tus finanzas que destaca tu balance, tu principal fuente de ingresos y tu mayor fuga de dinero." />
+            <span className="dashboard-section-title">Hallazgos del mes</span>
+            <span className="dashboard-insight-count" aria-label={`${insightCount} hallazgos`}>{insightCount}</span>
+            <InfoTooltip content="Resumen automático del balance y de los movimientos que más influyen en el periodo." />
           </h2>
           <button
             type="button"
@@ -1224,61 +1229,48 @@ export default function Dashboard() {
             localStorage.setItem('finanzas_report_collapsed', String(newVal));
           }}
           >
-            <span>{reportCollapsed ? 'Mostrar' : 'Ocultar'}</span>
+            <span>{reportCollapsed ? 'Ver detalles' : 'Cerrar'}</span>
             <ChevronDown size={20} strokeWidth={2.5} style={{ transform: reportCollapsed ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform 0.2s' }} />
           </button>
         </div>
 
         {!reportCollapsed && (
-          <div id="dashboard-intelligence-content">
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: '1rem' }}>
-          {/* Balance Insight */}
-          <div style={{ padding: '1rem', backgroundColor: isDeficit ? '#fef2f2' : '#f0fdf4', border: '2px solid #000', borderRadius: '8px', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-            <Activity size={20} style={{ color: isDeficit ? 'var(--danger-text)' : 'var(--success-text)', marginTop: '0.2rem', flexShrink: 0 }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.25rem' }}>Balance Actual</div>
-              <div style={{ fontSize: '1rem', fontWeight: 600 }}>
-                {isDeficit ? 'Déficit de ' : 'Superávit de '}
-                <span style={{ fontWeight: 900 }}>${Math.abs(balance).toLocaleString('es-CL')}</span>
-              </div>
-              {stats.current.aportePropio > 0 && (
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, marginTop: '0.2rem' }}>
-                  ${stats.current.aportePropio.toLocaleString('es-CL')} en movimientos internos, fuera del balance
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Income Motor Insight */}
-          {maxIncomeAmount > 0 && (
-            <div style={{ padding: '1rem', backgroundColor: '#eff6ff', border: '2px solid #000', borderRadius: '8px', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-              <Wallet size={20} style={{ color: '#3b82f6', marginTop: '0.2rem', flexShrink: 0 }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.25rem' }}>Motor de Ingresos</div>
-                <div style={{ fontSize: '1rem', fontWeight: 600, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-                  <span style={{ fontWeight: 900 }}>{incomePercent}%</span> proviene de "{maxIncomeDesc}"
-                </div>
+          <div id="dashboard-intelligence-content" className="dashboard-insight-grid">
+            <div className="dashboard-insight-card" style={{ backgroundColor: isDeficit ? '#fef2f2' : '#f0fdf4' }}>
+              <Activity size={19} style={{ color: isDeficit ? 'var(--danger-text)' : 'var(--success-text)' }} />
+              <div>
+                <span className="dashboard-insight-label">Balance</span>
+                <strong>{isDeficit ? 'Déficit' : 'Superávit'} · ${Math.abs(balance).toLocaleString('es-CL')}</strong>
+                {stats.current.aportePropio > 0 && (
+                  <small>${stats.current.aportePropio.toLocaleString('es-CL')} internos, excluidos del balance</small>
+                )}
               </div>
             </div>
-          )}
 
-          {/* Expense Fuga Insight */}
-          {maxRecurringTotal > 0 && (
-            <div style={{ padding: '1rem', backgroundColor: '#fefce8', border: '2px solid #000', borderRadius: '8px', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-              <Search size={20} style={{ color: '#eab308', marginTop: '0.2rem', flexShrink: 0 }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.25rem' }}>Flujo de Capital Detectado</div>
-                <div style={{ fontSize: '1rem', fontWeight: 600, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-                  <span style={{ fontWeight: 900 }}>${maxRecurringTotal.toLocaleString('es-CL')}</span> acumulado en "{maxRecurringDesc}"
+            {maxIncomeAmount > 0 && (
+              <div className="dashboard-insight-card" style={{ backgroundColor: '#eff6ff' }}>
+                <Wallet size={19} style={{ color: '#3b82f6' }} />
+                <div>
+                  <span className="dashboard-insight-label">Principal ingreso</span>
+                  <strong>{incomePercent}% del total</strong>
+                  <small title={maxIncomeDesc}>{maxIncomeDesc}</small>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
 
+            {maxRecurringTotal > 0 && (
+              <div className="dashboard-insight-card" style={{ backgroundColor: '#fefce8' }}>
+                <Search size={19} style={{ color: '#ca8a04' }} />
+                <div>
+                  <span className="dashboard-insight-label">Movimiento recurrente</span>
+                  <strong>${maxRecurringTotal.toLocaleString('es-CL')} acumulado</strong>
+                  <small title={maxRecurringDesc}>{maxRecurringDesc}</small>
+                </div>
+              </div>
+            )}
           </div>
         )}
-      </div>
+      </section>
     );
   };
 
