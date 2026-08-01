@@ -1,45 +1,7 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
-import { useAuth } from './AuthContext';
-
-export type Bank = 'BancoEstado' | 'Scotiabank' | 'Itaú' | 'Mach' | 'Consorcio';
-export type DashboardBankScope = Bank | 'all';
-
-export const AVAILABLE_BANKS: { id: Bank; label: string; color: string; emoji: string }[] = [
-  // { id: 'BancoEstado', label: 'BancoEstado', color: '#e63946', emoji: '🏦' },
-  { id: 'Scotiabank', label: 'Scotiabank', color: '#e63000', emoji: '🔴' },
-  { id: 'Itaú',       label: 'Itaú',       color: '#f77f00', emoji: '🟠' },
-  { id: 'Mach',       label: 'Mach',       color: '#a855f7', emoji: '🟣' },
-  { id: 'Consorcio',  label: 'Consorcio',  color: '#ff7a00', emoji: '🏦' },
-];
-
-interface BankContextType {
-  connectedBanks: Bank[];
-  activeBank: Bank | null;
-  dashboardScope: DashboardBankScope;
-  mainBank: Bank | null;
-  setActiveBank: (bank: Bank) => void;
-  setDashboardScope: (scope: DashboardBankScope) => void;
-  addBank: (bank: Bank) => Promise<void>;
-  removeBank: (bank: Bank) => Promise<void>;
-  setMainBankAndSave: (bank: Bank) => Promise<void>;
-  loading: boolean;
-}
-
-const BankContext = createContext<BankContextType>({
-  connectedBanks: [],
-  activeBank: null,
-  dashboardScope: 'all',
-  mainBank: null,
-  setActiveBank: () => {},
-  setDashboardScope: () => {},
-  addBank: async () => {},
-  removeBank: async () => {},
-  setMainBankAndSave: async () => {},
-  loading: true,
-});
-
-export const useBanks = () => useContext(BankContext);
+import { useAuth } from './authContextValue';
+import { BankContext, type Bank, type DashboardBankScope } from './bankContextValue';
 
 export const BankProvider = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();
@@ -49,22 +11,16 @@ export const BankProvider = ({ children }: { children: React.ReactNode }) => {
   const [mainBank, setMainBankState] = useState<Bank | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (user) {
-      loadBanks();
-    }
-  }, [user]);
-
-  const loadBanks = async () => {
+  const loadBanks = useCallback(async () => {
+    if (!user) return;
     try {
-      const currentUser = user || (await supabase.auth.getUser()).data.user;
-      if (!currentUser) return;
-
-      const { data } = await supabase
+      setLoading(true);
+      const { data, error } = await supabase
         .from('user_settings')
         .select('banks, main_bank')
-        .eq('user_id', currentUser.id)
+        .eq('user_id', user.id)
         .maybeSingle();
+      if (error) throw error;
 
       const banks: Bank[] = data?.banks || [];
       const main: Bank | null = data?.main_bank || null;
@@ -72,8 +28,8 @@ export const BankProvider = ({ children }: { children: React.ReactNode }) => {
       setConnectedBanks(banks);
       setMainBankState(main);
       
-      const savedActive = localStorage.getItem(`finanzas_active_bank_${currentUser.id}`) as Bank | null;
-      const savedDashboardScope = localStorage.getItem(`finanzas_dashboard_scope_${currentUser.id}`) as DashboardBankScope | null;
+      const savedActive = localStorage.getItem(`finanzas_active_bank_${user.id}`) as Bank | null;
+      const savedDashboardScope = localStorage.getItem(`finanzas_dashboard_scope_${user.id}`) as DashboardBankScope | null;
       if (savedActive && banks.includes(savedActive)) {
         setActiveBankState(savedActive);
       } else {
@@ -92,7 +48,20 @@ export const BankProvider = ({ children }: { children: React.ReactNode }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      void loadBanks();
+      return;
+    }
+
+    setConnectedBanks([]);
+    setActiveBankState(null);
+    setDashboardScopeState('all');
+    setMainBankState(null);
+    setLoading(false);
+  }, [loadBanks, user]);
 
   const saveBanks = async (banks: Bank[], main: Bank | null) => {
     const currentUser = user || (await supabase.auth.getUser()).data.user;
@@ -114,31 +83,52 @@ export const BankProvider = ({ children }: { children: React.ReactNode }) => {
     if (connectedBanks.includes(bank)) return;
     const updated = [...connectedBanks, bank];
     const newMain = mainBank || bank;
+    await saveBanks(updated, newMain);
+
     setConnectedBanks(updated);
     if (!mainBank) {
       setMainBankState(bank);
       setActiveBankState(bank);
       setDashboardScopeState(bank);
     }
-    await saveBanks(updated, newMain);
   };
 
   const removeBank = async (bank: Bank) => {
     const updated = connectedBanks.filter(b => b !== bank);
     const newMain = mainBank === bank ? (updated[0] || null) : mainBank;
+    await saveBanks(updated, newMain);
+
     setConnectedBanks(updated);
     setMainBankState(newMain);
     if (activeBank === bank) setActiveBankState(newMain);
     if (dashboardScope === bank || (dashboardScope === 'all' && updated.length <= 1)) {
       setDashboardScopeState(updated.length > 1 ? 'all' : (newMain || updated[0] || 'all'));
     }
-    await saveBanks(updated, newMain);
   };
 
   const setMainBankAndSave = async (bank: Bank) => {
+    await saveBanks(connectedBanks, bank);
     setMainBankState(bank);
     setActiveBank(bank);
-    await saveBanks(connectedBanks, bank);
+  };
+
+  const saveBankSetup = async (banks: Bank[], requestedMain: Bank) => {
+    const uniqueBanks = Array.from(new Set(banks));
+    if (uniqueBanks.length === 0) throw new Error('Debes seleccionar al menos un banco.');
+
+    const selectedMain = uniqueBanks.includes(requestedMain) ? requestedMain : uniqueBanks[0];
+    await saveBanks(uniqueBanks, selectedMain);
+
+    const nextScope: DashboardBankScope = uniqueBanks.length > 1 ? 'all' : selectedMain;
+    setConnectedBanks(uniqueBanks);
+    setMainBankState(selectedMain);
+    setActiveBankState(selectedMain);
+    setDashboardScopeState(nextScope);
+
+    if (user) {
+      localStorage.setItem(`finanzas_active_bank_${user.id}`, selectedMain);
+      localStorage.setItem(`finanzas_dashboard_scope_${user.id}`, nextScope);
+    }
   };
 
   const setActiveBank = (bank: Bank) => {
@@ -157,7 +147,7 @@ export const BankProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <BankContext.Provider value={{ connectedBanks, activeBank, dashboardScope, mainBank, setActiveBank, setDashboardScope, addBank, removeBank, setMainBankAndSave, loading }}>
+    <BankContext.Provider value={{ connectedBanks, activeBank, dashboardScope, mainBank, setActiveBank, setDashboardScope, addBank, removeBank, setMainBankAndSave, saveBankSetup, loading }}>
       {children}
     </BankContext.Provider>
   );

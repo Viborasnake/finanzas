@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/authContextValue';
 import { Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -10,18 +10,14 @@ export default function MigrationAudit() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [counts, setCounts] = useState<{ [categoryName: string]: number }>({});
   
-  useEffect(() => {
-    if (user) {
-      fetchData();
-    }
-  }, [user]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
+    if (!user) return;
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('transactions')
         .select('*, category:categories(name)')
-        .eq('user_id', user?.id);
+        .eq('user_id', user.id);
         
       if (error) throw error;
       
@@ -41,7 +37,11 @@ export default function MigrationAudit() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) void fetchData();
+  }, [fetchData, user]);
 
   const handleDownload = () => {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(transactions, null, 2));
@@ -63,7 +63,7 @@ export default function MigrationAudit() {
         <p style={{ fontWeight: 600, marginTop: '1rem' }}>
           Total de transacciones: {transactions.length}
         </p>
-        <button className="btn" style={{ backgroundColor: 'black', color: 'white', marginTop: '1rem', width: '100%', justifyContent: 'center' }} onClick={handleDownload}>
+        <button type="button" className="btn" style={{ backgroundColor: 'black', color: 'white', marginTop: '1rem', width: '100%', justifyContent: 'center' }} onClick={handleDownload}>
           <Download size={20} />
           Descargar Backup JSON Completo
         </button>

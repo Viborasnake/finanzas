@@ -1,40 +1,58 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../services/supabase';
-import { useAuth } from '../contexts/AuthContext';
-import { Plus, Trash2, Save, X, Landmark, Tags, Wand2, Activity, CheckCircle2, ChevronRight, Settings as SettingsIcon, FileSpreadsheet, Sparkles, ChevronDown, Wallet, Edit2 } from 'lucide-react';
+import { useAuth } from '../contexts/authContextValue';
+import { Plus, Trash2, Save, X, Landmark, Tags, Wand2, Activity, CheckCircle2, ChevronRight, Settings as SettingsIcon, FileSpreadsheet, Sparkles, ChevronDown, Wallet, Edit2, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { extractAndNormalizeRUT } from '../utils/rutParser';
 import type { ClassificationRule } from '../utils/classificationRules';
 import { applyRules } from '../utils/classificationRules';
 import { CascadingCategorySelector } from './Transactions';
-import { useSettings } from '../contexts/SettingsContext';
-import { useBanks, AVAILABLE_BANKS } from '../contexts/BankContext';
-import { useNavigate } from 'react-router-dom';
+import { useSettings } from '../contexts/settingsContextValue';
+import { useBanks, AVAILABLE_BANKS } from '../contexts/bankContextValue';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { InitialAdjustmentManager } from '../components/InitialAdjustmentManager';
 import { useActionQueue } from '../hooks/useActionQueue';
+import { ConfirmDialog } from '../components/ConfirmDialog';
+
+const RULES_PER_PAGE = 12;
 
 const CollapsibleSection = ({ id, icon: Icon, title, subtitle, description, defaultCollapsed = true, className = "card settings-card settings-card-wide", children }: any) => {
-  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  const { hash } = useLocation();
+  const [collapsed, setCollapsed] = useState(() => hash === `#${id}` ? false : defaultCollapsed);
+  const contentId = `${id}-content`;
+
+  useEffect(() => {
+    if (hash !== `#${id}`) return;
+    setCollapsed(false);
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [hash, id]);
+
   return (
     <div id={id} className={className} style={{ position: 'relative', zIndex: 9, padding: '1.25rem' }}>
-      <div 
+      <button
+        type="button"
         onClick={() => setCollapsed(!collapsed)}
-        style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+        aria-expanded={!collapsed}
+        aria-controls={contentId}
+        style={{ width: '100%', minHeight: 'var(--control-height)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', textAlign: 'left', color: 'inherit' }}
       >
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           <Icon size={26} />
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{title}</h2>
+            <span role="heading" aria-level={2} style={{ display: 'block', margin: 0, fontSize: '1.1rem', fontWeight: 900 }}>{title}</span>
             <span style={{ display: 'block', color: '#64748b', fontSize: '0.82rem', fontWeight: 800, marginTop: '0.25rem' }}>{subtitle}</span>
           </div>
         </div>
-        <button type="button" style={{ background: 'transparent', border: 'none', boxShadow: 'none', padding: 0, display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontWeight: 900, fontSize: '0.9rem', cursor: 'pointer', color: 'var(--text-primary)' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontWeight: 900, fontSize: '0.9rem', color: 'var(--text-primary)', flexShrink: 0 }}>
           {collapsed ? 'Mostrar' : 'Ocultar'}
           <ChevronDown size={18} strokeWidth={3} style={{ transform: collapsed ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform 0.2s' }} />
-        </button>
-      </div>
+        </span>
+      </button>
       {!collapsed && (
-        <div style={{ marginTop: '1.25rem' }}>
+        <div id={contentId} style={{ marginTop: '1.25rem' }}>
           {description && <p className="settings-muted" style={{ marginBottom: '1.25rem' }}>{description}</p>}
           {children}
         </div>
@@ -43,30 +61,27 @@ const CollapsibleSection = ({ id, icon: Icon, title, subtitle, description, defa
   );
 };
 
+interface DestructiveAction {
+  title: string;
+  description: string;
+  confirmLabel: string;
+  confirmationText?: string;
+  onConfirm: () => Promise<void>;
+}
+
 export default function Settings() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [destructiveAction, setDestructiveAction] = useState<DestructiveAction | null>(null);
   
-  const handleDeleteAccount = async () => {
+  const executeDeleteAccount = async () => {
     if (!user) return;
-    const confirmDelete = window.confirm(
-      "¿Estás 100% seguro de que deseas borrar tu cuenta? Esto eliminará PERMANENTEMENTE todas tus transacciones, configuraciones y reglas de categorización. Esta acción NO se puede deshacer."
-    );
-    if (!confirmDelete) return;
 
     try {
       toast.loading('Borrando datos de la cuenta...', { id: 'deleteAccount' });
-      
-      await supabase.from('transactions').delete().eq('user_id', user.id);
-      await supabase.from('user_settings').delete().eq('user_id', user.id);
-      await supabase.from('known_contacts').delete().eq('user_id', user.id);
-      
-      // Intentar borrar la cuenta auth si existe la función RPC
-      try {
-        await supabase.rpc('delete_user');
-      } catch (e) {
-        // ignore
-      }
+
+      const { error } = await supabase.rpc('delete_user');
+      if (error) throw error;
       
       toast.success('Cuenta eliminada exitosamente', { id: 'deleteAccount' });
       
@@ -75,20 +90,35 @@ export default function Settings() {
     } catch (error: any) {
       console.error('Error al borrar cuenta:', error);
       toast.error('Ocurrió un error al intentar borrar tu cuenta. Por favor contacta a soporte.', { id: 'deleteAccount' });
+      throw error;
     }
   };
 
   // Settings
   const [myRut, setMyRut] = useState('');
+  const [rutSaving, setRutSaving] = useState(false);
   const { dispatchAction } = useActionQueue();
 
 
-  const { customCategories, saveCustomCategories, classificationRules, saveClassificationRules, setClassificationRules } = useSettings();
-  const { connectedBanks, mainBank, setMainBankAndSave, addBank, removeBank, activeBank } = useBanks();
-  const dashboardScope = localStorage.getItem('finanzas_dashboard_scope') || 'all';
+  const { customCategories, saveCustomCategories, classificationRules, saveClassificationRules, setClassificationRules, saveUserRut } = useSettings();
+  const { connectedBanks, mainBank, setMainBankAndSave, addBank, removeBank, activeBank, dashboardScope } = useBanks();
+  const connectedBankKey = connectedBanks.join('|');
 
   const [setupCollapsed, setSetupCollapsed] = useState(() => localStorage.getItem('finanzas_setup_collapsed') === 'true');
   const [setupStats, setSetupStats] = useState({ hasInitialBalance: false, realMovements: 0, unclassified: 0, loading: true });
+  const setupEssentialComplete = !setupStats.loading
+    && connectedBanks.length > 0
+    && setupStats.hasInitialBalance
+    && Boolean(myRut)
+    && setupStats.realMovements > 0
+    && setupStats.unclassified === 0;
+
+  useEffect(() => {
+    if (setupStats.loading) return;
+    if (localStorage.getItem('finanzas_setup_collapsed') === null) {
+      setSetupCollapsed(setupEssentialComplete);
+    }
+  }, [setupEssentialComplete, setupStats.loading]);
 
   const toggleSetupCollapsed = () => {
     setSetupCollapsed(prev => {
@@ -99,12 +129,15 @@ export default function Settings() {
   };
 
   useEffect(() => {
+    let cancelled = false;
+
     const fetchSetupStats = async () => {
       if (!user) return;
       
-      const dashboardBanks = dashboardScope === 'all' && connectedBanks.length > 1 ? connectedBanks : (activeBank ? [activeBank] : []);
+      const connectedBankIds = connectedBankKey.split('|').filter(Boolean);
+      const dashboardBanks = dashboardScope === 'all' && connectedBankIds.length > 1 ? connectedBankIds : (activeBank ? [activeBank] : []);
       if (dashboardBanks.length === 0) {
-        setSetupStats({ hasInitialBalance: false, realMovements: 0, unclassified: 0, loading: false });
+        if (!cancelled) setSetupStats({ hasInitialBalance: false, realMovements: 0, unclassified: 0, loading: false });
         return;
       }
 
@@ -117,7 +150,7 @@ export default function Settings() {
         .in('bank', dashboardBanks);
 
       if (error || !data) {
-        setSetupStats({ hasInitialBalance: false, realMovements: 0, unclassified: 0, loading: false });
+        if (!cancelled) setSetupStats({ hasInitialBalance: false, realMovements: 0, unclassified: 0, loading: false });
         return;
       }
 
@@ -125,10 +158,14 @@ export default function Settings() {
       const realMovements = data.filter(t => !(t.description || '').toLowerCase().includes('saldo inicial')).length;
       const unclassified = data.filter(t => !(t.description || '').toLowerCase().includes('saldo inicial') && (!t.categoria_principal || t.categoria_principal === 'Sin Clasificar')).length;
 
-      setSetupStats({ hasInitialBalance, realMovements, unclassified, loading: false });
+      if (!cancelled) setSetupStats({ hasInitialBalance, realMovements, unclassified, loading: false });
     };
-    fetchSetupStats();
-  }, [user, activeBank, dashboardScope, connectedBanks.length]);
+
+    void fetchSetupStats();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, activeBank, dashboardScope, connectedBankKey]);
 
   const renderSetupMiniDashboard = () => {
     const dashboardBanks = dashboardScope === 'all' && connectedBanks.length > 1 ? connectedBanks : (activeBank ? [activeBank] : []);
@@ -137,7 +174,6 @@ export default function Settings() {
     const activeBankInfo = AVAILABLE_BANKS.find(b => b.id === activeBank);
     const dashboardBankLabel = (dashboardScope === 'all' && connectedBanks.length > 1) ? 'Todos los bancos' : (activeBankInfo?.label || 'Sin banco');
 
-    const hasRules = classificationRules.length > 0;
     const hasRut = Boolean(myRut);
     const items = [
       {
@@ -182,9 +218,9 @@ export default function Settings() {
       },
       {
         title: 'Automatización',
-        detail: `${classificationRules.length} reglas`,
-        done: hasRules,
-        action: 'Mejorar',
+        detail: `${classificationRules.length} reglas · opcional`,
+        done: classificationRules.length > 0 || setupStats.unclassified === 0,
+        action: classificationRules.length > 0 ? 'Revisar' : 'Crear reglas',
         path: '#reglas',
         icon: <Sparkles size={18} strokeWidth={2.5} />
       }
@@ -199,6 +235,8 @@ export default function Settings() {
         <button
           type="button"
           onClick={toggleSetupCollapsed}
+          aria-expanded={!setupCollapsed}
+          aria-controls="settings-setup-details"
           style={{ width: '100%', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '1rem', alignItems: 'center', textAlign: 'left', padding: '1rem 1.25rem', backgroundColor: '#f8fafc', border: 'none', borderBottom: setupCollapsed ? 'none' : '2px solid #000', cursor: 'pointer' }}
         >
           <div style={{ minWidth: 0 }}>
@@ -211,7 +249,7 @@ export default function Settings() {
               <span style={{ color: '#64748b', fontWeight: 800, fontSize: '0.85rem' }}>{doneCount}/{items.length} listo</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div style={{ flex: 1, maxWidth: '360px', height: '12px', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#fff', overflow: 'hidden' }}>
+              <div role="progressbar" aria-label="Progreso de configuración" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress} style={{ flex: 1, maxWidth: '360px', height: '12px', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#fff', overflow: 'hidden' }}>
                 <div style={{ width: `${progress}%`, height: '100%', backgroundColor: progress === 100 ? '#86efac' : '#fde047' }} />
               </div>
               <span style={{ fontWeight: 900, fontSize: '0.85rem' }}>{progress}%</span>
@@ -227,7 +265,7 @@ export default function Settings() {
         </button>
 
         {!setupCollapsed && (
-          <div style={{ padding: '1rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '0.9rem' }}>
+          <div id="settings-setup-details" style={{ padding: '1rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '0.9rem' }}>
             {items.map(item => (
               <button
                 key={item.title}
@@ -265,70 +303,159 @@ export default function Settings() {
   const [newRuleKeyword, setNewRuleKeyword] = useState('');
   const [newRuleCategory, setNewRuleCategory] = useState<{ tipo: string | null, principal: string | null, secundaria: string | null }>({ tipo: null, principal: null, secundaria: null });
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
+  const [ruleSearch, setRuleSearch] = useState('');
+  const [rulePage, setRulePage] = useState(1);
   const [autoOpenTrigger, setAutoOpenTrigger] = useState<number>(0);
   const [newCatTipo, setNewCatTipo] = useState('Egreso');
   const [newCatPrincipal, setNewCatPrincipal] = useState('');
   const [newCatSecundaria, setNewCatSecundaria] = useState('');
+  const [ruleFormErrors, setRuleFormErrors] = useState({ keyword: '', category: '' });
+  const [categoryFormErrors, setCategoryFormErrors] = useState({ principal: '', secundaria: '' });
+  const ruleKeywordRef = useRef<HTMLInputElement>(null);
+  const ruleCategoryRef = useRef<HTMLDivElement>(null);
+  const categoryPrincipalRef = useRef<HTMLInputElement>(null);
+  const categorySecondaryRef = useRef<HTMLInputElement>(null);
+
+  const filteredRules = useMemo(() => {
+    const query = ruleSearch.trim().toLocaleLowerCase('es-CL');
+    if (!query) return classificationRules;
+
+    return classificationRules.filter(rule => [
+      rule.keyword,
+      rule.tipo_movimiento,
+      rule.categoria_principal,
+      rule.categoria_secundaria
+    ].some(value => value?.toLocaleLowerCase('es-CL').includes(query)));
+  }, [classificationRules, ruleSearch]);
+  const rulePageCount = Math.max(1, Math.ceil(filteredRules.length / RULES_PER_PAGE));
+  const safeRulePage = Math.min(rulePage, rulePageCount);
+  const rulePageStartIndex = (safeRulePage - 1) * RULES_PER_PAGE;
+  const visibleRules = filteredRules.slice(rulePageStartIndex, rulePageStartIndex + RULES_PER_PAGE);
+  const ruleResultStart = filteredRules.length === 0 ? 0 : rulePageStartIndex + 1;
+  const ruleResultEnd = Math.min(rulePageStartIndex + RULES_PER_PAGE, filteredRules.length);
 
   useEffect(() => {
-    if (user) {
-      fetchSettings();
-    }
-  }, [user]);
+    setRulePage(current => Math.min(current, rulePageCount));
+  }, [rulePageCount]);
 
-  const fetchSettings = async () => {
-    try {
-      const { data: s } = await supabase.from('user_settings').select('*').eq('user_id', user!.id).maybeSingle();
-      if (s && s.rut) setMyRut(s.rut);
-    } catch (e) {
-      console.error(e);
-    }
-  };
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+
+    const fetchSettings = async () => {
+      try {
+        const { data: settings, error } = await supabase
+          .from('user_settings')
+          .select('rut')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (error) throw error;
+        if (!cancelled) setMyRut(settings?.rut || '');
+      } catch (error) {
+        console.error('Error al cargar configuración:', error);
+      }
+    };
+
+    void fetchSettings();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
 
 
 
   const handleAddRule = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newRuleKeyword.trim() || !newRuleCategory.tipo || !newRuleCategory.principal) {
-      toast.error('Completa los campos de la regla');
+    const keyword = newRuleKeyword.trim();
+    const duplicateRule = classificationRules.some(rule =>
+      rule.id !== editingRuleId && rule.keyword.trim().toLocaleLowerCase('es-CL') === keyword.toLocaleLowerCase('es-CL')
+    );
+    const errors = {
+      keyword: !keyword ? 'Escribe la palabra o frase que debe reconocer.' : duplicateRule ? 'Ya existe una regla con esta palabra o frase.' : '',
+      category: !newRuleCategory.tipo || !newRuleCategory.principal || !newRuleCategory.secundaria
+        ? 'Elige el tipo, la categoría principal y la subcategoría.'
+        : ''
+    };
+    setRuleFormErrors(errors);
+
+    if (errors.keyword || errors.category) {
+      if (errors.keyword) {
+        ruleKeywordRef.current?.focus();
+      } else {
+        setAutoOpenTrigger(Date.now());
+        window.requestAnimationFrame(() => ruleCategoryRef.current?.querySelector<HTMLElement>('button')?.focus());
+      }
       return;
     }
-    
-    if (editingRuleId) {
-      const updatedRules = classificationRules.map(r => 
-        r.id === editingRuleId ? {
-          ...r,
-          keyword: newRuleKeyword.trim(),
+
+    try {
+      if (editingRuleId) {
+        const updatedRules = classificationRules.map(r =>
+          r.id === editingRuleId ? {
+            ...r,
+            keyword,
+            tipo_movimiento: newRuleCategory.tipo as string,
+            categoria_principal: newRuleCategory.principal!,
+            categoria_secundaria: newRuleCategory.secundaria!
+          } : r
+        );
+        await saveClassificationRules(updatedRules);
+        setEditingRuleId(null);
+        toast.success('Regla actualizada');
+      } else {
+        const newRule: ClassificationRule = {
+          id: crypto.randomUUID(),
+          keyword,
           tipo_movimiento: newRuleCategory.tipo as string,
           categoria_principal: newRuleCategory.principal!,
           categoria_secundaria: newRuleCategory.secundaria!
-        } : r
-      );
-      await saveClassificationRules(updatedRules);
-      setEditingRuleId(null);
-      toast.success('Regla actualizada');
-    } else {
-      const newRule: ClassificationRule = {
-        id: crypto.randomUUID(),
-        keyword: newRuleKeyword.trim(),
-        tipo_movimiento: newRuleCategory.tipo as string,
-        categoria_principal: newRuleCategory.principal!,
-        categoria_secundaria: newRuleCategory.secundaria!
-      };
-      const updatedRules = [...classificationRules, newRule];
-      await saveClassificationRules(updatedRules);
-      toast.success('Regla agregada');
+        };
+        await saveClassificationRules([...classificationRules, newRule]);
+        toast.success('Regla agregada');
+      }
+
+      setNewRuleKeyword('');
+      setNewRuleCategory({ tipo: null, principal: null, secundaria: null });
+      setRuleFormErrors({ keyword: '', category: '' });
+    } catch (saveError) {
+      console.error('Error saving classification rule:', saveError);
+      toast.error('No pudimos guardar la regla. Revisa tu conexión e inténtalo nuevamente.');
     }
-    
-    setNewRuleKeyword('');
-    setNewRuleCategory({ tipo: null, principal: null, secundaria: null });
   };
 
-  const handleDeleteRule = async (id: string) => {
-    const updatedRules = classificationRules.filter(r => r.id !== id);
-    await saveClassificationRules(updatedRules);
-    toast.success('Regla eliminada');
+  const handleSaveRut = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const normalizedRut = extractAndNormalizeRUT(myRut);
+    if (!normalizedRut) {
+      toast.error('Ingresa un RUT válido, incluyendo el dígito verificador.');
+      return;
+    }
+
+    setRutSaving(true);
+    const saved = await saveUserRut(normalizedRut);
+    setRutSaving(false);
+
+    if (!saved) {
+      toast.error('No pudimos guardar el RUT. Inténtalo nuevamente.');
+      return;
+    }
+
+    setMyRut(normalizedRut);
+    toast.success('RUT actualizado');
+  };
+
+  const handleDeleteRule = (rule: ClassificationRule) => {
+    setDestructiveAction({
+      title: `¿Eliminar la regla “${rule.keyword}”?`,
+      description: 'Las transacciones ya clasificadas conservarán su categoría, pero esta regla dejará de aplicarse en futuras importaciones y reescaneos.',
+      confirmLabel: 'Eliminar regla',
+      onConfirm: async () => {
+        const updatedRules = classificationRules.filter(item => item.id !== rule.id);
+        await saveClassificationRules(updatedRules);
+        toast.success('Regla eliminada');
+      }
+    });
   };
 
 
@@ -337,24 +464,35 @@ export default function Settings() {
 
   const handleAddCustomCategory = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCatPrincipal.trim() || !newCatSecundaria.trim()) {
-      toast.error('Completa los nombres de la categoría principal y secundaria.');
+    const principalStr = newCatPrincipal.trim();
+    const secStr = newCatSecundaria.trim();
+    const existingCategory = customCategories.find(category =>
+      category.tipo === newCatTipo && category.principal.toLocaleLowerCase('es-CL') === principalStr.toLocaleLowerCase('es-CL')
+    );
+    const duplicateSecondary = existingCategory?.secundarias.some(secondary =>
+      secondary.toLocaleLowerCase('es-CL') === secStr.toLocaleLowerCase('es-CL')
+    );
+    const errors = {
+      principal: principalStr ? '' : 'Escribe un nombre para la categoría principal.',
+      secundaria: !secStr ? 'Escribe un nombre para la subcategoría.' : duplicateSecondary ? 'Esta subcategoría ya existe dentro de la categoría principal.' : ''
+    };
+    setCategoryFormErrors(errors);
+
+    if (errors.principal || errors.secundaria) {
+      (errors.principal ? categoryPrincipalRef : categorySecondaryRef).current?.focus();
       return;
     }
     
-    const catsCopy = [...customCategories];
-    const principalStr = newCatPrincipal.trim();
-    const secStr = newCatSecundaria.trim();
-    
-    const existingIdx = catsCopy.findIndex(c => c.tipo === newCatTipo && c.principal === principalStr);
+    const catsCopy = customCategories.map(category => ({
+      ...category,
+      secundarias: [...category.secundarias]
+    }));
+    const existingIdx = catsCopy.findIndex(c =>
+      c.tipo === newCatTipo && c.principal.toLocaleLowerCase('es-CL') === principalStr.toLocaleLowerCase('es-CL')
+    );
     
     if (existingIdx >= 0) {
-      if (!catsCopy[existingIdx].secundarias.includes(secStr)) {
-        catsCopy[existingIdx].secundarias.push(secStr);
-      } else {
-        toast.error('Esa categoría secundaria ya existe bajo esa principal.');
-        return;
-      }
+      catsCopy[existingIdx].secundarias.push(secStr);
     } else {
       catsCopy.push({
         tipo: newCatTipo,
@@ -363,22 +501,40 @@ export default function Settings() {
       });
     }
 
-    await saveCustomCategories(catsCopy);
-    setNewCatSecundaria('');
-    toast.success('Categoría agregada');
+    try {
+      await saveCustomCategories(catsCopy);
+      setNewCatPrincipal('');
+      setNewCatSecundaria('');
+      setCategoryFormErrors({ principal: '', secundaria: '' });
+      toast.success('Categoría agregada');
+    } catch (saveError) {
+      console.error('Error saving custom category:', saveError);
+      toast.error('No pudimos guardar la categoría. Revisa tu conexión e inténtalo nuevamente.');
+    }
   };
 
-  const handleDeleteCustomSecundaria = async (tipo: string, principal: string, secIndex: number) => {
-    const catsCopy = [...customCategories];
-    const existingIdx = catsCopy.findIndex(c => c.tipo === tipo && c.principal === principal);
-    if (existingIdx >= 0) {
-      catsCopy[existingIdx].secundarias.splice(secIndex, 1);
-      if (catsCopy[existingIdx].secundarias.length === 0) {
-        catsCopy.splice(existingIdx, 1);
+  const handleDeleteCustomSecundaria = (tipo: string, principal: string, secIndex: number) => {
+    const secondary = customCategories.find(category => category.tipo === tipo && category.principal === principal)?.secundarias[secIndex];
+    if (!secondary) return;
+
+    setDestructiveAction({
+      title: `¿Eliminar “${secondary}”?`,
+      description: `Se quitará de tus categorías personalizadas bajo ${principal}. Las transacciones existentes conservarán su clasificación actual.`,
+      confirmLabel: 'Eliminar categoría',
+      onConfirm: async () => {
+        const catsCopy = customCategories.map(category => ({
+          ...category,
+          secundarias: [...category.secundarias]
+        }));
+        const existingIdx = catsCopy.findIndex(category => category.tipo === tipo && category.principal === principal);
+        if (existingIdx < 0) return;
+
+        catsCopy[existingIdx].secundarias.splice(secIndex, 1);
+        if (catsCopy[existingIdx].secundarias.length === 0) catsCopy.splice(existingIdx, 1);
+        await saveCustomCategories(catsCopy);
+        toast.success('Categoría eliminada');
       }
-      await saveCustomCategories(catsCopy);
-      toast.success('Categoría eliminada');
-    }
+    });
   };
 
 
@@ -418,6 +574,7 @@ export default function Settings() {
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     {!isMain && (
                       <button 
+                        type="button"
                         className="btn btn-outline" 
                         onClick={() => setMainBankAndSave(bank.id)}
                         style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}
@@ -427,10 +584,20 @@ export default function Settings() {
                     )}
                     {connectedBanks.length > 1 && (
                       <button 
+                        type="button"
                         className="btn" 
-                        onClick={() => removeBank(bank.id)}
-                        style={{ padding: '0.5rem', backgroundColor: '#fee2e2', color: 'var(--danger)', border: '2px solid var(--danger)' }}
+                        onClick={() => setDestructiveAction({
+                          title: `¿Desconectar ${bank.label}?`,
+                          description: `${bank.label} dejará de aparecer en tus selectores y reportes${isMain ? ', y otro banco pasará a ser el principal' : ''}. Sus transacciones no se borrarán y podrás volver a conectarlo después.`,
+                          confirmLabel: 'Desconectar banco',
+                          onConfirm: async () => {
+                            await removeBank(bank.id);
+                            toast.success(`${bank.label} desconectado`);
+                          }
+                        })}
+                        style={{ padding: '0.5rem', backgroundColor: '#fee2e2', color: 'var(--danger-text)', border: '2px solid var(--danger)' }}
                         title="Desconectar banco"
+                        aria-label={`Desconectar ${bank.label}`}
                       >
                         <X size={18} />
                       </button>
@@ -445,6 +612,7 @@ export default function Settings() {
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
             {AVAILABLE_BANKS.filter(b => !connectedBanks.includes(b.id)).map(bank => (
               <button
+                type="button"
                 key={bank.id}
                 onClick={() => addBank(bank.id)}
                 className="btn btn-outline"
@@ -460,6 +628,43 @@ export default function Settings() {
           </div>
         </CollapsibleSection>
 
+        <CollapsibleSection
+          id="deteccion"
+          icon={SettingsIcon}
+          title="Datos personales y detección"
+          subtitle="RUT utilizado para reconocer transferencias entre cuentas propias"
+          description="Tu RUT se guarda de forma segura en tu configuración de MisFinanzas. Solo se usa para identificar movimientos entre tus propias cuentas y evitar contarlos como ingresos o egresos reales."
+          defaultCollapsed={true}
+        >
+          <form className="settings-grid-form" onSubmit={handleSaveRut}>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label htmlFor="settings-rut" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 800, fontSize: '0.85rem' }}>
+                RUT propio
+              </label>
+              <input
+                id="settings-rut"
+                className="input"
+                type="text"
+                inputMode="text"
+                autoComplete="off"
+                placeholder="Ej: 16.424.491-1"
+                value={myRut}
+                onChange={(event) => setMyRut(event.target.value)}
+                aria-describedby="settings-rut-help"
+                required
+                style={{ width: '100%' }}
+              />
+              <p id="settings-rut-help" className="settings-muted" style={{ margin: '0.55rem 0 0', fontSize: '0.8rem' }}>
+                Puedes corregirlo cuando cambie tu información. La actualización se aplicará a futuras detecciones y reescaneos.
+              </p>
+            </div>
+            <button type="submit" className="btn btn-primary" disabled={rutSaving} aria-busy={rutSaving}>
+              <Save size={18} aria-hidden="true" />
+              {rutSaving ? 'Guardando...' : 'Guardar RUT'}
+            </button>
+          </form>
+        </CollapsibleSection>
+
         {/* Ajuste de Inicio */}
         <InitialAdjustmentManager />
         
@@ -470,8 +675,8 @@ export default function Settings() {
 
           <form className="settings-grid-form" onSubmit={handleAddCustomCategory}>
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 700, fontSize: '0.85rem' }}>Tipo de Movimiento</label>
-              <select className="input" value={newCatTipo} onChange={(e) => setNewCatTipo(e.target.value)} style={{ width: '100%', padding: '0.5rem' }}>
+              <label htmlFor="new-category-type" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 700, fontSize: '0.85rem' }}>Tipo de Movimiento</label>
+              <select id="new-category-type" className="input" value={newCatTipo} onChange={(e) => setNewCatTipo(e.target.value)} style={{ width: '100%', padding: '0.5rem' }}>
                 <option value="Egreso">Egreso</option>
                 <option value="Ingreso">Ingreso</option>
                 <option value="Ahorro/Inversión">Ahorro / Inversión</option>
@@ -479,12 +684,14 @@ export default function Settings() {
               </select>
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 700, fontSize: '0.85rem' }}>Categoría Principal</label>
-              <input type="text" className="input" placeholder="Ej: Mis Mascotas" value={newCatPrincipal} onChange={(e) => setNewCatPrincipal(e.target.value)} style={{ width: '100%' }} />
+              <label htmlFor="new-category-principal" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 700, fontSize: '0.85rem' }}>Categoría Principal</label>
+              <input ref={categoryPrincipalRef} id="new-category-principal" type="text" className="input" placeholder="Ej: Mis Mascotas" value={newCatPrincipal} onChange={(e) => { setNewCatPrincipal(e.target.value); setCategoryFormErrors(current => ({ ...current, principal: '' })); }} aria-invalid={Boolean(categoryFormErrors.principal)} aria-describedby={categoryFormErrors.principal ? 'new-category-principal-error' : undefined} style={{ width: '100%' }} />
+              {categoryFormErrors.principal && <p id="new-category-principal-error" className="field-error" role="alert">{categoryFormErrors.principal}</p>}
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 700, fontSize: '0.85rem' }}>Subcategoría (Detalle)</label>
-              <input type="text" className="input" placeholder="Ej: Juguetes" value={newCatSecundaria} onChange={(e) => setNewCatSecundaria(e.target.value)} style={{ width: '100%' }} />
+              <label htmlFor="new-category-secondary" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 700, fontSize: '0.85rem' }}>Subcategoría (Detalle)</label>
+              <input ref={categorySecondaryRef} id="new-category-secondary" type="text" className="input" placeholder="Ej: Juguetes" value={newCatSecundaria} onChange={(e) => { setNewCatSecundaria(e.target.value); setCategoryFormErrors(current => ({ ...current, secundaria: '' })); }} aria-invalid={Boolean(categoryFormErrors.secundaria)} aria-describedby={categoryFormErrors.secundaria ? 'new-category-secondary-error' : undefined} style={{ width: '100%' }} />
+              {categoryFormErrors.secundaria && <p id="new-category-secondary-error" className="field-error" role="alert">{categoryFormErrors.secundaria}</p>}
             </div>
             <button type="submit" className="btn btn-primary" style={{ padding: '0.75rem' }}>
               <Plus size={20} />
@@ -507,9 +714,11 @@ export default function Settings() {
                       <div key={secIdx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#fff', border: '1.5px solid #cbd5e1', padding: '0.35rem 0.75rem', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 600 }}>
                         {sec}
                         <button 
+                          type="button"
                           onClick={() => handleDeleteCustomSecundaria(cat.tipo, cat.principal, secIdx)} 
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', color: '#ef4444', padding: 0 }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', color: 'var(--danger-text)', padding: 0 }}
                           title="Eliminar subcategoría"
+                          aria-label={`Eliminar subcategoría ${sec}`}
                         >
                           <X size={14} strokeWidth={3} />
                         </button>
@@ -538,7 +747,7 @@ export default function Settings() {
             <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem', fontWeight: 500 }}>
               Puedes aplicar la auto-clasificación a todo tu historial pendiente.
             </p>
-            <button className="btn btn-outline" onClick={async () => {
+            <button type="button" className="btn btn-outline" onClick={async () => {
               if (!user) return;
               toast.loading('Escaneando transacciones...', { id: 'rescan' });
               try {
@@ -590,20 +799,30 @@ export default function Settings() {
           </div>
 
           <form className="settings-rule-form" onSubmit={handleAddRule}>
-            <input 
+            <div className="settings-field-label">
+            <label htmlFor="new-rule-keyword" className="settings-field-title">Palabra o frase</label>
+            <input
+              ref={ruleKeywordRef}
+              id="new-rule-keyword"
               type="text" 
               className="input" 
               placeholder="Palabra clave (ej. SODIMAC)" 
               value={newRuleKeyword}
-              onChange={(e) => setNewRuleKeyword(e.target.value)}
-              required
+              onChange={(e) => { setNewRuleKeyword(e.target.value); setRuleFormErrors(current => ({ ...current, keyword: '' })); }}
+              aria-required="true"
+              aria-invalid={Boolean(ruleFormErrors.keyword)}
+              aria-describedby={ruleFormErrors.keyword ? 'new-rule-keyword-error' : undefined}
             />
-            <div className="settings-rule-category">
+            {ruleFormErrors.keyword && <p id="new-rule-keyword-error" className="field-error" role="alert">{ruleFormErrors.keyword}</p>}
+            </div>
+            <div ref={ruleCategoryRef} className="settings-rule-category" role="group" aria-labelledby="new-rule-category-label" aria-describedby={ruleFormErrors.category ? 'new-rule-category-error' : undefined}>
+            <span id="new-rule-category-label" className="settings-field-title">Clasificación</span>
             <CascadingCategorySelector 
               initialPrincipal={editingRuleId ? newRuleCategory.principal : null} 
               initialSecundaria={editingRuleId ? newRuleCategory.secundaria : null} 
               onSave={(t: any, p: any, s: any) => {
                 setNewRuleCategory({ tipo: t, principal: p, secundaria: s });
+                setRuleFormErrors(current => ({ ...current, category: '' }));
                 if (editingRuleId && newRuleKeyword.trim()) {
                   const currentRule = classificationRules.find(r => r.id === editingRuleId);
                   const updatedRules = classificationRules.map(r => 
@@ -641,6 +860,7 @@ export default function Settings() {
               }} 
               autoOpenTrigger={autoOpenTrigger}
             />
+            {ruleFormErrors.category && <p id="new-rule-category-error" className="field-error" role="alert">{ruleFormErrors.category}</p>}
             </div>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button type="submit" className="btn btn-primary" style={{ padding: '0.5rem 1rem', flex: 1 }}>
@@ -648,7 +868,7 @@ export default function Settings() {
                 {editingRuleId ? 'Actualizar Regla' : 'Crear Regla'}
               </button>
               {editingRuleId && (
-                <button type="button" className="btn btn-outline" style={{ padding: '0.5rem 1rem', flex: 1 }} onClick={() => { setEditingRuleId(null); setNewRuleKeyword(''); setNewRuleCategory({ tipo: null, principal: null, secundaria: null }); }}>
+                <button type="button" className="btn btn-outline" style={{ padding: '0.5rem 1rem', flex: 1 }} onClick={() => { setEditingRuleId(null); setNewRuleKeyword(''); setNewRuleCategory({ tipo: null, principal: null, secundaria: null }); setRuleFormErrors({ keyword: '', category: '' }); }}>
                   <X size={20} />
                   Cancelar
                 </button>
@@ -656,26 +876,69 @@ export default function Settings() {
             </div>
           </form>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem', marginTop: '1.5rem' }}>
+          {classificationRules.length > 0 && (
+            <div className="settings-rule-toolbar">
+              <div className="settings-rule-search">
+                <Search size={18} aria-hidden="true" />
+                <input
+                  id="rule-search"
+                  type="search"
+                  value={ruleSearch}
+                  onChange={(event) => {
+                    setRuleSearch(event.target.value);
+                    setRulePage(1);
+                  }}
+                  placeholder="Buscar por palabra o categoría"
+                  aria-label="Buscar reglas de auto-clasificación"
+                />
+                {ruleSearch && (
+                  <button
+                    type="button"
+                    className="btn-icon settings-rule-search-clear"
+                    onClick={() => {
+                      setRuleSearch('');
+                      setRulePage(1);
+                    }}
+                    aria-label="Limpiar búsqueda de reglas"
+                    title="Limpiar búsqueda"
+                  >
+                    <X size={18} />
+                  </button>
+                )}
+              </div>
+              <p className="settings-rule-count" role="status" aria-live="polite">
+                Mostrando {ruleResultStart}-{ruleResultEnd} de {filteredRules.length} {filteredRules.length === 1 ? 'regla' : 'reglas'}
+              </p>
+            </div>
+          )}
+
+          <div className="settings-rule-list">
             {classificationRules.length === 0 ? (
-              <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>No hay reglas de clasificación configuradas.</p>
+              <p className="settings-rule-empty">No hay reglas de clasificación configuradas.</p>
+            ) : filteredRules.length === 0 ? (
+              <div className="settings-rule-empty">
+                <strong>No encontramos reglas con “{ruleSearch.trim()}”.</strong>
+                <span>Prueba con otra palabra o limpia la búsqueda.</span>
+              </div>
             ) : (
-              classificationRules.map(r => (
-                <div key={r.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem', border: '2px solid black', borderRadius: '12px', backgroundColor: '#fff', boxShadow: '3px 3px 0 #000' }}>
-                  <div style={{ flex: 1 }}>
-                    <span style={{ fontWeight: 800, display: 'block', marginBottom: '0.25rem', fontSize: '0.95rem' }}>Si contiene: "{r.keyword}"</span>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, display: 'block', lineHeight: 1.4 }}>
-                      Clasificar como: <br/>{r.tipo_movimiento} &gt; {r.categoria_principal} &gt; {r.categoria_secundaria}
+              visibleRules.map(r => (
+                <article key={r.id} className="settings-rule-item">
+                  <div className="settings-rule-summary">
+                    <strong>Si contiene: “{r.keyword}”</strong>
+                    <span>
+                      {r.tipo_movimiento} &gt; {r.categoria_principal} &gt; {r.categoria_secundaria}
                     </span>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', borderTop: '2px dashed #e2e8f0', paddingTop: '0.75rem', marginTop: 'auto' }}>
+                  <div className="settings-rule-actions">
                     <button 
+                      type="button"
                       className="btn btn-outline" 
-                      style={{ padding: '0.5rem', flex: 1 }}
+                      aria-label={`Editar regla ${r.keyword}`}
                       onClick={() => {
                         setEditingRuleId(r.id);
                         setNewRuleKeyword(r.keyword);
                         setNewRuleCategory({ tipo: r.tipo_movimiento, principal: r.categoria_principal, secundaria: r.categoria_secundaria });
+                        setRuleFormErrors({ keyword: '', category: '' });
                         setAutoOpenTrigger(Date.now());
                         window.scrollTo({ top: document.getElementById('reglas')?.offsetTop || 0, behavior: 'smooth' });
                       }}
@@ -684,30 +947,60 @@ export default function Settings() {
                       Editar
                     </button>
                     <button 
-                      className="btn" 
-                      style={{ padding: '0.5rem', backgroundColor: '#fee2e2', color: 'var(--danger)', border: '2px solid var(--danger)', flex: '0 0 auto' }}
+                      type="button"
+                      className="btn settings-rule-delete"
                       title="Eliminar regla"
-                      onClick={() => handleDeleteRule(r.id)}
+                      aria-label={`Eliminar regla ${r.keyword}`}
+                      onClick={() => handleDeleteRule(r)}
                     >
                       <Trash2 size={18} />
                     </button>
                   </div>
-                </div>
+                </article>
               ))
             )}
           </div>
+
+          {rulePageCount > 1 && (
+            <nav className="settings-rule-pagination" aria-label="Páginas de reglas">
+              <button
+                type="button"
+                className="btn btn-outline"
+                disabled={safeRulePage === 1}
+                onClick={() => setRulePage(current => Math.max(1, current - 1))}
+              >
+                Anterior
+              </button>
+              <span aria-live="polite">Página {safeRulePage} de {rulePageCount}</span>
+              <button
+                type="button"
+                className="btn btn-outline"
+                disabled={safeRulePage === rulePageCount}
+                onClick={() => setRulePage(current => Math.min(rulePageCount, current + 1))}
+              >
+                Siguiente
+              </button>
+            </nav>
+          )}
         </CollapsibleSection>
 
         {/* Danger Zone */}
         <div className="card settings-card settings-card-wide settings-danger" style={{ position: 'relative', zIndex: 10, borderColor: 'var(--danger)' }}>
-          <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: 'var(--danger)' }}>Zona Peligrosa</h2>
+          <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: 'var(--danger-text)' }}>Zona Peligrosa</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
             Borrar tu cuenta eliminará de forma irreversible todas tus transacciones, configuraciones y reglas guardadas. Esta acción no se puede deshacer.
           </p>
           <button 
+            type="button"
             className="btn" 
-            style={{ backgroundColor: '#fecaca', color: 'var(--danger)', borderColor: 'var(--danger)' }}
-            onClick={handleDeleteAccount}
+            style={{ backgroundColor: '#fecaca', color: 'var(--danger-text)', borderColor: 'var(--danger)' }}
+            onClick={() => setDestructiveAction({
+              title: '¿Borrar tu cuenta definitivamente?',
+              description: 'Se eliminarán de forma irreversible tus transacciones, bancos, cuentas, categorías y reglas. Esta acción no se puede deshacer.',
+              confirmLabel: 'Borrar cuenta definitivamente',
+              confirmationText: 'ELIMINAR',
+              onConfirm: executeDeleteAccount
+            })}
           >
             <Trash2 size={20} />
             Borrar Cuenta Definitivamente
@@ -715,6 +1008,15 @@ export default function Settings() {
         </div>
 
       </div>
+      <ConfirmDialog
+        open={Boolean(destructiveAction)}
+        title={destructiveAction?.title || ''}
+        description={destructiveAction?.description || ''}
+        confirmLabel={destructiveAction?.confirmLabel || 'Confirmar'}
+        confirmationText={destructiveAction?.confirmationText}
+        onConfirm={destructiveAction?.onConfirm || (async () => {})}
+        onClose={() => setDestructiveAction(null)}
+      />
     </div>
   );
 }

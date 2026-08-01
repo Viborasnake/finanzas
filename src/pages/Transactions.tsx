@@ -1,18 +1,16 @@
-import { useEffect, useState, useMemo } from 'react';
-import { createPortal } from 'react-dom';
-import { useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../services/supabase';
-import { useAuth } from '../contexts/AuthContext';
-import { TransactionTypeBadge } from '../components/TransactionTypeBadge';
-import { AVAILABLE_BANKS, useBanks } from '../contexts/BankContext';
+import { useAuth } from '../contexts/authContextValue';
+import { AVAILABLE_BANKS, useBanks } from '../contexts/bankContextValue';
 import { Search, Edit2, Plus, X, ChevronRight, CheckCircle2, UploadCloud, Scissors, Undo2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useActionQueue } from '../hooks/useActionQueue';
 import SmartAssistant from '../components/SmartAssistant';
 import { useTaxonomy } from '../hooks/useTaxonomy';
-import { useSettings } from '../contexts/SettingsContext';
-import ImportModal from '../components/ImportModal';
+import { useSettings } from '../contexts/settingsContextValue';
 import SplitTransactionModal from '../components/SplitTransactionModal';
+import { Dialog } from '../components/Dialog';
 
 const normalizeBankName = (value: any) => String(value || '')
   .normalize('NFD')
@@ -36,9 +34,33 @@ const getBankMeta = (bankName: any) => {
 };
 
 
-export function CascadingCategorySelector({ initialPrincipal, initialSecundaria, contextDescription, onSave, autoOpenTrigger }: any) {
+type CategoryPickerMode = 'suggestions' | 'tree' | 'create';
+
+const normalizeCategoryText = (text: any) => String(text || '')
+  .toLowerCase()
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '');
+
+const getCategoryOptionKey = (option: any) => `${option.tipo}-${option.principal}-${option.secundaria}`;
+
+const CATEGORY_PREDICTION_HINTS = [
+  { keywords: ['pac agua', 'aguas andinas', 'essbio', 'nuevosur'], principal: 'Cuentas Básicas', secundaria: 'Agua', reason: 'Patrón reconocido como cuenta de agua' },
+  { keywords: ['enel', 'chilquinta', 'cge electricidad'], principal: 'Cuentas Básicas', secundaria: 'Luz', reason: 'Proveedor reconocido de electricidad' },
+  { keywords: ['metrogas', 'gasvalpo'], principal: 'Cuentas Básicas', secundaria: 'Gas', reason: 'Proveedor reconocido de gas' },
+  { keywords: ['lider', 'jumbo', 'unimarc', 'tottus', 'acuenta', 'santa isabel', 'alvi', 'mayorista 10'], principal: 'Alimentación', secundaria: 'Supermercado', reason: 'Comercio reconocido como supermercado' },
+  { keywords: ['abarrot', 'minimarket', 'almacen '], principal: 'Alimentación', secundaria: 'Abarrotes', reason: 'Comercio asociado a abarrotes' },
+  { keywords: ['copec', 'shell', 'petrobras', 'aramco'], principal: 'Transporte', secundaria: 'Bencina', reason: 'Comercio reconocido como estación de servicio' },
+  { keywords: ['autopista', 'costanera norte', 'vespucio', 'tag '], principal: 'Transporte', secundaria: 'Autopista', reason: 'Cobro asociado a autopista' },
+  { keywords: ['openai', 'chatgpt', 'chat gpt'], principal: 'Suscripciones', secundaria: 'Chat GPT', reason: 'Servicio reconocido como suscripción' },
+  { keywords: ['hbo max', 'hbomax'], principal: 'Suscripciones', secundaria: 'HBO MAX', reason: 'Servicio reconocido como suscripción' },
+  { keywords: ['netflix'], principal: 'Suscripciones', secundaria: 'Netflix', reason: 'Servicio reconocido como suscripción' },
+  { keywords: ['spotify'], principal: 'Suscripciones', secundaria: 'Spotify', reason: 'Servicio reconocido como suscripción' }
+];
+
+export function CascadingCategorySelector({ initialTipo, initialPrincipal, initialSecundaria, contextDescription, onSave, autoOpenTrigger }: any) {
   const { taxonomy, allOptions: ALL_OPTIONS } = useTaxonomy();
   const { customCategories, saveCustomCategories, classificationRules } = useSettings();
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const [inputValue, setInputValue] = useState(() => {
     if (initialSecundaria && initialPrincipal) {
@@ -47,94 +69,124 @@ export function CascadingCategorySelector({ initialPrincipal, initialSecundaria,
     return '';
   });
   const [isOpen, setIsOpen] = useState(false);
+  const [pickerMode, setPickerMode] = useState<CategoryPickerMode>('suggestions');
   const [searchValue, setSearchValue] = useState('');
-  const [selectedTipo, setSelectedTipo] = useState('Egreso');
+  const [selectedTipo, setSelectedTipo] = useState(initialTipo || 'Egreso');
   const [expandedPrincipal, setExpandedPrincipal] = useState<string | null>(initialPrincipal || null);
   const [newTipo, setNewTipo] = useState('Egreso');
   const [newPrincipal, setNewPrincipal] = useState('');
   const [newSecundaria, setNewSecundaria] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (initialSecundaria && initialPrincipal) {
       setInputValue(initialSecundaria === initialPrincipal ? initialPrincipal : `${initialSecundaria} (${initialPrincipal})`);
+      if (initialTipo) setSelectedTipo(initialTipo);
     } else {
       setInputValue('');
     }
-  }, [initialPrincipal, initialSecundaria]);
+  }, [initialPrincipal, initialSecundaria, initialTipo]);
 
   useEffect(() => {
     if (autoOpenTrigger) {
       setIsOpen(true);
+      setPickerMode('suggestions');
       setSearchValue('');
-      const tipo = ALL_OPTIONS.find(o => o.principal === initialPrincipal && o.secundaria === initialSecundaria)?.tipo || 'Egreso';
+      const tipo = initialTipo || ALL_OPTIONS.find(o => o.principal === initialPrincipal && o.secundaria === initialSecundaria)?.tipo || 'Egreso';
       setSelectedTipo(tipo);
+      setNewTipo(tipo);
       setExpandedPrincipal(initialPrincipal || null);
     }
-  }, [autoOpenTrigger]);
+  }, [ALL_OPTIONS, autoOpenTrigger, initialPrincipal, initialSecundaria, initialTipo]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen]);
-
-  const selectOption = (o: any) => {
-    setInputValue(o.label);
-    setSearchValue('');
-    setSelectedTipo(o.tipo);
-    setExpandedPrincipal(o.principal);
-    onSave(o.tipo, o.principal, o.secundaria);
-    setIsOpen(false);
+  const selectOption = async (option: any) => {
+    if (isSaving) return;
+    setIsSaving(true);
+    try {
+      await Promise.resolve(onSave(option.tipo, option.principal, option.secundaria));
+      setInputValue(option.label);
+      setSearchValue('');
+      setSelectedTipo(option.tipo);
+      setExpandedPrincipal(option.principal);
+      setIsOpen(false);
+    } catch (error) {
+      console.error('Error saving category:', error);
+      toast.error('No pudimos guardar la clasificación. Intenta nuevamente.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const isComplete = ALL_OPTIONS.some(o => o.label === inputValue);
-  const selectedOption = ALL_OPTIONS.find(o => o.label === inputValue);
+  const selectedOption = ALL_OPTIONS.find(o => o.label === inputValue && o.tipo === selectedTipo)
+    || ALL_OPTIONS.find(o => o.label === inputValue);
+  const isComplete = Boolean(selectedOption);
   
-  const normalizeText = (text: any) => String(text || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  const filteredOptions = useMemo(() => {
-    const query = normalizeText(searchValue);
-    if (!query) {
-      const context = normalizeText(contextDescription);
-      if (!context) return ALL_OPTIONS.slice(0, 8);
+  const suggestionItems = useMemo(() => {
+    const query = normalizeCategoryText(searchValue.trim());
+    const context = normalizeCategoryText(contextDescription);
 
-      const suggestions: any[] = [];
-      classificationRules.forEach(rule => {
-        if (rule.keyword && context.includes(normalizeText(rule.keyword))) {
-          const match = ALL_OPTIONS.find(o =>
-            o.tipo === rule.tipo_movimiento &&
-            o.principal === rule.categoria_principal &&
-            o.secundaria === rule.categoria_secundaria
-          );
-          if (match) suggestions.push(match);
-        }
-      });
-
-      ALL_OPTIONS.forEach(o => {
-        const principal = normalizeText(o.principal);
-        const secundaria = normalizeText(o.secundaria);
-        if ((principal.length > 3 && context.includes(principal)) || (secundaria.length > 3 && context.includes(secundaria))) {
-          suggestions.push(o);
-        }
-      });
-
-      const seen = new Set<string>();
-      const uniqueSuggestions = suggestions.filter(o => {
-        const key = `${o.tipo}-${o.principal}-${o.secundaria}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-
-      return uniqueSuggestions.length > 0 ? uniqueSuggestions.slice(0, 8) : ALL_OPTIONS.slice(0, 8);
+    if (query) {
+      return ALL_OPTIONS
+        .filter(option => normalizeCategoryText(`${option.label} ${option.tipo} ${option.principal} ${option.secundaria}`).includes(query))
+        .slice(0, 12)
+        .map(option => ({
+          option,
+          reason: `Coincide con "${searchValue.trim()}"`,
+          source: 'search'
+        }));
     }
-    return ALL_OPTIONS
-      .filter(o => normalizeText(`${o.label} ${o.tipo} ${o.principal} ${o.secundaria}`).includes(query))
-      .slice(0, 10);
+
+    if (!context) return [];
+
+    const ranked = new Map<string, { option: any; score: number; reason: string; source: string }>();
+    const addSuggestion = (option: any, score: number, reason: string, source: string) => {
+      const key = getCategoryOptionKey(option);
+      const current = ranked.get(key);
+      if (!current || current.score < score) ranked.set(key, { option, score, reason, source });
+    };
+
+    classificationRules.forEach(rule => {
+      const keyword = normalizeCategoryText(rule.keyword);
+      if (!keyword || !context.includes(keyword)) return;
+
+      const match = ALL_OPTIONS.find(option =>
+        option.tipo === rule.tipo_movimiento &&
+        option.principal === rule.categoria_principal &&
+        option.secundaria === rule.categoria_secundaria
+      );
+      if (match) addSuggestion(match, 120, `Regla guardada: "${rule.keyword}"`, 'rule');
+    });
+
+    CATEGORY_PREDICTION_HINTS.forEach(hint => {
+      if (!hint.keywords.some(keyword => context.includes(normalizeCategoryText(keyword)))) return;
+      const match = ALL_OPTIONS.find(option =>
+        option.tipo === 'Egreso' &&
+        option.principal === hint.principal &&
+        option.secundaria === hint.secundaria
+      );
+      if (match) addSuggestion(match, 105, hint.reason, 'pattern');
+    });
+
+    ALL_OPTIONS.forEach(option => {
+      const secondary = normalizeCategoryText(option.secundaria);
+      const principal = normalizeCategoryText(option.principal);
+      const secondaryTokens = secondary.split(/[^a-z0-9]+/).filter(token => token.length >= 3 && !['otros', 'otra', 'para', 'con'].includes(token));
+      const principalTokens = principal.split(/[^a-z0-9]+/).filter(token => token.length >= 4 && !['otros', 'otra', 'para', 'basicas'].includes(token));
+      const matchingSecondary = secondaryTokens.find(token => context.includes(token));
+      const matchingPrincipal = principalTokens.find(token => context.includes(token));
+
+      if (secondary.length >= 3 && context.includes(secondary)) {
+        addSuggestion(option, 90, `Coincide con "${option.secundaria}" en la descripción`, 'description');
+      } else if (matchingSecondary) {
+        addSuggestion(option, 72, `Coincide con "${matchingSecondary}" en la descripción`, 'description');
+      } else if (matchingPrincipal) {
+        addSuggestion(option, 58, `Coincide con la categoría ${option.principal}`, 'description');
+      }
+    });
+
+    return Array.from(ranked.values())
+      .sort((a, b) => b.score - a.score || a.option.label.localeCompare(b.option.label, 'es'))
+      .slice(0, 8);
   }, [ALL_OPTIONS, classificationRules, contextDescription, searchValue]);
 
   const tipoTabs = useMemo(() => {
@@ -154,20 +206,30 @@ export function CascadingCategorySelector({ initialPrincipal, initialSecundaria,
   };
 
   const openPicker = () => {
-    const current = selectedOption || ALL_OPTIONS.find(o => o.principal === initialPrincipal && o.secundaria === initialSecundaria);
+    const current = selectedOption || ALL_OPTIONS.find(o => o.tipo === initialTipo && o.principal === initialPrincipal && o.secundaria === initialSecundaria);
     const tipo = current?.tipo || selectedTipo || 'Egreso';
     setSelectedTipo(tipo);
     setNewTipo(tipo);
     setExpandedPrincipal(current?.principal || initialPrincipal || null);
-    setSearchValue(inputValue);
+    setSearchValue('');
+    setPickerMode('suggestions');
     setIsOpen(true);
   };
 
-  const clearSelection = () => {
-    setInputValue('');
-    setSearchValue('');
-    onSave(null, null, null);
-    setIsOpen(false);
+  const clearSelection = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
+    try {
+      await Promise.resolve(onSave(null, null, null));
+      setInputValue('');
+      setSearchValue('');
+      setIsOpen(false);
+    } catch (error) {
+      console.error('Error clearing category:', error);
+      toast.error('No pudimos limpiar la clasificación.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCreateCategory = async () => {
@@ -193,166 +255,210 @@ export function CascadingCategorySelector({ initialPrincipal, initialSecundaria,
       catsCopy.push({ tipo: newTipo, principal, secundarias: [secundaria] });
     }
 
-    await saveCustomCategories(catsCopy);
-    const label = secundaria === principal ? principal : `${secundaria} (${principal})`;
-    setInputValue(label);
-    setSelectedTipo(newTipo);
-    setExpandedPrincipal(principal);
-    setNewPrincipal('');
-    setNewSecundaria('');
-    onSave(newTipo, principal, secundaria);
-    setIsOpen(false);
-    toast.success('Categoría creada y aplicada');
+    setIsSaving(true);
+    try {
+      await saveCustomCategories(catsCopy);
+      await Promise.resolve(onSave(newTipo, principal, secundaria));
+      const label = secundaria === principal ? principal : `${secundaria} (${principal})`;
+      setInputValue(label);
+      setSelectedTipo(newTipo);
+      setExpandedPrincipal(principal);
+      setNewPrincipal('');
+      setNewSecundaria('');
+      setIsOpen(false);
+      toast.success('Categoría creada y aplicada');
+    } catch (error) {
+      console.error('Error creating category:', error);
+      toast.error('No pudimos crear la categoría.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
+  const pickerModes: { id: CategoryPickerMode; label: string; icon: ReactNode }[] = [
+    { id: 'suggestions', label: 'Sugerencias', icon: <Search size={17} /> },
+    { id: 'tree', label: 'Explorar', icon: <ChevronRight size={17} /> },
+    { id: 'create', label: 'Crear nueva', icon: <Plus size={17} /> }
+  ];
+
   return (
-    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', position: 'relative' }}>
+    <div className="category-selector">
       <button
+        ref={triggerRef}
         type="button"
         onClick={openPicker}
-        className="input"
+        disabled={isSaving}
+        className="input category-selector-trigger"
+        aria-label={inputValue ? `Cambiar clasificación: ${inputValue}` : 'Clasificar transacción'}
         style={{ 
-          padding: '0.35rem 0.55rem', 
-          fontSize: '0.875rem', 
-          width: '280px',
-          minHeight: '36px',
-          fontWeight: 600,
-          textAlign: 'left',
-          overflow: 'hidden',
-          whiteSpace: 'nowrap',
-          textOverflow: 'ellipsis',
           backgroundColor: isComplete && selectedOption ? getBgColor(selectedOption.tipo) : 'white',
           borderColor: 'black'
         }}
       >
-        {inputValue || 'Clasificar...'}
+        {isSaving ? 'Guardando...' : (inputValue || 'Clasificar...')}
       </button>
 
-      {isOpen && createPortal(
-        <div
-          className="portal-dropdown"
-          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.38)', zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
-          onMouseDown={() => setIsOpen(false)}
+      {isOpen && (
+        <Dialog
+          onClose={() => setIsOpen(false)}
+          returnFocusRef={triggerRef}
+          labelledBy="category-picker-title"
+          describedBy="category-picker-description"
+          backdropStyle={{ zIndex: 999999 }}
+          panelStyle={{ maxWidth: '820px', maxHeight: '88vh', overflow: 'hidden', display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)' }}
         >
-          <div
-            style={{ width: 'min(980px, 100%)', maxHeight: '88vh', overflow: 'hidden', backgroundColor: '#fff', border: '2px solid #000', borderRadius: '12px', boxShadow: '6px 6px 0px #000', display: 'grid', gridTemplateRows: 'auto 1fr' }}
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <div style={{ padding: '1rem 1.25rem', borderBottom: '2px solid #000', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', backgroundColor: '#f8fafc' }}>
+            <div className="dialog-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 900 }}>Elegir clasificación</h3>
-                <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: '#475569', fontWeight: 600 }}>Elige una forma de clasificar: usa las sugerencias o navega el árbol. No necesitas hacer ambas.</p>
+                <h3 id="category-picker-title" style={{ margin: 0, fontSize: '1.15rem', fontWeight: 900 }}>Elegir clasificación</h3>
+                <p id="category-picker-description" style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: '#475569', fontWeight: 600 }}>Elige una sugerencia, explora las categorías o crea una nueva.</p>
               </div>
-              <button className="btn-icon" onClick={() => setIsOpen(false)} title="Cerrar">
+              <button type="button" className="dialog-close" onClick={() => setIsOpen(false)} aria-label="Cerrar selector de clasificación" title="Cerrar">
                 <X size={18} />
               </button>
             </div>
 
-            <div className="category-picker-grid">
-              <div className="category-picker-left" style={{ padding: '1rem', overflowY: 'auto' }}>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.8rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#dbeafe', boxShadow: '3px 3px 0 #000', fontSize: '1rem', fontWeight: 900, marginBottom: '0.75rem' }}>
-                  Busca
+            <div className="category-picker-body">
+              <div className="category-picker-context">
+                <div>
+                  <span>Transacción</span>
+                  <strong>{contextDescription || 'Sin descripción'}</strong>
                 </div>
-                {contextDescription && (
-                  <div style={{ marginBottom: '0.75rem', padding: '0.65rem 0.75rem', border: '2px solid #000', borderRadius: '8px', backgroundColor: '#f1f5f9', boxShadow: '2px 2px 0px #000' }}>
-                    <div style={{ fontSize: '0.68rem', textTransform: 'uppercase', fontWeight: 900, color: '#64748b', marginBottom: '0.25rem' }}>Transacción</div>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 900, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{contextDescription}</div>
-                  </div>
-                )}
-                <div style={{ position: 'relative', marginBottom: '1rem' }}>
-                  <Search size={18} style={{ position: 'absolute', left: '0.8rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
-                  <input
-                    autoFocus
-                    className="input"
-                    value={searchValue}
-                    onChange={(e) => setSearchValue(e.target.value)}
-                    placeholder="Ej: sueldo, supermercado, tarjeta..."
-                    style={{ paddingLeft: '2.4rem', paddingRight: searchValue ? '2.4rem' : undefined, backgroundColor: '#fff' }}
-                  />
-                  {searchValue && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchValue('')}
-                      title="Limpiar búsqueda"
-                      style={{ position: 'absolute', right: '0.55rem', top: '50%', transform: 'translateY(-50%)', width: '28px', height: '28px', border: '2px solid #000', borderRadius: '6px', backgroundColor: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxShadow: '1px 1px 0 #000' }}
-                    >
-                      <X size={15} strokeWidth={3} />
-                    </button>
-                  )}
+                <div>
+                  <span>Clasificación actual</span>
+                  <strong>{inputValue || 'Sin clasificación'}</strong>
                 </div>
-
-                <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 900, color: '#64748b', marginBottom: '0.5rem' }}>
-                  {searchValue ? 'Resultados' : 'Sugerencias'}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
-                  {filteredOptions.map((o) => (
-                    <button
-                      key={`${o.tipo}-${o.principal}-${o.secundaria}`}
-                      onClick={() => selectOption(o)}
-                      style={{ textAlign: 'left', padding: '0.75rem', border: '2px solid #000', borderRadius: '8px', backgroundColor: getBgColor(o.tipo), boxShadow: '2px 2px 0px #000', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}
-                    >
-                      <span style={{ minWidth: 0 }}>
-                        <span style={{ display: 'block', fontWeight: 900, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.secundaria}</span>
-                        <span style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.principal}</span>
-                      </span>
-                      <TransactionTypeBadge type={o.tipo} />
-                    </button>
-                  ))}
-                </div>
-
-                {inputValue && (
-                  <button className="btn btn-outline" onClick={clearSelection} style={{ width: '100%', backgroundColor: '#fff' }}>
-                    Limpiar clasificación
-                  </button>
-                )}
               </div>
 
-              <div className="category-picker-right" style={{ padding: '1rem', overflowY: 'auto', backgroundColor: '#f8fafc', borderLeft: '2px solid #000' }}>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.8rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#fef08a', boxShadow: '3px 3px 0 #000', fontSize: '1.1rem', fontWeight: 900, marginBottom: '1rem' }}>
-                  Navega / Crea
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
+              <div className="category-picker-modes" role="group" aria-label="Forma de elegir categoría">
+                {pickerModes.map(mode => (
+                  <button
+                    key={mode.id}
+                    type="button"
+                    aria-pressed={pickerMode === mode.id}
+                    className={pickerMode === mode.id ? 'active' : ''}
+                    onClick={() => setPickerMode(mode.id)}
+                  >
+                    {mode.icon}
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="category-picker-panel">
+                {pickerMode === 'suggestions' && (
+                  <section aria-label="Sugerencias de clasificación">
+                    <div className="category-picker-panel-heading">
+                      <div>
+                        <h4>{searchValue ? 'Resultados de búsqueda' : 'Sugerencias para esta transacción'}</h4>
+                        <p>{searchValue ? 'Busca por categoría principal o detalle.' : 'Usamos tus reglas guardadas y las palabras de la descripción.'}</p>
+                      </div>
+                    </div>
+
+                    <div className="category-picker-search">
+                      <Search size={18} aria-hidden="true" />
+                      <input
+                        autoFocus
+                        data-dialog-initial-focus
+                        aria-label="Buscar categoría"
+                        className="input"
+                        value={searchValue}
+                        onChange={(e) => setSearchValue(e.target.value)}
+                        placeholder="Ej: sueldo, agua, supermercado..."
+                      />
+                      {searchValue && (
+                        <button type="button" onClick={() => setSearchValue('')} title="Limpiar búsqueda" aria-label="Limpiar búsqueda">
+                          <X size={16} strokeWidth={3} />
+                        </button>
+                      )}
+                    </div>
+
+                    {suggestionItems.length > 0 ? (
+                      <div className="category-suggestion-list">
+                        {suggestionItems.map(({ option, reason, source }) => (
+                          <button
+                            type="button"
+                            key={getCategoryOptionKey(option)}
+                            onClick={() => selectOption(option)}
+                            disabled={isSaving}
+                            className="category-suggestion"
+                            style={{ backgroundColor: getBgColor(option.tipo) }}
+                          >
+                            <span className="category-suggestion-copy">
+                              <strong>{option.secundaria}</strong>
+                              <span>{option.tipo} &gt; {option.principal}</span>
+                              <small className={`category-suggestion-reason source-${source}`}>{reason}</small>
+                            </span>
+                            <span className="category-suggestion-action">Elegir <ChevronRight size={16} /></span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="category-picker-empty">
+                        <strong>{searchValue ? 'No hay resultados para esa búsqueda.' : 'No encontré una coincidencia clara todavía.'}</strong>
+                        <span>{searchValue ? 'Prueba con una palabra más corta o explora las categorías.' : 'Puedes explorar el árbol completo o crear una categoría propia.'}</span>
+                        <button type="button" className="btn btn-outline" onClick={() => setPickerMode('tree')}>Explorar categorías</button>
+                      </div>
+                    )}
+                  </section>
+                )}
+
+                {pickerMode === 'tree' && (
+                  <section aria-label="Árbol de categorías">
+                    <div className="category-picker-panel-heading">
+                      <div>
+                        <h4>Explorar categorías</h4>
+                        <p>Primero elige el tipo de movimiento y luego una categoría.</p>
+                      </div>
+                    </div>
+                    <div className="category-type-tabs" role="group" aria-label="Tipo de movimiento">
                   {tipoTabs.map(tipo => (
                     <button
+                      type="button"
                       key={tipo}
+                      aria-pressed={selectedTipo === tipo}
                       onClick={() => {
                         setSelectedTipo(tipo);
                         setNewTipo(tipo);
                         setExpandedPrincipal(null);
                       }}
-                      style={{ padding: '0.5rem 0.85rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: selectedTipo === tipo ? '#000' : getBgColor(tipo), color: selectedTipo === tipo ? '#fff' : '#000', fontWeight: 900, boxShadow: '2px 2px 0px #000' }}
+                      className={selectedTipo === tipo ? 'active' : ''}
+                      style={{ backgroundColor: selectedTipo === tipo ? '#000' : getBgColor(tipo) }}
                     >
                       {tipo}
                     </button>
                   ))}
-                </div>
+                    </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 210px), 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
+                    <div className="category-tree-grid">
                   {Object.entries(currentTree).map(([principal, secundarias]) => {
                     const isExpanded = expandedPrincipal === principal;
                     return (
-                      <div key={principal} style={{ border: '2px solid #000', borderRadius: '10px', boxShadow: '3px 3px 0px #000', overflow: 'hidden', backgroundColor: '#fff' }}>
+                      <div key={principal} className="category-tree-branch">
                         <button
+                          type="button"
+                          aria-expanded={isExpanded}
                           onClick={() => setExpandedPrincipal(isExpanded ? null : principal)}
-                          style={{ width: '100%', padding: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', backgroundColor: getBgColor(selectedTipo), borderBottom: isExpanded ? '2px solid #000' : 'none', textAlign: 'left' }}
+                          style={{ backgroundColor: getBgColor(selectedTipo), borderBottom: isExpanded ? '2px solid #000' : 'none' }}
                         >
-                          <span style={{ fontSize: '0.9rem', fontWeight: 900 }}>{principal}</span>
+                          <span>{principal}</span>
                           <ChevronRight size={18} strokeWidth={3} style={{ transform: isExpanded ? 'rotate(90deg)' : 'none', flexShrink: 0 }} />
                         </button>
                         {isExpanded && (
-                          <div style={{ padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                          <div className="category-tree-options">
                             {(secundarias as string[]).map(secundaria => {
                               const active = selectedOption?.tipo === selectedTipo && selectedOption?.principal === principal && selectedOption?.secundaria === secundaria;
                               return (
                                 <button
+                                  type="button"
                                   key={`${principal}-${secundaria}`}
+                                  disabled={isSaving}
                                   onClick={() => selectOption({
                                     tipo: selectedTipo,
                                     principal,
                                     secundaria,
                                     label: secundaria === principal ? principal : `${secundaria} (${principal})`
                                   })}
-                                  style={{ padding: '0.55rem 0.65rem', border: '1.5px solid #000', borderRadius: '7px', backgroundColor: active ? '#dcfce7' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', textAlign: 'left', fontWeight: 750 }}
+                                  className={active ? 'active' : ''}
                                 >
                                   <span>{secundaria}</span>
                                   {active && <CheckCircle2 size={17} color="#16a34a" />}
@@ -364,29 +470,54 @@ export function CascadingCategorySelector({ initialPrincipal, initialSecundaria,
                       </div>
                     );
                   })}
-                </div>
+                    </div>
+                  </section>
+                )}
 
-                <div style={{ border: '2px solid #000', borderRadius: '10px', boxShadow: '3px 3px 0px #000', padding: '1rem', backgroundColor: '#fef08a' }}>
-                  <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.95rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <Plus size={18} strokeWidth={3} />
-                    Crear categoría aquí
-                  </h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap: '0.6rem', alignItems: 'end' }}>
-                    <select className="input" value={newTipo} onChange={(e) => setNewTipo(e.target.value)} style={{ backgroundColor: '#fff' }}>
-                      {tipoTabs.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
-                    </select>
-                    <input className="input" value={newPrincipal} onChange={(e) => setNewPrincipal(e.target.value)} placeholder="Principal" style={{ backgroundColor: '#fff' }} />
-                    <input className="input" value={newSecundaria} onChange={(e) => setNewSecundaria(e.target.value)} placeholder="Subcategoría" style={{ backgroundColor: '#fff' }} />
-                    <button className="btn btn-primary" onClick={handleCreateCategory} style={{ height: '44px', whiteSpace: 'nowrap' }}>
-                      Crear
-                    </button>
-                  </div>
-                </div>
+                {pickerMode === 'create' && (
+                  <section aria-label="Crear nueva categoría">
+                    <div className="category-picker-panel-heading">
+                      <div>
+                        <h4>Crear y aplicar una categoría</h4>
+                        <p>La nueva categoría quedará disponible para próximas transacciones.</p>
+                      </div>
+                    </div>
+                    <form className="category-create-form" onSubmit={(event) => { event.preventDefault(); handleCreateCategory(); }}>
+                      <label>
+                        <span>Tipo de movimiento</span>
+                        <select className="input" value={newTipo} onChange={(e) => setNewTipo(e.target.value)}>
+                          {tipoTabs.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
+                        </select>
+                      </label>
+                      <label>
+                        <span>Categoría principal</span>
+                        <input className="input" value={newPrincipal} onChange={(e) => setNewPrincipal(e.target.value)} placeholder="Ej: Mascotas" />
+                      </label>
+                      <label>
+                        <span>Subcategoría o detalle</span>
+                        <input className="input" value={newSecundaria} onChange={(e) => setNewSecundaria(e.target.value)} placeholder="Ej: Veterinario" />
+                      </label>
+                      <div className="category-create-preview">
+                        <span>Se guardará como</span>
+                        <strong>{newTipo} &gt; {newPrincipal.trim() || 'Categoría'} &gt; {newSecundaria.trim() || 'Detalle'}</strong>
+                      </div>
+                      <button className="btn btn-primary" type="submit" disabled={isSaving || !newPrincipal.trim() || !newSecundaria.trim()}>
+                        <Plus size={18} />
+                        {isSaving ? 'Creando...' : 'Crear y aplicar'}
+                      </button>
+                    </form>
+                  </section>
+                )}
               </div>
+
+              {inputValue && (
+                <div className="category-picker-footer">
+                  <span>¿Esta transacción no debe tener categoría?</span>
+                  <button type="button" className="btn btn-outline" onClick={clearSelection} disabled={isSaving}>Limpiar clasificación</button>
+                </div>
+              )}
             </div>
-          </div>
-        </div>,
-        document.body
+        </Dialog>
       )}
       {!isComplete && inputValue !== '' && !isOpen && (
         <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Pendiente...</span>
@@ -395,22 +526,26 @@ export function CascadingCategorySelector({ initialPrincipal, initialSecundaria,
   );
 }
 
-export function delay(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 const parseLocalDate = (dateStr: string) => {
   if (!dateStr) return new Date();
   const [y, m, d] = dateStr.split('T')[0].split('-');
   return new Date(parseInt(y), parseInt(m) - 1, parseInt(d), 12, 0, 0);
 };
 
+const formatPeriodLabel = (period: string) => {
+  const [year, month] = period.split('-').map(Number);
+  if (!year || !month) return period;
+  return new Intl.DateTimeFormat('es-CL', { month: 'long', year: 'numeric' })
+    .format(new Date(year, month - 1, 1))
+    .replace(/^./, value => value.toUpperCase());
+};
+
 export default function Transactions() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   
   useEffect(() => {
     const q = searchParams.get('search');
@@ -424,6 +559,7 @@ export default function Transactions() {
   const [filterBank, setFilterBank] = useState('all');
   
   const [filterPeriod, setFilterPeriod] = useState('all');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'individual' | 'bulk' | 'assistant'>('individual');
   const [bulkSearchTerm, setBulkSearchTerm] = useState('');
   const [bulkFilterMode, setBulkFilterMode] = useState<string>('unclassified');
@@ -549,17 +685,12 @@ export default function Transactions() {
   const { dispatchAction } = useActionQueue();
   const isConsolidated = dashboardScope === 'all' && connectedBanks.length > 1;
   const scopedBanks = isConsolidated ? connectedBanks : (activeBank ? [activeBank] : []);
+  const scopedBankKey = scopedBanks.join('|');
+  const userId = user?.id;
+  const fetchRequestRef = useRef(0);
 
-  useEffect(() => {
-    if (user && scopedBanks.length > 0) {
-      fetchTransactions();
-    } else {
-      setTransactions([]);
-      setLoading(false);
-    }
-  }, [user, dashboardScope, activeBank, connectedBanks.join('|')]);
-
-  const fetchAllForBank = async (bankId: string) => {
+  const fetchAllForBank = useCallback(async (bankId: string) => {
+    if (!userId) return [];
     let allData: any[] = [];
     let from = 0;
     const step = 1000;
@@ -567,7 +698,7 @@ export default function Transactions() {
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
-        .eq('user_id', user!.id)
+        .eq('user_id', userId)
         .eq('bank', bankId)
         .neq('amount', 0)
         .order('date', { ascending: false })
@@ -580,19 +711,22 @@ export default function Transactions() {
       from += step;
     }
     return allData;
-  };
+  }, [userId]);
 
-  const fetchTransactions = async () => {
+  const fetchTransactions = useCallback(async () => {
+    const requestId = ++fetchRequestRef.current;
+    const bankIds = scopedBankKey.split('|').filter(Boolean);
+
     try {
       setLoading(true);
-      if (!user || scopedBanks.length === 0) {
-        setTransactions([]);
+      if (!userId || bankIds.length === 0) {
+        if (requestId === fetchRequestRef.current) setTransactions([]);
         return;
       }
 
-      if (isConsolidated) {
+      if (bankIds.length > 1) {
         const results = await Promise.all(
-          scopedBanks.map(async bank => {
+          bankIds.map(async bank => {
             try {
               const data = await fetchAllForBank(bank);
               return { data, bank, error: null };
@@ -612,25 +746,38 @@ export default function Transactions() {
           }))
         );
         rows.sort((a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime());
-        setTransactions(rows);
+        if (requestId === fetchRequestRef.current) setTransactions(rows);
       } else {
-        const data = await fetchAllForBank(scopedBanks[0]);
+        const data = await fetchAllForBank(bankIds[0]);
         // Sort descending for Transactions
         data.sort((a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime());
-        setTransactions(data);
+        if (requestId === fetchRequestRef.current) setTransactions(data);
       }
     } catch (error) {
-      console.error('Error fetching transactions:', error);
-      toast.error('Error al cargar transacciones');
+      if (requestId === fetchRequestRef.current) {
+        console.error('Error fetching transactions:', error);
+        toast.error('Error al cargar transacciones');
+      }
     } finally {
-      setLoading(false);
+      if (requestId === fetchRequestRef.current) setLoading(false);
     }
-  };
+  }, [fetchAllForBank, scopedBankKey, userId]);
+
+  useEffect(() => {
+    void fetchTransactions();
+    return () => {
+      fetchRequestRef.current += 1;
+    };
+  }, [fetchTransactions]);
 
 
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterBank, filterPeriod, filterStatus, filterType, searchTerm]);
 
   const availablePeriods = useMemo(() => {
     const periods = new Set<string>();
@@ -674,6 +821,7 @@ export default function Transactions() {
   });
 
   const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
+  const activeFilterCount = [filterPeriod, filterType, filterStatus, filterBank].filter(value => value !== 'all').length;
   const paginatedTransactions = filteredTransactions.slice(
     (currentPage - 1) * itemsPerPage, 
     currentPage * itemsPerPage
@@ -739,7 +887,7 @@ export default function Transactions() {
         <div className="confirm-toast">
           <div className="confirm-toast-header">
             <h3>Categorización Múltiple</h3>
-            <button className="btn-icon" onClick={() => cancelCategorize(t.id)} title="Cerrar">
+            <button type="button" className="btn-icon" onClick={() => cancelCategorize(t.id)} title="Cerrar" aria-label="Cerrar confirmación de categoría">
               <X size={16} />
             </button>
           </div>
@@ -748,6 +896,7 @@ export default function Transactions() {
           </p>
           <div className="confirm-toast-actions">
             <button 
+              type="button"
               className="btn btn-outline" 
               style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', backgroundColor: '#fff' }} 
               onClick={() => cancelCategorize(t.id)}
@@ -755,6 +904,7 @@ export default function Transactions() {
               Cancelar
             </button>
             <button 
+              type="button"
               className="btn btn-outline" 
               style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }} 
               onClick={() => {
@@ -773,6 +923,7 @@ export default function Transactions() {
               Solo a esta
             </button>
             <button 
+              type="button"
               className="btn btn-primary" 
               style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }} 
               onClick={() => {
@@ -840,7 +991,7 @@ export default function Transactions() {
         <div className="confirm-toast">
           <div className="confirm-toast-header">
             <h3>Renombrado Múltiple</h3>
-            <button className="btn-icon" onClick={() => cancelRename(t.id)} title="Cerrar">
+            <button type="button" className="btn-icon" onClick={() => cancelRename(t.id)} title="Cerrar" aria-label="Cerrar confirmación de nombre">
               <X size={16} />
             </button>
           </div>
@@ -849,6 +1000,7 @@ export default function Transactions() {
           </p>
           <div className="confirm-toast-actions">
             <button 
+              type="button"
               className="btn btn-outline" 
               onClick={() => cancelRename(t.id)}
               style={{ backgroundColor: '#fff' }}
@@ -856,6 +1008,7 @@ export default function Transactions() {
               Cancelar
             </button>
             <button 
+              type="button"
               className="btn btn-outline" 
               onClick={() => {
                 toast.dismiss(t.id);
@@ -873,6 +1026,7 @@ export default function Transactions() {
               Solo a esta
             </button>
             <button 
+              type="button"
               className="btn btn-primary" 
               onClick={() => {
                 toast.dismiss(t.id);
@@ -920,9 +1074,10 @@ export default function Transactions() {
 
   if (loading) {
     return (
-      <div style={{ padding: '2rem' }}>
-        <h1 style={{ fontSize: '2.5rem', marginBottom: '1.5rem', fontWeight: 900 }}>Clasificador de Transacciones</h1>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
+      <div className="transactions-loading" role="status" aria-live="polite" aria-busy="true">
+        <span className="sr-only">Cargando transacciones</span>
+        <h1>Clasificador de transacciones</h1>
+        <div className="transactions-loading-grid" aria-hidden="true">
           <div className="skeleton" style={{ height: '100px' }}></div>
           <div className="skeleton" style={{ height: '100px' }}></div>
           <div className="skeleton" style={{ height: '100px' }}></div>
@@ -949,11 +1104,13 @@ export default function Transactions() {
           </div>
         </div>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+        <div className="transactions-actions">
           <button 
+            type="button"
             className="btn btn-primary" 
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.65rem 1rem', backgroundColor: '#e2e8f0', color: '#0f172a', fontWeight: 800, border: '2px solid #000', boxShadow: '3px 3px 0 #000' }}
-            onClick={() => setIsImportModalOpen(true)}
+            style={{ padding: '0.65rem 1rem', backgroundColor: '#e2e8f0', color: '#0f172a', fontWeight: 800, border: '2px solid #000', boxShadow: '3px 3px 0 #000' }}
+            onClick={() => navigate('/import')}
+            aria-label="Importar una cartola bancaria"
           >
             <UploadCloud size={20} />
             Importar Cartola
@@ -961,16 +1118,20 @@ export default function Transactions() {
         
         <div className="responsive-tabs">
           <button 
+            type="button"
             onClick={() => setViewMode('individual')}
             className={viewMode === 'individual' ? 'active' : ''}
+            aria-pressed={viewMode === 'individual'}
           >
             Lista Individual
           </button>
           <button 
+            type="button"
             onClick={() => setViewMode('assistant')}
             className={viewMode === 'assistant' ? 'active' : ''}
+            aria-pressed={viewMode === 'assistant'}
           >
-            Asistente Inteligente 🤖
+            Asistente Inteligente
           </button>
         </div>
       </div>
@@ -1043,7 +1204,7 @@ export default function Transactions() {
                     </span>
                   </td>
                   <td data-label="Cant." style={{ padding: '1rem', fontWeight: 800, fontSize: '1.25rem' }}>{group.count}</td>
-                  <td data-label="Acumulado" style={{ padding: '1rem', fontWeight: 800, color: group.type === 'ingreso' ? 'var(--success)' : 'var(--danger)' }}>
+                  <td data-label="Acumulado" style={{ padding: '1rem', fontWeight: 800, color: group.type === 'ingreso' ? 'var(--success-text)' : 'var(--danger-text)' }}>
                     {group.type === 'ingreso' ? '+' : '-'}${group.total.toLocaleString('es-CL')}
                   </td>
                   <td data-label="Clasificar" style={{ padding: '1rem' }}>
@@ -1109,53 +1270,103 @@ export default function Transactions() {
           </div>
 
           {/* Header filtros */}
-          <div className="filter-bar transactions-filter-bar">
+          <div className="filter-bar transactions-filter-bar" role="search" aria-label="Filtrar transacciones">
             <div className="transactions-search">
-              <Search size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+              <Search size={20} aria-hidden="true" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
               <input 
                 type="text" 
                 className="input" 
+                aria-label="Buscar transacciones"
                 placeholder="Buscar por descripción..." 
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
                   setSearchParams(e.target.value ? { search: e.target.value } : {});
                 }}
-                style={{ width: '100%', paddingLeft: '3rem', backgroundColor: 'white' }}
+                style={{ width: '100%', paddingLeft: '3rem', paddingRight: searchTerm ? '3rem' : undefined, backgroundColor: 'white' }}
               />
-            </div>
-            
-            <select className="input" value={filterPeriod} onChange={e => setFilterPeriod(e.target.value)}>
-              <option value="all">Todo el tiempo</option>
-              {availablePeriods.years.length > 0 && (
-                <optgroup label="Por Año">
-                  {availablePeriods.years.map(y => <option key={y} value={y}>{y} completo</option>)}
-                </optgroup>
+              {searchTerm && (
+                <button
+                  type="button"
+                  className="transactions-search-clear"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setSearchParams({});
+                  }}
+                  aria-label="Limpiar búsqueda"
+                  title="Limpiar búsqueda"
+                >
+                  <X size={16} strokeWidth={3} />
+                </button>
               )}
-            </select>
+            </div>
 
-            <select className="input" value={filterType} onChange={e => setFilterType(e.target.value)}>
-              <option value="all">Ingresos y Egresos</option>
-              <option value="expense">Solo Egresos</option>
-              <option value="income">Solo Ingresos</option>
-            </select>
-            
-            <select className="input" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-              <option value="all">Todas las transacciones</option>
-              <option value="classified">Clasificadas</option>
-              <option value="unclassified">Por clasificar</option>
-              <option value="split">Divididas</option>
-            </select>
-            
-            {connectedBanks.length > 1 && (
-              <select className="input" value={filterBank} onChange={e => setFilterBank(e.target.value)}>
-                <option value="all">Todos los bancos</option>
-                {connectedBanks.map(b => {
-                  const meta = getBankMeta(b);
-                  return <option key={b} value={b}>{meta.label}</option>;
-                })}
+            <button
+              type="button"
+              className="btn btn-outline transactions-filter-toggle"
+              aria-expanded={filtersOpen}
+              aria-controls="transaction-filter-controls"
+              onClick={() => setFiltersOpen(value => !value)}
+            >
+              Filtros
+              {activeFilterCount > 0 && <span>{activeFilterCount}</span>}
+              <ChevronRight size={18} style={{ transform: filtersOpen ? 'rotate(-90deg)' : 'rotate(90deg)' }} />
+            </button>
+
+            <div id="transaction-filter-controls" className={`transactions-filter-controls ${filtersOpen ? 'open' : ''}`}>
+              <select aria-label="Filtrar por periodo" className="input" value={filterPeriod} onChange={e => setFilterPeriod(e.target.value)}>
+                <option value="all">Todo el tiempo</option>
+                {availablePeriods.months.length > 0 && (
+                  <optgroup label="Por mes">
+                    {availablePeriods.months.map(period => <option key={period} value={period}>{formatPeriodLabel(period)}</option>)}
+                  </optgroup>
+                )}
+                {availablePeriods.years.length > 0 && (
+                  <optgroup label="Por año">
+                    {availablePeriods.years.map(y => <option key={y} value={y}>{y} completo</option>) }
+                  </optgroup>
+                )}
               </select>
-            )}
+
+              <select aria-label="Filtrar por tipo de movimiento" className="input" value={filterType} onChange={e => setFilterType(e.target.value)}>
+                <option value="all">Ingresos y Egresos</option>
+                <option value="expense">Solo Egresos</option>
+                <option value="income">Solo Ingresos</option>
+              </select>
+
+              <select aria-label="Filtrar por estado de clasificación" className="input" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+                <option value="all">Todas las transacciones</option>
+                <option value="classified">Clasificadas</option>
+                <option value="unclassified">Por clasificar</option>
+                <option value="split">Divididas</option>
+              </select>
+
+              {connectedBanks.length > 1 && (
+                <select aria-label="Filtrar por banco" className="input" value={filterBank} onChange={e => setFilterBank(e.target.value)}>
+                  <option value="all">Todos los bancos</option>
+                  {connectedBanks.map(b => {
+                    const meta = getBankMeta(b);
+                    return <option key={b} value={b}>{meta.label}</option>;
+                  })}
+                </select>
+              )}
+
+              {activeFilterCount > 0 && (
+                <button
+                  type="button"
+                  className="btn btn-outline transactions-filter-reset"
+                  onClick={() => {
+                    setFilterPeriod('all');
+                    setFilterType('all');
+                    setFilterStatus('all');
+                    setFilterBank('all');
+                    setFiltersOpen(false);
+                  }}
+                >
+                  Limpiar filtros
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="transactions-table-wrap">
@@ -1190,12 +1401,12 @@ export default function Transactions() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'transparent', border: '1px solid transparent' }} className="editable-cell">
                           <input 
                             type="text" 
+                            className="transaction-description-input"
+                            aria-label={`Editar descripción de la transacción del ${tx.date}`}
                             value={tx.description} 
                             onChange={(e) => setTransactions(prev => prev.map(t => t.id === tx.id ? { ...t, description: e.target.value } : t))}
                             onBlur={(e) => handleDescriptionBlur(tx.id, e.target.value, rawDesc)}
-                            style={{ 
-                              border: 'none', background: 'transparent', fontWeight: 700, width: '100%', outline: 'none', fontSize: '1rem'
-                            }}
+                            style={{ border: 'none', background: 'transparent', fontWeight: 700, width: '100%', fontSize: '1rem' }}
                           />
                           <Edit2 size={16} color="#94a3b8" />
                         </div>
@@ -1212,15 +1423,17 @@ export default function Transactions() {
                           )}
                         </div>
                       </td>
-                      <td data-label="Monto" style={{ padding: '1rem', fontWeight: 900, color: tx.type === 'ingreso' ? 'var(--success)' : 'var(--danger)' }}>
+                      <td data-label="Monto" style={{ padding: '1rem', fontWeight: 900, color: tx.type === 'ingreso' ? 'var(--success-text)' : 'var(--danger-text)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
                           <span>{new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(tx.amount)}</span>
                           {tx.raw_data?.split_group_id ? (
                             <button 
+                              type="button"
                               onClick={() => handleRestoreSplit(tx)}
                               className="btn-icon"
                               title="Restaurar transacción original"
-                              style={{ padding: '0.25rem', opacity: 0.6, color: '#ef4444' }}
+                              aria-label={`Restaurar transacción original: ${tx.description}`}
+                              style={{ padding: '0.25rem', opacity: 0.75, color: 'var(--danger-text)' }}
                               onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
                               onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.6')}
                             >
@@ -1228,9 +1441,11 @@ export default function Transactions() {
                             </button>
                           ) : (
                             <button 
+                              type="button"
                               onClick={() => setSplittingTx(tx)}
                               className="btn-icon"
                               title="Dividir transacción"
+                              aria-label={`Dividir transacción: ${tx.description}`}
                               style={{ padding: '0.25rem', opacity: 0.6 }}
                               onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
                               onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.6')}
@@ -1266,6 +1481,7 @@ export default function Transactions() {
           {totalPages > 1 && (
             <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'center', gap: '1rem', alignItems: 'center' }}>
               <button 
+                type="button"
                 className="btn btn-outline" 
                 disabled={currentPage === 1}
                 onClick={() => setCurrentPage(p => p - 1)}
@@ -1276,6 +1492,7 @@ export default function Transactions() {
                 Página {currentPage} de {totalPages}
               </span>
               <button 
+                type="button"
                 className="btn btn-outline" 
                 disabled={currentPage === totalPages}
                 onClick={() => setCurrentPage(p => p + 1)}
@@ -1285,13 +1502,6 @@ export default function Transactions() {
             </div>
           )}
         </div>
-      )}
-
-      {isImportModalOpen && (
-        <ImportModal onClose={() => {
-          setIsImportModalOpen(false);
-          fetchTransactions();
-        }} />
       )}
 
       {splittingTx && (

@@ -1,12 +1,13 @@
-# MisFinanzas 💸
+# MisFinanzas
 
-MisFinanzas es una plataforma moderna e inteligente para el control y seguimiento de finanzas personales. Centraliza las transacciones bancarias importadas de cartolas (MACH, Itaú, Scotiabank) en un solo lugar y clasifica automáticamente los movimientos.
+MisFinanzas es una plataforma moderna e inteligente para el control y seguimiento de finanzas personales. Centraliza las transacciones bancarias importadas de cartolas (MACH, Itaú, Scotiabank y Consorcio) en un solo lugar y clasifica automáticamente los movimientos.
 
 ## 🚀 Características
 *   **Importación Multiformato:** Carga de cartolas en formato CSV, Excel (XLSX), DAT y PDFs protegidos de MACH.
 *   **Extracción de PDF Local:** Procesamiento seguro de archivos PDF directamente en el navegador del usuario usando `pdfjs-dist` (legacy).
-*   **Clasificador Inteligente:** Reglas dinámicas de categorización automática y asignación de alias de transacciones.
-*   **Lista Individual & Categorización Masiva:** Interfaces interactivas y veloces con diseño Neo-Brutalista.
+*   **Clasificador Inteligente:** Sugerencias explicables, reglas persistentes, creación de categorías y corrección desde el mismo flujo.
+*   **Dashboard Consolidado:** Reportes por banco o consolidados, con contexto de periodo y desglose de movimientos.
+*   **Cuentas:** Seguimiento mensual de gastos fijos vinculados por categoría, historial y corrección de asociaciones.
 *   **Panel de Administración Seguro:** Panel de control de usuarios para la cuenta de administración principal (`viborasnake@gmail.com`) con permisos para pausar accesos, editar detalles, reenviar restablecimiento de credenciales y eliminar cuentas definitivamente.
 
 ---
@@ -43,11 +44,27 @@ VITE_SUPABASE_ANON_KEY=<tu-anon-key>
 npm run dev
 ```
 
+### 4. Verificar antes de entregar:
+```bash
+npm test
+npm run lint
+npm run build
+```
+
+Las pruebas de `tests/` cubren la lógica financiera pura que no debe depender de la interfaz. La línea base de QA responsive y accesibilidad está en `docs/design-qa-baseline.md`.
+
 ---
 
 ## 💾 Base de Datos e Integraciones (Supabase)
-Las tablas y relaciones fundamentales están definidas en `supabase_schema.sql` y las migraciones adicionales están en `supabase/migrations/`:
+La fuente de verdad está en `supabase/migrations/`. La migración `20260701000000_base_schema.sql` contiene la base estructural y las siguientes migraciones agregan normalización, administración e ingestión idempotente. Los SQL de la raíz se conservan únicamente como referencia histórica.
+
+El procedimiento para instalaciones nuevas y para reconciliar el proyecto remoto existente está en `docs/supabase-bootstrap.md`.
+
+Las entidades principales son:
 *   `profiles`: Guarda los perfiles de usuario vinculados a la autenticación de Supabase (con columna de `status`).
+*   `admin_users`: Registro privado de cuentas con rol administrativo; no admite lectura ni escritura directa desde el cliente.
 *   `user_settings`: Configuración general del usuario y RUT.
 *   `known_contacts`: Contactos conocidos guardados para clasificar transferencias.
 *   `transactions`: Todos los movimientos bancarios importados (monto, tipo, alias, categoría principal y secundaria, banco origen, metadatos originales).
+*   `classification_rules`: Reglas transversales de clasificación automática por usuario.
+*   `transaction_import_batches`: Control idempotente de cartolas y capturas procesadas.

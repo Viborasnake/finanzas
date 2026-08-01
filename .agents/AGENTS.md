@@ -5,7 +5,7 @@
 *   **Tech Stack:** React 19, TypeScript 6, Vite 8, Supabase (PostgreSQL + Auth + RLS + RPCs), Vanilla CSS.
 *   **Design System:** Neo-Brutalist (see Styling Guidelines below).
 *   **Deploy:** Vercel (configured via `vercel.json`).
-*   **Linter:** oxlint (`oxlint.json`).
+*   **Linter:** oxlint (`.oxlintrc.json`).
 
 ---
 
@@ -14,14 +14,15 @@
 ### Route Structure (`App.tsx`)
 ```
 /login          → Login (public)
+/reset-password → ResetPassword (public)
 /               → ProtectedRoute > Layout (Outlet)
   /             → Dashboard
   /transactions → Transactions
   /accounts     → Accounts (Gastos Fijos tracker)
-  /import       → CSVImport
+  /import       → ImportRoute
   /settings     → Settings
-  /audit        → MigrationAudit (herramienta de backup JSON)
-  /admin        → AdminDashboard (solo viborasnake@gmail.com)
+  /admin        → AdminDashboard (usuarios registrados en `admin_users`)
+*               → NotFound (404)
 ```
 
 ### Context Providers (nested in `main.tsx` order)
@@ -33,6 +34,8 @@
 
 ## Database Schema (Supabase)
 
+La fuente de verdad es `supabase/migrations/`. Para una instalación nueva se aplica primero `20260701000000_base_schema.sql`; los SQL de la raíz son referencias históricas. Antes de empujar esta base a un proyecto remoto existente, seguir `docs/supabase-bootstrap.md` y comparar un `supabase db pull`.
+
 ### Tables
 | Tabla | Descripción |
 |---|---|
@@ -43,10 +46,12 @@
 | `public.known_contacts` | Contactos por RUT: `id`, `user_id`, `name`, `rut`, `alias`, `created_at` |
 | `public.classification_rules` | Reglas de clasificación en BD: `id`, `user_id`, `bank`, `condition_type` ('contains'), `condition_value` (keyword), `category_tipo`, `category_principal`, `category_secundaria` |
 | `public.categories` | Tabla legacy (usada solo por MigrationAudit). No usar en features nuevas. |
+| `public.admin_users` | Registro privado de administradores; el cliente no tiene acceso directo. |
+| `public.transaction_import_batches` | Lotes idempotentes de importación por usuario, banco, origen y hash de archivo. |
 
 ### RLS Policies
 *   Todas las tablas tienen RLS activado. Los usuarios solo ven sus propios datos.
-*   Las RPCs admin usan `SECURITY DEFINER` y validan `auth.jwt() ->> 'email' = 'viborasnake@gmail.com'`.
+*   Las RPCs admin usan `SECURITY DEFINER` y validan `is_current_user_admin()`, que consulta `admin_users`.
 
 ### RPCs (Supabase functions)
 | Función | Descripción |
@@ -56,6 +61,8 @@
 | `admin_update_user_status(target_user_id, new_status)` | Cambia status en `profiles` (admin only) |
 | `admin_update_user_details(target_user_id, new_name, new_rut)` | Edita nombre y RUT (admin only) |
 | `admin_delete_user(target_user_id)` | Borra usuario desde auth.users (admin only) |
+| `is_current_user_admin()` | Indica si el usuario autenticado está registrado en `admin_users` |
+| `ingest_statement_transactions(p_bank, p_file_hash, p_rows, p_source_kind)` | Inserta cartolas o capturas de forma atómica e idempotente |
 
 ---
 
@@ -71,23 +78,24 @@ Definida en `src/hooks/useTaxonomy.ts` → `BASE_TAXONOMY`. Los 4 tipos raíz:
 Las categorías custom del usuario se mezclan al `BASE_TAXONOMY` en runtime via `useTaxonomy()`.
 
 ### Classification Rules
-*   Guardadas en la tabla `classification_rules` por `user_id` y `bank`.
-*   `SettingsContext` las carga al cambiar de banco activo.
-*   En `SettingsContext.saveClassificationRules()` se hace **DELETE + INSERT** completo (no UPDATE parcial).
+*   Guardadas en `classification_rules` por `user_id`; las reglas actuales son transversales y usan `bank = 'global'`.
+*   `SettingsContext` las carga una vez por usuario, sin depender del banco activo.
+*   `saveClassificationRules()` hace UPSERT por `id` y elimina las reglas que ya no están en el conjunto guardado.
 *   En `classificationRules.ts`, `applyRules()` hace match por substring case-insensitive.
 *   Al migrar desde localStorage (legacy), se insertan en la BD y se borra el item de localStorage.
 
 ### Bank System
-*   Bancos disponibles: `Scotiabank`, `Itaú`, `Mach` (BancoEstado comentado).
+*   Bancos disponibles: `Scotiabank`, `Itaú`, `Mach`, `Consorcio` (BancoEstado comentado).
 *   `BankContext` persiste `activeBank` y `dashboardScope` en `localStorage`.
 *   `dashboardScope` puede ser `'all'` (consolidado) o un bank ID específico.
 *   En modo consolidado se muestran transacciones de todos los bancos conectados.
 
-### Silent Migrations (en `App.tsx` → `ProtectedRoute`)
-Se ejecutan una vez por usuario al inicio de sesión (guardadas en `localStorage`):
-*   **v2:** Renombra `'Gasto Real'` → `'Egreso'`, `'Benja'` → `'Hijos'` en transactions y classification_rules.
-*   **v3:** Renombra `'Transferencias de Otras Personas'` (categoria_principal) → `'Transferencias'`, mueve el nombre a categoria_secundaria.
-*   **v4:** Corrige transacciones de Itaú incorrectamente guardadas como Scotiabank (detectado por keys del raw_data que contengan 'movimiento').
+### Migraciones de datos legacy
+Las normalizaciones ya no se ejecutan desde el frontend. Están versionadas en `supabase/migrations/20260713000000_normalize_legacy_data.sql` e incluyen:
+*   Renombrar `'Gasto Real'` → `'Egreso'` y `'Benja'` → `'Hijos'`.
+*   Normalizar `'Transferencias de Otras Personas'` bajo la categoría principal `'Transferencias'`.
+*   Corregir transacciones de Itaú antiguamente guardadas como Scotiabank.
+*   Migrar contactos y reglas legacy al esquema transversal actual.
 
 ### Fixed Expenses / Cuentas (Accounts)
 *   Definidos en `SettingsContext` como `fixedExpenses: FixedExpense[]`.
@@ -115,14 +123,14 @@ Se ejecutan una vez por usuario al inicio de sesión (guardadas en `localStorage
 ---
 
 ## Admin Panel & User Status Rules
-*   **Admin Account:** Solo `viborasnake@gmail.com` tiene acceso a `/admin`.
-*   **Guard de frontend:** `AdminDashboard.tsx` redirige a `/` si el email no coincide.
+*   **Administradores:** Se registran en la tabla privada `admin_users`. La migración inicial incorpora la cuenta histórica `viborasnake@gmail.com`.
+*   **Guard de frontend:** `AuthContext` consulta `is_current_user_admin()` y `AdminDashboard.tsx` redirige a `/` cuando `isAdmin` es falso.
 *   **Cuentas pausadas:** `AuthContext` verifica `profiles.status` al iniciar sesión. Si es `'paused'`, `isPaused = true` y `ProtectedRoute` muestra el bloqueo inline (no redirige a otra ruta).
 *   **Acción de pausa:** Admin llama `admin_update_user_status` RPC. El usuario pausado no puede operar aunque tenga sesión activa.
 
 ---
 
-## Bank Statement Imports (`CSVImport.tsx`)
+## Bank Statement Imports (`ImportModal.tsx`)
 
 ### Flujo de importación
 1. Usuario arrastra/selecciona archivo (`react-dropzone`).
@@ -138,6 +146,7 @@ Se ejecutan una vez por usuario al inicio de sesión (guardadas en `localStorage
 | Scotiabank | CSV (separador `;`) | PapaParse |
 | Itaú | XLSX / XLS | SheetJS (xlsx) |
 | Mach | PDF protegido | pdfjs-dist legacy |
+| Consorcio | PDF | pdfjs-dist legacy |
 
 ### MACH PDF Parsing — Reglas críticas
 *   Usar **`pdfjs-dist@3.11.174`** (legacy build). **NO usar v4+** (falla en Safari por ES2022 async iterators).
@@ -170,7 +179,7 @@ MisFinanzas usa **Neo-Brutalist** como lenguaje visual. Siempre respetar:
 
 | Archivo | Descripción |
 |---|---|
-| `src/App.tsx` | Router principal, `ProtectedRoute`, migraciones silenciosas |
+| `src/App.tsx` | Router principal, rutas lazy, `ProtectedRoute` y límites de error |
 | `src/main.tsx` | Entry point, wrapping de providers |
 | `src/components/Layout.tsx` | Sidebar nav, `BankIndicator` switcher, header |
 | `src/components/SmartAssistant.tsx` | Asistente de clasificación automática |
@@ -180,17 +189,25 @@ MisFinanzas usa **Neo-Brutalist** como lenguaje visual. Siempre respetar:
 | `src/components/LaikaPet.tsx` | Mascota visual Laika |
 | `src/components/InfoTooltip.tsx` | Tooltip de información |
 | `src/components/TransactionTypeBadge.tsx` | Badge visual para tipo/categoría de TX |
+| `src/components/Dialog.tsx` & `ConfirmDialog.tsx` | Componentes base para modales de confirmación |
+| `src/components/FixedExpensesConfigModal.tsx` | Modal para administrar gastos fijos |
+| `src/components/RutOnboardingModal.tsx` | Modal de onboarding para configurar RUT |
+| `src/components/SplitTransactionModal.tsx` | Modal para dividir transacciones en múltiples categorías |
+| `src/components/ImportModal.tsx` & `TransactionCaptureImport.tsx` | Lógica y UI de importación de cartolas |
 | `src/pages/Dashboard.tsx` | Dashboard principal con charts (Recharts), filtros de período, KPIs |
 | `src/pages/Transactions.tsx` | Lista editable de TX + `CascadingCategorySelector` (exportado) |
 | `src/pages/Accounts.tsx` | Tracker de gastos fijos mensuales |
-| `src/pages/CSVImport.tsx` | Importador multiformato (CSV/XLSX/PDF) |
+| `src/pages/ImportRoute.tsx` | Ruta base para el importador multiformato |
 | `src/pages/Settings.tsx` | Configuración: RUT, bancos, categorías, reglas, gastos fijos, eliminar cuenta |
 | `src/pages/Login.tsx` | Pantalla de login/registro |
-| `src/pages/AdminDashboard.tsx` | Panel admin (solo viborasnake@gmail.com) |
-| `src/pages/MigrationAudit.tsx` | Herramienta de backup JSON (legacy) |
-| `src/contexts/AuthContext.tsx` | Auth, isPaused |
-| `src/contexts/BankContext.tsx` | Bancos conectados, banco activo, scope |
-| `src/contexts/SettingsContext.tsx` | Categorías, reglas, gastos fijos |
+| `src/pages/ResetPassword.tsx` | Pantalla para recuperación de contraseña |
+| `src/pages/NotFound.tsx` | Página de error 404 |
+| `src/pages/AdminDashboard.tsx` | Panel para usuarios registrados en `admin_users` |
+| `src/pages/MigrationAudit.tsx` | Herramienta legacy conservada en el código, actualmente sin ruta pública |
+| `src/contexts/AuthContext.tsx` | Provider de sesión, estado pausado y acceso admin |
+| `src/contexts/BankContext.tsx` | Provider de bancos conectados, banco activo y scope |
+| `src/contexts/SettingsContext.tsx` | Provider de categorías, reglas y gastos fijos |
+| `src/contexts/*ContextValue.ts` | Contratos, contextos y hooks compartidos; separados de los providers para Fast Refresh |
 | `src/hooks/useTaxonomy.ts` | Merge de BASE_TAXONOMY + categorías custom |
 | `src/hooks/useActionQueue.tsx` | Operaciones con undo (toast 6s) |
 | `src/utils/rutParser.ts` | `cleanRut`, `validateRut`, `extractAndNormalizeRUT` |
@@ -226,8 +243,8 @@ MisFinanzas usa **Neo-Brutalist** como lenguaje visual. Siempre respetar:
 
 1.  **Parsing de fechas locales:** Usar siempre `parseLocalDate()` (split por `-`, `new Date(y, m-1, d, 12, 0, 0)`) para evitar desfases de timezone al trabajar con fechas de BD.
 2.  **Banco desconectado:** Nunca asumir que `activeBank` tiene valor. Puede ser `null` si el usuario no ha conectado ningún banco.
-3.  **Reglas de clasificación:** Las reglas están en la tabla `classification_rules` indexadas por `bank`. Al copiar configuración entre bancos, se usa `copySettingsFromBank()` del SettingsContext.
-4.  **Categorías custom:** Se guardan en `user_settings.custom_categories` como JSONB con estructura `{ [bankId]: CustomCategory[] }`. La key especial `'__fixed_expenses'` guarda los gastos fijos.
+3.  **Reglas de clasificación:** Las reglas están en `classification_rules`, son transversales por usuario y se guardan con `bank = 'global'`.
+4.  **Categorías custom:** Se guardan en `user_settings.custom_categories` bajo la key transversal `'__global'`. La key especial `'__fixed_expenses'` guarda los gastos fijos.
 5.  **`tipo_movimiento` vs `type`:** El campo `type` (ingreso/egreso lowercase) viene del CSV raw. El campo `tipo_movimiento` (Ingreso/Egreso capitalized) es la categorización semántica de la app. Ambos coexisten.
 6.  **SmartAssistant y transferencias:** Extrae RUTs de la descripción con `extractAndNormalizeRUT()`. Si el RUT coincide con un `known_contact`, propone el nombre del contacto.
 7.  **Scope consolidado:** `dashboardScope === 'all'` solo es válido cuando `connectedBanks.length > 1`. En ese modo, el Dashboard y Accounts cargan TXs de todos los bancos en paralelo.

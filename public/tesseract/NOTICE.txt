@@ -1,0 +1,8 @@
+MisFinanzas uses Tesseract.js and Tesseract trained language data for local OCR.
+
+Tesseract.js: https://github.com/naptha/tesseract.js (Apache-2.0)
+Tesseract OCR: https://github.com/tesseract-ocr/tesseract (Apache-2.0)
+
+The worker, OCR core and Spanish/English language files are served by this
+application so transaction screenshots do not need to be sent to a third-party
+OCR service.

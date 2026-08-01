@@ -1,146 +1,76 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from './contexts/AuthContext';
+import { Component, lazy, Suspense, type ErrorInfo, type ReactNode } from 'react';
+import { useAuth } from './contexts/authContextValue';
 import { Toaster } from 'react-hot-toast';
 import Layout from './components/Layout';
-import Dashboard from './pages/Dashboard';
-import Login from './pages/Login';
-import Transactions from './pages/Transactions';
-import Accounts from './pages/Accounts';
-import Settings from './pages/Settings';
-import MigrationAudit from './pages/MigrationAudit';
-import AdminDashboard from './pages/AdminDashboard';
+import { AlertTriangle, LockKeyhole, RefreshCw } from 'lucide-react';
 
-import { useEffect } from 'react';
-import { supabase } from './services/supabase';
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Login = lazy(() => import('./pages/Login'));
+const Transactions = lazy(() => import('./pages/Transactions'));
+const Accounts = lazy(() => import('./pages/Accounts'));
+const Settings = lazy(() => import('./pages/Settings'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const ImportRoute = lazy(() => import('./pages/ImportRoute'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const NotFound = lazy(() => import('./pages/NotFound'));
+
+function RouteLoadingFallback() {
+  return (
+    <div className="route-loading" role="status" aria-live="polite" aria-busy="true">
+      <span className="sr-only">Cargando pantalla</span>
+      <div className="skeleton route-loading-title" />
+      <div className="route-loading-grid" aria-hidden="true">
+        <div className="skeleton" />
+        <div className="skeleton" />
+      </div>
+      <div className="skeleton route-loading-content" aria-hidden="true" />
+    </div>
+  );
+}
+
+class RouteErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('Route loading error:', error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="route-error" role="alert">
+          <AlertTriangle size={30} strokeWidth={2.5} aria-hidden="true" />
+          <div>
+            <h2>No pudimos abrir esta pantalla</h2>
+            <p>Puede haber una versión nueva disponible. Recarga para continuar.</p>
+          </div>
+          <button type="button" className="btn btn-primary" onClick={() => window.location.reload()}>
+            <RefreshCw size={18} />
+            Recargar
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+function LazyPage({ children }: { children: ReactNode }) {
+  return (
+    <RouteErrorBoundary>
+      <Suspense fallback={<RouteLoadingFallback />}>{children}</Suspense>
+    </RouteErrorBoundary>
+  );
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isPaused, signOut } = useAuth();
-  
-  useEffect(() => {
-    if (user) {
-      // SILENT MIGRATION v2: Rename 'Egreso'->'Egreso', 'Ingreso'->'Ingreso', 'Benja'->'Hijos'
-      const migrate = async () => {
-        const migrationKey = `migrated_v2_${user.id}`;
-        if (localStorage.getItem(migrationKey)) return;
-
-        try {
-          // Update Egresos (includes old Gasto Real if it was somehow skipped)
-          await supabase.from('transactions').update({ tipo_movimiento: 'Egreso' }).eq('user_id', user.id).in('tipo_movimiento', ['Gasto Real', 'Egreso']);
-          // Update Ingresos
-          await supabase.from('transactions').update({ tipo_movimiento: 'Ingreso' }).eq('user_id', user.id).eq('tipo_movimiento', 'Ingreso');
-          // Update Benja to Hijos
-          await supabase.from('transactions').update({ categoria_principal: 'Hijos' }).eq('user_id', user.id).eq('categoria_principal', 'Benja');
-            
-          // Migrate classification rules in user_settings
-          const { data: settings } = await supabase.from('user_settings').select('classification_rules').eq('user_id', user.id).single();
-          if (settings && settings.classification_rules) {
-            const rules = settings.classification_rules;
-            let changed = false;
-            const newRules = rules.map((r: any) => {
-              let updatedRule = { ...r };
-              if (updatedRule.tipo_movimiento === 'Gasto Real' || updatedRule.tipo_movimiento === 'Egreso') {
-                updatedRule.tipo_movimiento = 'Egreso';
-                changed = true;
-              }
-              if (updatedRule.tipo_movimiento === 'Ingreso') {
-                updatedRule.tipo_movimiento = 'Ingreso';
-                changed = true;
-              }
-              if (updatedRule.categoria_principal === 'Benja') {
-                updatedRule.categoria_principal = 'Hijos';
-                changed = true;
-              }
-              return updatedRule;
-            });
-            if (changed) {
-              await supabase.from('user_settings').update({ classification_rules: newRules }).eq('user_id', user.id);
-            }
-          }
-          localStorage.setItem(migrationKey, 'true');
-        } catch (e) {
-          console.error("Migration error:", e);
-        }
-      };
-      migrate();
-      
-      // SILENT MIGRATION v3: Rename 'Transferencias de Otras Personas' -> 'Transferencias'
-      const migrateV3 = async () => {
-        const migrationKey = `migrated_v3_${user.id}`;
-        if (localStorage.getItem(migrationKey)) return;
-        try {
-          await supabase.from('transactions').update({ 
-            categoria_principal: 'Transferencias',
-            categoria_secundaria: 'Transferencias de Otras Personas'
-          }).eq('user_id', user.id).eq('categoria_principal', 'Transferencias de Otras Personas');
-          
-          const { data: settings } = await supabase.from('user_settings').select('classification_rules').eq('user_id', user.id).single();
-          if (settings && settings.classification_rules) {
-            let changed = false;
-            const newRules = settings.classification_rules.map((r: any) => {
-              if (r.categoria_principal === 'Transferencias de Otras Personas') {
-                r.categoria_principal = 'Transferencias';
-                r.categoria_secundaria = 'Transferencias de Otras Personas';
-                changed = true;
-              }
-              return r;
-            });
-            if (changed) {
-              await supabase.from('user_settings').update({ classification_rules: newRules }).eq('user_id', user.id);
-            }
-          }
-          localStorage.setItem(migrationKey, 'true');
-        } catch (e) {
-          console.error("Migration v3 error:", e);
-        }
-      };
-      migrateV3();
-
-      // SILENT MIGRATION v4: Fix Itaú transactions saved as Scotiabank
-      const migrateV4 = async () => {
-        const migrationKey = `migrated_v4_${user.id}`;
-        if (localStorage.getItem(migrationKey)) return;
-        try {
-          // Obtener transacciones de Scotiabank
-          const { data: txs } = await supabase.from('transactions').select('id, raw_data').eq('user_id', user.id).eq('bank', 'Scotiabank');
-          if (txs && txs.length > 0) {
-            const idsToFix = txs.filter(t => t.raw_data && Object.keys(t.raw_data).some(k => k.toLowerCase().includes('movimiento'))).map(t => t.id);
-            if (idsToFix.length > 0) {
-              await supabase.from('transactions').update({ bank: 'Itaú' }).in('id', idsToFix);
-            }
-          }
-          localStorage.setItem(migrationKey, 'true');
-        } catch (e) {
-          console.error("Migration v4 error:", e);
-        }
-      };
-      migrateV4();
-
-      const migrateV5 = async () => {
-        const migrationKey = `migrated_v5_${user.id}`;
-        if (localStorage.getItem(migrationKey)) return;
-        try {
-          const { data: contacts } = await supabase.from('known_contacts').select('*').eq('user_id', user.id);
-          if (contacts && contacts.length > 0) {
-            const rules = contacts.map(c => ({
-              user_id: user.id,
-              bank: 'global',
-              condition_type: 'contains',
-              condition_value: c.rut || c.name,
-              category_tipo: 'Egreso',
-              category_principal: 'Transferencias',
-              category_secundaria: 'Transferencias a Otras Personas'
-            }));
-            await supabase.from('classification_rules').insert(rules);
-            await supabase.from('known_contacts').delete().eq('user_id', user.id);
-          }
-          localStorage.setItem(migrationKey, 'true');
-        } catch (e) {
-          console.error("Migration v5 error:", e);
-        }
-      };
-      migrateV5();
-    }
-  }, [user]);
 
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -148,15 +78,15 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (isPaused) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#fdfdfc', padding: '2rem', textAlign: 'center' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100dvh', backgroundColor: '#fdfdfc', padding: '2rem', textAlign: 'center' }}>
         <div className="card animate-fade-in" style={{ maxWidth: '400px', border: '3px solid black', boxShadow: '6px 6px 0px black', padding: '2rem', borderRadius: '12px', backgroundColor: 'white' }}>
-          <span style={{ fontSize: '3rem' }}>🔒</span>
-          <h2 style={{ fontSize: '1.75rem', margin: '1rem 0', fontWeight: 900 }}>Cuenta Pausada</h2>
+          <LockKeyhole size={46} strokeWidth={2.4} aria-hidden="true" />
+          <h2 style={{ fontSize: '1.75rem', margin: '1rem 0', fontWeight: 900 }}>Cuenta pausada</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontWeight: 600, lineHeight: 1.5 }}>
             Tu acceso a la plataforma ha sido temporalmente suspendido por el administrador. Ponte en contacto con soporte si crees que esto es un error.
           </p>
-          <button className="btn btn-outline" style={{ width: '100%', border: '2px solid black' }} onClick={signOut}>
-            Cerrar Sesión
+          <button type="button" className="btn btn-outline" style={{ width: '100%', border: '2px solid black' }} onClick={signOut}>
+            Cerrar sesión
           </button>
         </div>
       </div>
@@ -192,20 +122,23 @@ function App() {
         }}
       />
       <Routes>
-        <Route path="/login" element={<Login />} />
+        <Route path="/login" element={<LazyPage><Login /></LazyPage>} />
+        <Route path="/reset-password" element={<LazyPage><ResetPassword /></LazyPage>} />
+        {import.meta.env.DEV && <Route path="/dev/import" element={<LazyPage><ImportRoute /></LazyPage>} />}
         
         <Route path="/" element={
           <ProtectedRoute>
             <Layout />
           </ProtectedRoute>
         }>
-          <Route index element={<Dashboard />} />
-          <Route path="transactions" element={<Transactions />} />
-          <Route path="accounts" element={<Accounts />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="audit" element={<MigrationAudit />} />
-          <Route path="admin" element={<AdminDashboard />} />
+          <Route index element={<LazyPage><Dashboard /></LazyPage>} />
+          <Route path="transactions" element={<LazyPage><Transactions /></LazyPage>} />
+          <Route path="accounts" element={<LazyPage><Accounts /></LazyPage>} />
+          <Route path="import" element={<LazyPage><ImportRoute /></LazyPage>} />
+          <Route path="settings" element={<LazyPage><Settings /></LazyPage>} />
+          <Route path="admin" element={<LazyPage><AdminDashboard /></LazyPage>} />
         </Route>
+        <Route path="*" element={<LazyPage><NotFound /></LazyPage>} />
       </Routes>
     </Router>
   );

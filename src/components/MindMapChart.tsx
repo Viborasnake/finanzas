@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { createPortal } from 'react-dom';
 import Tree from 'react-d3-tree';
 import { X, Maximize2, Eye, EyeOff } from 'lucide-react';
+import { Dialog } from './Dialog';
 
 interface MindMapChartProps {
   transactions: any[];
@@ -185,12 +185,12 @@ export default function MindMapChart({ transactions, taxonomy }: MindMapChartPro
 
   const controls = (
     <div style={{ position: 'absolute', bottom: '1rem', right: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', zIndex: 10 }}>
-      <button type="button" onClick={() => setZoom(z => Math.min(z + 0.2, 2))} style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '8px', padding: '0.5rem', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 900, cursor: 'pointer', boxShadow: '2px 2px 0px #000' }}>+</button>
-      <button type="button" onClick={() => setZoom(z => Math.max(z - 0.2, 0.2))} style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '8px', padding: '0.5rem', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 900, cursor: 'pointer', boxShadow: '2px 2px 0px #000' }}>-</button>
-      <button type="button" onClick={() => setHideEmpty(!hideEmpty)} title={hideEmpty ? "Mostrar sin movimientos" : "Ocultar sin movimientos"} style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '8px', padding: '0.5rem', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 900, cursor: 'pointer', boxShadow: '2px 2px 0px #000' }}>
+      <button type="button" aria-label="Acercar mapa" onClick={() => setZoom(z => Math.min(z + 0.2, 2))} style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '8px', padding: '0.5rem', width: '44px', height: '44px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 900, cursor: 'pointer', boxShadow: '2px 2px 0px #000' }}>+</button>
+      <button type="button" aria-label="Alejar mapa" onClick={() => setZoom(z => Math.max(z - 0.2, 0.2))} style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '8px', padding: '0.5rem', width: '44px', height: '44px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 900, cursor: 'pointer', boxShadow: '2px 2px 0px #000' }}>-</button>
+      <button type="button" onClick={() => setHideEmpty(!hideEmpty)} title={hideEmpty ? "Mostrar sin movimientos" : "Ocultar sin movimientos"} aria-label={hideEmpty ? "Mostrar categorías sin movimientos" : "Ocultar categorías sin movimientos"} aria-pressed={hideEmpty} style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '8px', padding: '0.5rem', width: '44px', height: '44px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 900, cursor: 'pointer', boxShadow: '2px 2px 0px #000' }}>
         {hideEmpty ? <EyeOff size={20} /> : <Eye size={20} />}
       </button>
-      <button type="button" onClick={() => setIsModalOpen(!isModalOpen)} style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '8px', padding: '0.5rem', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 900, cursor: 'pointer', boxShadow: '2px 2px 0px #000' }}>
+      <button type="button" aria-label={isModalOpen ? 'Cerrar mapa ampliado' : 'Ampliar mapa'} aria-pressed={isModalOpen} onClick={() => setIsModalOpen(!isModalOpen)} style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '8px', padding: '0.5rem', width: '44px', height: '44px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 900, cursor: 'pointer', boxShadow: '2px 2px 0px #000' }}>
         {isModalOpen ? <X size={20} /> : <Maximize2 size={20} />}
       </button>
     </div>
@@ -203,14 +203,18 @@ export default function MindMapChart({ transactions, taxonomy }: MindMapChartPro
         {controls}
       </div>
       
-      {isModalOpen && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, backgroundColor: 'rgba(0,0,0,0.8)', padding: '2rem' }}>
-          <div style={{ position: 'relative', width: '100%', height: '100%', backgroundColor: '#f8fafc', borderRadius: '12px', border: '2px solid black', overflow: 'hidden', boxShadow: '4px 4px 0px rgba(0,0,0,1)' }}>
+      {isModalOpen && (
+        <Dialog
+          onClose={() => setIsModalOpen(false)}
+          labelledBy="mindmap-dialog-title"
+          panelClassName="mindmap-dialog"
+        >
+          <h2 id="mindmap-dialog-title" className="sr-only">Mapa de categorías ampliado</h2>
+          <div style={{ position: 'relative', width: '100%', height: '100%', backgroundColor: '#f8fafc', overflow: 'hidden' }}>
             <Tree {...treeProps} />
             {controls}
           </div>
-        </div>,
-        document.body
+        </Dialog>
       )}
     </>
   );

@@ -1,64 +1,17 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../services/supabase';
-import { useAuth } from './AuthContext';
-import { useBanks } from './BankContext';
-
-export interface CustomCategory {
-  tipo: string;
-  principal: string;
-  secundarias: string[];
-}
-
-export interface ClassificationRule {
-  id: string;
-  keyword: string;
-  tipo_movimiento: string;
-  categoria_principal: string;
-  categoria_secundaria: string;
-}
-
-export interface FixedExpense {
-  id: string;
-  name: string;
-  tipo_movimiento: string | null;
-  categoria_principal: string | null;
-  categoria_secundaria: string | null;
-  keyword?: string;
-}
-
-interface SettingsContextType {
-  customCategories: CustomCategory[];
-  saveCustomCategories: (cats: CustomCategory[], targetBank?: string) => Promise<void>;
-  classificationRules: ClassificationRule[];
-  setClassificationRules: React.Dispatch<React.SetStateAction<ClassificationRule[]>>;
-  saveClassificationRules: (rules: ClassificationRule[], targetBank?: string) => Promise<void>;
-  fixedExpenses: FixedExpense[];
-  saveFixedExpenses: (items: FixedExpense[]) => Promise<void>;
-  loadingSettings: boolean;
-  userRut: string | null;
-  saveUserRut: (rut: string) => Promise<boolean>;
-}
-
-const SettingsContext = createContext<SettingsContextType>({
-  customCategories: [],
-  saveCustomCategories: async () => {},
-  classificationRules: [],
-  setClassificationRules: () => {},
-  saveClassificationRules: async () => {},
-  fixedExpenses: [],
-  saveFixedExpenses: async () => {},
-  loadingSettings: true,
-  userRut: null,
-  saveUserRut: async () => false,
-});
+import { useAuth } from './authContextValue';
+import {
+  SettingsContext,
+  type ClassificationRule,
+  type CustomCategory,
+  type FixedExpense,
+} from './settingsContextValue';
 
 const FIXED_EXPENSES_KEY = '__fixed_expenses';
 
-export const useSettings = () => useContext(SettingsContext);
-
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();
-  const { activeBank } = useBanks();
   
   // Guardamos el JSONB completo de user_settings: { [bankName]: CustomCategory[] }
   const [allCustomCategories, setAllCustomCategories] = useState<Record<string, any[]>>({});
@@ -139,7 +92,12 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
           try {
             const localRules = JSON.parse(localRulesStr);
             if (localRules && localRules.length > 0) {
-              const inserts = localRules.map((r: any) => ({
+              const normalizedRules = localRules.map((rule: any) => ({
+                ...rule,
+                id: crypto.randomUUID()
+              }));
+              const inserts = normalizedRules.map((r: ClassificationRule) => ({
+                id: r.id,
                 user_id: user.id,
                 bank: 'global',
                 condition_type: 'contains',
@@ -148,8 +106,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                 category_principal: r.categoria_principal,
                 category_secundaria: r.categoria_secundaria || ''
               }));
-              await supabase.from('classification_rules').insert(inserts);
-              setClassificationRules(localRules);
+              const { error } = await supabase.from('classification_rules').insert(inserts);
+              if (error) throw error;
+              setClassificationRules(normalizedRules);
               localStorage.removeItem('finanzas_classification_rules');
             }
           } catch (err) {
@@ -164,7 +123,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     } finally {
       setLoadingSettings(false);
     }
-  }, [user, activeBank]);
+  }, [user]);
 
   useEffect(() => {
     loadSettings();
@@ -179,17 +138,12 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       '__global': cats
     };
     
+    const { error } = await supabase
+      .from('user_settings')
+      .upsert({ user_id: user.id, custom_categories: newAllCats }, { onConflict: 'user_id' });
+    if (error) throw error;
+
     setAllCustomCategories(newAllCats);
-    
-    const { data } = await supabase.from('user_settings').select('user_id').eq('user_id', user.id).maybeSingle();
-    
-    if (data) {
-      const { error } = await supabase.from('user_settings').update({ custom_categories: newAllCats }).eq('user_id', user.id);
-      if (error) console.error('Error updating custom categories:', error);
-    } else {
-      const { error } = await supabase.from('user_settings').insert({ user_id: user.id, custom_categories: newAllCats });
-      if (error) console.error('Error inserting custom categories:', error);
-    }
   };
 
   const saveFixedExpenses = async (items: FixedExpense[]) => {
@@ -200,30 +154,21 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       [FIXED_EXPENSES_KEY]: items
     };
 
+    const { error } = await supabase
+      .from('user_settings')
+      .upsert({ user_id: user.id, custom_categories: newAllCats }, { onConflict: 'user_id' });
+    if (error) throw error;
+
     setFixedExpenses(items);
     setAllCustomCategories(newAllCats);
-
-    const { data } = await supabase.from('user_settings').select('user_id').eq('user_id', user.id).maybeSingle();
-
-    if (data) {
-      const { error } = await supabase.from('user_settings').update({ custom_categories: newAllCats }).eq('user_id', user.id);
-      if (error) console.error('Error updating fixed expenses:', error);
-    } else {
-      const { error } = await supabase.from('user_settings').insert({ user_id: user.id, custom_categories: newAllCats });
-      if (error) console.error('Error inserting fixed expenses:', error);
-    }
   };
 
   const saveClassificationRules = async (rules: ClassificationRule[]) => {
     if (!user) return;
-    
-    setClassificationRules(rules);
-
-    // Eliminamos todas las reglas previas (ahora son globales, por lo que borramos todas las de este usuario sin importar el banco)
-    await supabase.from('classification_rules').delete().eq('user_id', user.id);
 
     if (rules.length > 0) {
       const inserts = rules.map(r => ({
+        id: r.id,
         user_id: user.id,
         bank: 'global',
         condition_type: 'contains',
@@ -232,8 +177,34 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         category_principal: r.categoria_principal,
         category_secundaria: r.categoria_secundaria
       }));
-      await supabase.from('classification_rules').insert(inserts);
+
+      const { error } = await supabase
+        .from('classification_rules')
+        .upsert(inserts, { onConflict: 'id' });
+      if (error) throw error;
     }
+
+    const { data: storedRules, error: storedRulesError } = await supabase
+      .from('classification_rules')
+      .select('id')
+      .eq('user_id', user.id);
+    if (storedRulesError) throw storedRulesError;
+
+    const ruleIds = new Set(rules.map(rule => rule.id));
+    const idsToDelete = (storedRules || [])
+      .map(rule => rule.id)
+      .filter(id => !ruleIds.has(id));
+
+    if (idsToDelete.length > 0) {
+      const { error } = await supabase
+        .from('classification_rules')
+        .delete()
+        .eq('user_id', user.id)
+        .in('id', idsToDelete);
+      if (error) throw error;
+    }
+
+    setClassificationRules(rules);
   };
 
   const saveUserRut = async (rut: string) => {

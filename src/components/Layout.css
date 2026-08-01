@@ -1,7 +1,26 @@
 .layout {
   display: flex;
   min-height: 100vh;
+  min-height: 100dvh;
   width: 100%;
+}
+
+.skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 3000;
+  padding: 0.65rem 0.85rem;
+  transform: translateY(-180%);
+  border: 2px solid #000;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 3px 3px 0 #000;
+  font-weight: 900;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
 }
 
 .sidebar {
@@ -12,6 +31,7 @@
   flex-direction: column;
   position: fixed;
   height: 100vh;
+  height: 100dvh;
   left: 0;
   top: 0;
   z-index: 10;
@@ -38,10 +58,10 @@
 .sidebar-collapse-btn {
   position: absolute;
   top: 50%;
-  right: -16px;
+  right: -22px;
   transform: translateY(-50%);
-  width: 30px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   background-color: white;
   border: 2px solid black;
   border-radius: 999px;
@@ -96,7 +116,7 @@
 
 .bank-switcher-trigger {
   width: 100%;
-  min-height: 34px;
+  min-height: 44px;
   display: flex;
   align-items: center;
   gap: 0.55rem;
@@ -154,8 +174,8 @@
 }
 
 .sidebar.collapsed .bank-switcher-trigger {
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   justify-content: center;
   margin: 0 auto;
   padding: 0;
@@ -300,7 +320,7 @@
 .logout-btn {
   width: 100%;
   margin: 0;
-  color: var(--danger);
+  color: var(--danger-text);
   background-color: #fee2e2;
   border: 2px solid black;
   border-radius: 12px;
@@ -327,6 +347,7 @@
 
 .main-content {
   flex: 1;
+  min-width: 0;
   margin-left: 264px;
   display: flex;
   flex-direction: column;
@@ -342,7 +363,8 @@
   display: none;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.5rem;
+  min-height: calc(68px + env(safe-area-inset-top));
+  padding: calc(0.75rem + env(safe-area-inset-top)) 1.25rem 0.75rem;
   background-color: var(--bg-color);
   border-bottom: 2px solid var(--border-color);
   position: sticky;
@@ -357,6 +379,12 @@
 }
 
 .mobile-header button {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
   color: var(--text-primary);
 }
 
@@ -370,6 +398,7 @@
 .page-container {
   padding: 3rem;
   flex: 1;
+  min-width: 0;
   max-width: 1200px;
   margin: 0 auto;
   width: 100%;
@@ -394,8 +423,8 @@
     flex-direction: column;
     position: fixed;
     inset: 0;
-    padding-top: 80px;
-    padding-bottom: 2rem;
+    padding-top: calc(80px + env(safe-area-inset-top));
+    padding-bottom: calc(2rem + env(safe-area-inset-bottom));
     padding-left: 1.5rem;
     padding-right: 1.5rem;
     background-color: rgba(255, 255, 255, 0.98);
@@ -501,5 +530,21 @@
   
   .page-container {
     padding: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .mobile-header {
+    padding-right: 1rem;
+    padding-left: 1rem;
+  }
+
+  .mobile-nav {
+    padding-right: 1rem;
+    padding-left: 1rem;
+  }
+
+  .page-container {
+    padding: 1rem;
   }
 }

@@ -1,9 +1,15 @@
 import { createClient } from '@supabase/supabase-js'
+import * as dotenv from 'dotenv'
 
-const supabase = createClient(
-  'https://htcvwruezenheyjvqxth.supabase.co',
-  'sb_publishable_to95_V7IQzFxIwSPYqLdcw_OxJTgNfd'
-)
+dotenv.config()
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY')
+}
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 async function main() {
   const { data, error } = await supabase.from('transactions').select('*')

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../services/supabase';
-import { useAuth } from '../contexts/AuthContext';
-import { useSettings } from '../contexts/SettingsContext';
-import { Check, Lightbulb, RefreshCw, X } from 'lucide-react';
+import { useAuth } from '../contexts/authContextValue';
+import { useSettings } from '../contexts/settingsContextValue';
+import { Check, ChevronLeft, ChevronRight, Lightbulb, RefreshCw, Save, UserPlus, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { applyRules } from '../utils/classificationRules';
 import { extractAndNormalizeRUT } from '../utils/rutParser';
@@ -53,7 +53,8 @@ const normalize = (text: any) => String(text || '').toLowerCase().normalize('NFD
 
 function extractContactName(description: string) {
   const cleaned = description
-    .replace(/tef/ig, '')
+    .replace(/\b(?:tef|transferencia|traspaso|abono)(?:\s+(?:de|a|desde|hacia))?\b/ig, ' ')
+    .replace(/\b(?:rut|cuenta|cta)\b/ig, ' ')
     .replace(/\b\d{7,9}-?[0-9kK]\b/g, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -69,10 +70,17 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
   const [saving, setSaving] = useState(false);
   const [overrideProposal, setOverrideProposal] = useState<Proposal | null>(null);
   const [editingTxId, setEditingTxId] = useState<string | null>(null);
+  const [showContactForm, setShowContactForm] = useState(false);
+  const [contactDraft, setContactDraft] = useState({ name: '', rut: '', alias: '' });
+  const [contactError, setContactError] = useState('');
+  const [savingContact, setSavingContact] = useState(false);
+  const [savedContactIds, setSavedContactIds] = useState<Set<string>>(() => new Set());
 
   // Reset override when suggestion changes
   useEffect(() => {
     setOverrideProposal(null);
+    setShowContactForm(false);
+    setContactError('');
   }, [currentIndex]);
 
 
@@ -253,6 +261,83 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
     }
   };
 
+  const openContactForm = (suggestion: Suggestion) => {
+    setContactDraft({
+      name: suggestion.contactName || '',
+      rut: suggestion.rut || '',
+      alias: ''
+    });
+    setContactError('');
+    setShowContactForm(true);
+  };
+
+  const saveContact = async (suggestion: Suggestion) => {
+    if (!user) return;
+
+    const name = contactDraft.name.trim();
+    const typedRut = contactDraft.rut.trim();
+    const normalizedRut = typedRut ? extractAndNormalizeRUT(typedRut) : null;
+    if (!name) {
+      setContactError('Escribe el nombre con el que reconocerás a esta persona.');
+      return;
+    }
+    if (typedRut && !normalizedRut) {
+      setContactError('Revisa el RUT o déjalo vacío si no lo conoces.');
+      return;
+    }
+
+    setSavingContact(true);
+    setContactError('');
+    try {
+      const { data: contacts, error: contactsError } = await supabase
+        .from('known_contacts')
+        .select('id, name, rut')
+        .eq('user_id', user.id);
+      if (contactsError) throw contactsError;
+
+      const duplicate = (contacts || []).some(contact => {
+        const sameRut = normalizedRut && extractAndNormalizeRUT(contact.rut || '') === normalizedRut;
+        const sameName = normalize(contact.name) === normalize(name);
+        return Boolean(sameRut || sameName);
+      });
+
+      if (!duplicate) {
+        const { error: insertError } = await supabase.from('known_contacts').insert({
+          user_id: user.id,
+          name,
+          rut: normalizedRut,
+          alias: contactDraft.alias.trim() || null
+        });
+        if (insertError) throw insertError;
+      }
+
+      const ruleKeyword = normalizedRut || name;
+      const ruleExists = classificationRules.some(rule => normalize(rule.keyword) === normalize(ruleKeyword));
+      if (!ruleExists) {
+        const proposal = overrideProposal || suggestion.proposal;
+        await saveClassificationRules([
+          ...classificationRules,
+          {
+            id: crypto.randomUUID(),
+            keyword: ruleKeyword,
+            tipo_movimiento: proposal.tipo_movimiento,
+            categoria_principal: proposal.categoria_principal,
+            categoria_secundaria: proposal.categoria_secundaria
+          }
+        ]);
+      }
+
+      setSavedContactIds(currentIds => new Set(currentIds).add(suggestion.id));
+      setShowContactForm(false);
+      toast.success(duplicate ? 'El contacto ya estaba guardado; su regla quedó disponible.' : 'Contacto y regla guardados');
+    } catch (error: any) {
+      console.error('Error saving contact:', error);
+      setContactError('No pudimos guardar el contacto. Revisa tu conexión e inténtalo nuevamente.');
+    } finally {
+      setSavingContact(false);
+    }
+  };
+
   const handleRescan = async () => {
     if (!user) return;
     toast.loading('Escaneando reglas guardadas...', { id: 'rescan_assistant' });
@@ -285,7 +370,7 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
         <h2 style={{ textAlign: 'center' }}>¡Todo clasificado!</h2>
         <p style={{ textAlign: 'center', maxWidth: 360, margin: '0 auto' }}>No quedan movimientos pendientes de sugerir. Puedes re-escanear si importaste nuevas cartolas.</p>
         <div className="assistant-actions" style={{ justifyContent: 'center', marginTop: '1rem' }}>
-          <button className="btn btn-outline" style={{ backgroundColor: 'white' }} onClick={handleRescan}>
+          <button type="button" className="btn btn-outline" style={{ backgroundColor: 'white' }} onClick={handleRescan}>
             <RefreshCw size={16} />
             Re-escanear reglas
           </button>
@@ -307,7 +392,7 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
           <strong>{safeIndex + 1}</strong> de {suggestions.length} sugerencias
         </span>
         <div className="assistant-actions" style={{ marginTop: 0 }}>
-          <button className="btn btn-outline" style={{ fontSize: '0.78rem', padding: '0.3rem 0.9rem', backgroundColor: 'white' }} onClick={handleRescan} disabled={saving}>
+          <button type="button" className="btn btn-outline" style={{ fontSize: '0.78rem', padding: '0.3rem 0.9rem', backgroundColor: 'white' }} onClick={handleRescan} disabled={saving}>
             <RefreshCw size={14} />
             Re-escanear
           </button>
@@ -335,11 +420,11 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
           </div>
         </div>
 
-        {/* Cuerpo: dos columnas con flex */}
-        <div style={{ display: 'flex', borderBottom: '2px solid #000', minHeight: 0 }}>
+        {/* Cuerpo: dos columnas que se apilan en móvil */}
+        <div className="assistant-body-grid">
 
           {/* Columna izquierda: datos */}
-          <div style={{ flex: '1 1 0', minWidth: 0, padding: '1rem', borderRight: '2px solid #000' }}>
+          <div className="assistant-card-main">
             <p className="assistant-section-label">Movimientos detectados</p>
             <div className="assistant-facts" style={{ marginBottom: '0.75rem' }}>
               <span>{current.count} {current.count === 1 ? 'movimiento' : 'movimientos'}</span>
@@ -356,6 +441,53 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
               {current.reason}
             </p>
 
+            {current.contactName && (
+              <div className="assistant-contact">
+                <UserPlus size={22} aria-hidden="true" />
+                <div>
+                  <strong>Persona detectada</strong>
+                  {!showContactForm ? (
+                    <div className="assistant-contact-summary">
+                      <span>{current.contactName}{current.rut ? ` · ${current.rut}` : ''}</span>
+                      {savedContactIds.has(current.id) ? (
+                        <span className="assistant-contact-saved"><Check size={15} /> Contacto guardado</span>
+                      ) : (
+                        <button type="button" className="btn btn-outline" onClick={() => openContactForm(current)} disabled={saving || savingContact}>
+                          <UserPlus size={16} />
+                          Guardar contacto
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <form className="assistant-contact-form" onSubmit={event => { event.preventDefault(); void saveContact(current); }}>
+                      <label>
+                        <span>Nombre</span>
+                        <input className="input" type="text" value={contactDraft.name} onChange={event => { setContactDraft(draft => ({ ...draft, name: event.target.value })); setContactError(''); }} autoFocus aria-invalid={Boolean(contactError && !contactDraft.name.trim())} />
+                      </label>
+                      <label>
+                        <span>RUT opcional</span>
+                        <input className="input" type="text" value={contactDraft.rut} onChange={event => { setContactDraft(draft => ({ ...draft, rut: event.target.value })); setContactError(''); }} placeholder="Ej: 16.424.491-1" />
+                      </label>
+                      <label>
+                        <span>Alias opcional</span>
+                        <input className="input" type="text" value={contactDraft.alias} onChange={event => setContactDraft(draft => ({ ...draft, alias: event.target.value }))} placeholder="Ej: Arriendo" />
+                      </label>
+                      {contactError && <p className="field-error" role="alert">{contactError}</p>}
+                      <div className="assistant-contact-actions">
+                        <button type="submit" className="btn btn-primary" disabled={savingContact}>
+                          <Save size={16} />
+                          {savingContact ? 'Guardando...' : 'Guardar'}
+                        </button>
+                        <button type="button" className="btn btn-outline" onClick={() => { setShowContactForm(false); setContactError(''); }} disabled={savingContact}>
+                          Cancelar
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              </div>
+            )}
+
             {current.count > 1 && (
               <div style={{ marginTop: '1rem', borderTop: '2px dashed var(--border-color)', paddingTop: '1rem' }}>
                 <p className="assistant-section-label" style={{ marginBottom: '0.5rem' }}>Detalle de movimientos ({current.count})</p>
@@ -366,7 +498,7 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
                         <div key={idx} style={{ background: '#f8fafc', border: '2px solid var(--border-color)', borderRadius: 8, padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>Clasificar "{t.description}"</span>
-                            <button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }} onClick={() => setEditingTxId(null)}>Cancelar</button>
+                            <button type="button" className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }} onClick={() => setEditingTxId(null)}>Cancelar</button>
                           </div>
                           <div style={{ border: '2px solid #000', borderRadius: '4px', overflow: 'hidden' }}>
                             <CascadingCategorySelector
@@ -393,10 +525,12 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
                             {t.type === 'ingreso' ? '+' : '-'}${Math.abs(t.amount).toLocaleString('es-CL')}
                           </span>
                           <button 
+                            type="button"
                             className="btn btn-outline" 
                             style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem', backgroundColor: 'var(--pastel-yellow)' }}
                             onClick={() => setEditingTxId(t.id)}
                             title="Clasificar individualmente"
+                            aria-label={`Clasificar individualmente ${t.description || t.original_description || 'movimiento'}`}
                           >
                             ✏️ Editar
                           </button>
@@ -410,7 +544,7 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
           </div>
 
           {/* Columna derecha: selector editable */}
-          <div style={{ flex: '1 1 0', minWidth: 0, padding: '1rem', background: 'var(--pastel-green)', overflow: 'hidden' }}>
+          <div className="assistant-proposal">
             <p className="assistant-section-label">
               Clasificar como
               {overrideProposal && <em style={{ marginLeft: '0.4rem', fontStyle: 'normal', color: '#d97706' }}>✏️ Modificado</em>}
@@ -429,21 +563,21 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
 
         {/* Acciones por sugerencia */}
         <div className="assistant-actions" style={{ marginTop: 0, borderTop: '2px solid #000', padding: '1rem' }}>
-          <button className="btn btn-primary" style={{ flex: '1 1 auto', justifyContent: 'center' }} onClick={() => applySuggestion(current, { persistRule: true })} disabled={saving}>
+          <button type="button" className="btn btn-primary" style={{ flex: '1 1 auto', justifyContent: 'center' }} onClick={() => applySuggestion(current, { persistRule: true })} disabled={saving}>
             <Check size={16} />
             Aplicar y recordar
           </button>
-          <button className="btn btn-outline" style={{ backgroundColor: 'white' }} onClick={() => applySuggestion(current)} disabled={saving}>
+          <button type="button" className="btn btn-outline" style={{ backgroundColor: 'white' }} onClick={() => applySuggestion(current)} disabled={saving}>
             Solo esta vez
           </button>
-          <button className="btn btn-outline" style={{ backgroundColor: 'white', color: '#64748b' }} onClick={() => setCurrentIndex(i => Math.min(i + 1, suggestions.length))} disabled={saving}>
+          <button type="button" className="btn btn-outline" style={{ backgroundColor: 'white', color: '#64748b' }} onClick={() => setCurrentIndex(i => Math.min(i + 1, suggestions.length))} disabled={saving}>
             <X size={15} />
             Omitir
           </button>
           {/* Navegación */}
           <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.4rem' }}>
-            <button className="btn btn-outline" style={{ backgroundColor: 'white', padding: '0.4rem 0.7rem' }} onClick={() => setCurrentIndex(i => Math.max(0, i - 1))} disabled={currentIndex === 0 || saving}>←</button>
-            <button className="btn btn-outline" style={{ backgroundColor: 'white', padding: '0.4rem 0.7rem' }} onClick={() => setCurrentIndex(i => Math.min(suggestions.length - 1, i + 1))} disabled={currentIndex >= suggestions.length - 1 || saving}>→</button>
+            <button type="button" className="btn btn-outline" style={{ backgroundColor: 'white', padding: '0.4rem 0.7rem' }} onClick={() => setCurrentIndex(i => Math.max(0, i - 1))} disabled={currentIndex === 0 || saving} aria-label="Sugerencia anterior"><ChevronLeft size={18} /></button>
+            <button type="button" className="btn btn-outline" style={{ backgroundColor: 'white', padding: '0.4rem 0.7rem' }} onClick={() => setCurrentIndex(i => Math.min(suggestions.length - 1, i + 1))} disabled={currentIndex >= suggestions.length - 1 || saving} aria-label="Sugerencia siguiente"><ChevronRight size={18} /></button>
           </div>
         </div>
       </div>

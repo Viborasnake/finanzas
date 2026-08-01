@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { X, Plus, Scissors, Save } from 'lucide-react';
 import { CascadingCategorySelector } from '../pages/Transactions';
+import { Dialog } from './Dialog';
 
 interface SplitPart {
   id: string;
@@ -42,7 +42,7 @@ export default function SplitTransactionModal({ transaction, onClose, onSave }: 
         categoria_secundaria: ''
       }
     ]);
-  }, [transaction]);
+  }, [transaction, totalAmount]);
 
   const addPart = () => {
     const currentSum = parts.reduce((acc, p) => acc + p.amount, 0);
@@ -88,25 +88,30 @@ export default function SplitTransactionModal({ transaction, onClose, onSave }: 
   const remainder = totalAmount - currentSum;
   const isValid = remainder === 0 && parts.every(p => p.amount > 0 && p.tipo_movimiento);
 
-  return createPortal(
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: '1rem' }}>
-      <div style={{ backgroundColor: '#fff', border: '3px solid #000', borderRadius: '12px', width: '100%', maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '8px 8px 0px #000', display: 'flex', flexDirection: 'column' }}>
+  return (
+    <Dialog
+      onClose={onClose}
+      labelledBy="split-dialog-title"
+      describedBy="split-dialog-summary"
+      panelClassName="split-dialog"
+      panelStyle={{ maxWidth: '700px', maxHeight: '90dvh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+    >
         
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 1.5rem', borderBottom: '3px solid #000', backgroundColor: '#fef08a' }}>
-          <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div className="split-dialog-header">
+          <h2 id="split-dialog-title">
             <Scissors size={24} strokeWidth={2.5} />
-            Dividir Transacción
+            Dividir transacción
           </h2>
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '0.25rem' }}>
+          <button type="button" className="dialog-close" onClick={onClose} aria-label="Cerrar división de transacción">
             <X size={24} strokeWidth={3} />
           </button>
         </div>
 
         {/* Content */}
-        <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div className="split-dialog-body">
           
-          <div style={{ backgroundColor: '#f8fafc', padding: '1rem', border: '2px solid #000', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div id="split-dialog-summary" className="split-dialog-summary">
             <div>
               <div style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748b' }}>Monto Original</div>
               <div style={{ fontSize: '1.25rem', fontWeight: 900 }}>${totalAmount.toLocaleString('es-CL')}</div>
@@ -129,34 +134,39 @@ export default function SplitTransactionModal({ transaction, onClose, onSave }: 
                   <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>División {index + 1}</div>
                   {parts.length > 2 && (
                     <button 
+                      type="button"
                       onClick={() => removePart(part.id)}
                       style={{ background: '#fecaca', border: '2px solid #000', borderRadius: '4px', cursor: 'pointer', padding: '0.2rem', display: 'flex' }}
                       title="Eliminar división"
+                      aria-label={`Eliminar división ${index + 1}`}
                     >
                       <X size={14} strokeWidth={3} />
                     </button>
                   )}
                 </div>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: '1rem' }}>
+                <div className="split-part-fields">
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.25rem' }}>Fecha</label>
+                    <label htmlFor={`split-date-${part.id}`} style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.25rem' }}>Fecha</label>
                     <input 
+                      id={`split-date-${part.id}`}
                       type="date" 
                       value={part.date || transaction.date}
                       onChange={(e) => updatePart(part.id, 'date', e.target.value)}
-                      style={{ width: '100%', padding: '0.5rem', border: '2px solid #000', borderRadius: '6px', fontWeight: 700, fontSize: '0.9rem', backgroundColor: '#fff', outline: 'none' }}
+                      className="input"
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.25rem' }}>Monto</label>
+                    <label htmlFor={`split-amount-${part.id}`} style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.25rem' }}>Monto</label>
                     <div style={{ position: 'relative' }}>
                       <span style={{ position: 'absolute', left: '0.5rem', top: '50%', transform: 'translateY(-50%)', fontWeight: 800 }}>$</span>
                       <input 
+                        id={`split-amount-${part.id}`}
                         type="number" 
                         value={part.amount || ''}
                         onChange={(e) => updatePart(part.id, 'amount', parseInt(e.target.value) || 0)}
-                        style={{ width: '100%', padding: '0.5rem 0.5rem 0.5rem 1.25rem', border: '2px solid #000', borderRadius: '6px', fontWeight: 700, fontSize: '1rem', backgroundColor: '#fff', outline: 'none' }}
+                        className="input"
+                        style={{ paddingLeft: '1.25rem' }}
                       />
                     </div>
                   </div>
@@ -177,6 +187,7 @@ export default function SplitTransactionModal({ transaction, onClose, onSave }: 
           </div>
 
           <button 
+            type="button"
             onClick={addPart}
             className="btn btn-outline"
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', width: '100%', backgroundColor: '#fff' }}
@@ -187,9 +198,10 @@ export default function SplitTransactionModal({ transaction, onClose, onSave }: 
         </div>
 
         {/* Footer */}
-        <div style={{ padding: '1.25rem 1.5rem', borderTop: '3px solid #000', backgroundColor: '#f1f5f9', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-          <button className="btn btn-outline" onClick={onClose} style={{ backgroundColor: '#fff' }}>Cancelar</button>
+        <div className="split-dialog-footer">
+          <button type="button" className="btn btn-outline" onClick={onClose} style={{ backgroundColor: '#fff' }}>Cancelar</button>
           <button 
+            type="button"
             className="btn btn-primary" 
             onClick={() => onSave(parts)}
             disabled={!isValid}
@@ -197,13 +209,11 @@ export default function SplitTransactionModal({ transaction, onClose, onSave }: 
             title={!isValid ? 'Asegúrate de asignar el monto completo y categorizar todas las partes' : ''}
           >
             <Save size={18} strokeWidth={2.5} />
-            Guardar Divisiones
+            Guardar divisiones
           </button>
         </div>
 
-      </div>
-    </div>,
-    document.body
+    </Dialog>
   );
 }
 

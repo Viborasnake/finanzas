@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useId } from 'react';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 
 interface NeoDatePickerProps {
@@ -12,6 +12,7 @@ export default function NeoDatePicker({ value, onChange }: NeoDatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date(value.getFullYear(), value.getMonth(), 1));
   const containerRef = useRef<HTMLDivElement>(null);
+  const calendarId = useId();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -19,8 +20,15 @@ export default function NeoDatePicker({ value, onChange }: NeoDatePickerProps) {
         setIsOpen(false);
       }
     };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsOpen(false);
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
   }, []);
 
   const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
@@ -54,9 +62,15 @@ export default function NeoDatePicker({ value, onChange }: NeoDatePickerProps) {
   return (
     <div ref={containerRef} style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
       {/* Input Trigger */}
-      <div 
+      <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+        aria-haspopup="dialog"
+        aria-controls={calendarId}
+        aria-label={`Seleccionar fecha. Fecha actual: ${formatDisplay(value)}`}
         style={{
+          width: '100%',
           display: 'flex',
           alignItems: 'center',
           gap: '0.5rem',
@@ -70,15 +84,19 @@ export default function NeoDatePicker({ value, onChange }: NeoDatePickerProps) {
           transition: 'all 0.1s ease',
           transform: isOpen ? 'translate(2px, 2px)' : 'none',
           boxShadow: isOpen ? '0px 0px 0px #000' : '4px 4px 0px #000',
+          textAlign: 'left'
         }}
       >
         <CalendarIcon size={18} strokeWidth={2.5} />
         <span style={{ fontSize: '0.9rem', color: '#000', flex: 1 }}>{formatDisplay(value)}</span>
-      </div>
+      </button>
 
       {/* Popover Calendar */}
       {isOpen && (
-        <div 
+        <div
+          id={calendarId}
+          role="dialog"
+          aria-label="Calendario"
           style={{
             position: 'absolute',
             top: 'calc(100% + 8px)',
@@ -95,7 +113,9 @@ export default function NeoDatePicker({ value, onChange }: NeoDatePickerProps) {
           {/* Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <button 
+              type="button"
               onClick={handlePrevMonth}
+              aria-label="Mes anterior"
               style={{ background: '#f1f5f9', border: '2px solid #000', borderRadius: '4px', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
               <ChevronLeft size={18} strokeWidth={3} />
@@ -104,7 +124,9 @@ export default function NeoDatePicker({ value, onChange }: NeoDatePickerProps) {
               {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
             </div>
             <button 
+              type="button"
               onClick={handleNextMonth}
+              aria-label="Mes siguiente"
               style={{ background: '#f1f5f9', border: '2px solid #000', borderRadius: '4px', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
               <ChevronRight size={18} strokeWidth={3} />
@@ -125,12 +147,18 @@ export default function NeoDatePicker({ value, onChange }: NeoDatePickerProps) {
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const day = i + 1;
               const isSelected = value.getDate() === day && value.getMonth() === currentMonth.getMonth() && value.getFullYear() === currentMonth.getFullYear();
-              const isToday = new Date().getDate() === day && new Date().getMonth() === new Date().getMonth() && new Date().getFullYear() === new Date().getFullYear();
+              const today = new Date();
+              const isToday = today.getDate() === day && today.getMonth() === currentMonth.getMonth() && today.getFullYear() === currentMonth.getFullYear();
+              const dateLabel = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day).toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' });
               
               return (
                 <button
+                  type="button"
                   key={day}
                   onClick={(e) => { e.stopPropagation(); handleSelectDate(day); }}
+                  aria-label={dateLabel}
+                  aria-pressed={isSelected}
+                  aria-current={isToday ? 'date' : undefined}
                   style={{
                     backgroundColor: isSelected ? '#000' : isToday ? '#fef08a' : '#fff',
                     color: isSelected ? '#fff' : '#000',

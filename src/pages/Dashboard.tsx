@@ -1,13 +1,12 @@
-import { useEffect, useState, useMemo, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import { lazy, Suspense, useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from '../services/supabase';
-import { useAuth } from '../contexts/AuthContext';
-import { useBanks } from '../contexts/BankContext';
+import { useAuth } from '../contexts/authContextValue';
+import { AVAILABLE_BANKS, useBanks, type Bank } from '../contexts/bankContextValue';
 
 import { 
   ChevronRight, TrendingUp, TrendingDown, 
   Wallet, CreditCard, AlertTriangle, Sparkles, Activity, Search, X, Edit2,
-  ArrowUpRight, ArrowDownRight, Scale, PiggyBank, Calendar, Landmark, FileSpreadsheet, Tags, CheckCircle2, Settings, ChevronDown
+  ArrowUpRight, ArrowDownRight, Scale, PiggyBank, Calendar, Landmark, FileSpreadsheet, Tags, CheckCircle2, Settings, ChevronDown, RefreshCw
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -17,12 +16,16 @@ import {
 } from 'recharts';
 import NeoDatePicker from '../components/NeoDatePicker';
 import InfoTooltip from '../components/InfoTooltip';
-import MindMapChart from '../components/MindMapChart';
 import LaikaPet from '../components/LaikaPet';
 import { useTaxonomy } from '../hooks/useTaxonomy';
-import { AVAILABLE_BANKS } from '../contexts/BankContext';
 import { toast } from 'react-hot-toast';
-import { CascadingCategorySelector } from './Transactions';
+import { Dialog } from '../components/Dialog';
+import { getSuggestedDashboardPeriod } from '../utils/dashboardPeriod';
+
+const MindMapChart = lazy(() => import('../components/MindMapChart'));
+const CascadingCategorySelector = lazy(() => import('./Transactions').then(module => ({
+  default: module.CascadingCategorySelector
+})));
 
 type CategoryLevel = 'principal' | 'secundaria' | 'detalle';
 
@@ -103,7 +106,8 @@ const getTransactionKind = (tx: any): 'ingreso' | 'egreso' | null => {
 
   const amount = Number(tx.amount || 0);
   if (amount < 0) return 'egreso';
-  return 'egreso';
+  if (amount > 0) return 'ingreso';
+  return null;
 };
 
 const getTransactionAmount = (tx: any) => Math.abs(Number(tx.amount || 0));
@@ -119,19 +123,92 @@ const getCanonicalBankId = (bankName: any) => {
   return AVAILABLE_BANKS.find(bank => normalizeBankName(bank.id) === normalized || normalizeBankName(bank.label) === normalized)?.id || String(bankName || 'Sin banco');
 };
 
+const normalizeMovementLabel = (value: any) => String(value || '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+  .trim();
+
+const isInitialBalanceTransaction = (tx: any) => {
+  const text = `${tx.description || ''} ${tx.original_description || ''} ${tx.categoria_secundaria || ''}`;
+  return normalizeMovementLabel(text).includes('saldo inicial');
+};
+
+const classifyTransactionForReport = (tx: any) => {
+  const kind = getTransactionKind(tx);
+  const amount = getTransactionAmount(tx);
+  const movementType = normalizeMovementLabel(tx.tipo_movimiento);
+  const secondary = normalizeMovementLabel(tx.categoria_secundaria);
+  const isInvestment = movementType === 'ahorro/inversion';
+  const isInternal = movementType === 'movimiento interno'
+    || secondary === 'transferencias propias'
+    || secondary === 'transferencia personal'
+    || isInvestment;
+  const isInitialBalance = isInitialBalanceTransaction(tx);
+
+  return {
+    kind,
+    amount,
+    isInternal,
+    isInvestment,
+    isInitialBalance,
+    isRealIncome: kind === 'ingreso' && !isInternal && !isInitialBalance,
+    isRealExpense: kind === 'egreso' && !isInternal && !isInitialBalance,
+    isInternalIncome: kind === 'ingreso' && isInternal && !isInitialBalance,
+    isInternalExpense: kind === 'egreso' && isInternal && !isInitialBalance
+  };
+};
+
+const isFullCalendarMonth = (range: DateRange) => {
+  const lastDay = new Date(range.start.getFullYear(), range.start.getMonth() + 1, 0).getDate();
+  return range.start.getDate() === 1
+    && range.end.getFullYear() === range.start.getFullYear()
+    && range.end.getMonth() === range.start.getMonth()
+    && range.end.getDate() === lastDay;
+};
+
+const isFullCalendarYear = (range: DateRange) => range.start.getMonth() === 0
+  && range.start.getDate() === 1
+  && range.end.getFullYear() === range.start.getFullYear()
+  && range.end.getMonth() === 11
+  && range.end.getDate() === 31;
+
+const shiftComparableRange = (range: DateRange, offset: number) => {
+  if (isFullCalendarMonth(range)) {
+    const start = new Date(range.start.getFullYear(), range.start.getMonth() + offset, 1);
+    return {
+      start,
+      end: new Date(start.getFullYear(), start.getMonth() + 1, 0, 23, 59, 59)
+    };
+  }
+
+  if (isFullCalendarYear(range)) {
+    const year = range.start.getFullYear() + offset;
+    return { start: new Date(year, 0, 1), end: new Date(year, 11, 31, 23, 59, 59) };
+  }
+
+  const durationMs = range.end.getTime() - range.start.getTime() + 1;
+  const start = new Date(range.start.getTime() + offset * durationMs);
+  return { start, end: new Date(start.getTime() + durationMs - 1) };
+};
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [bankLoadErrors, setBankLoadErrors] = useState<string[]>([]);
   const { user } = useAuth();
-  const { activeBank, connectedBanks, dashboardScope } = useBanks();
+  const { activeBank, connectedBanks, dashboardScope, setActiveBank, setDashboardScope } = useBanks();
 
   const { taxonomy } = useTaxonomy();
   const isConsolidated = dashboardScope === 'all' && connectedBanks.length > 1;
   const dashboardBanks = isConsolidated ? connectedBanks : (activeBank ? [activeBank] : []);
+  const dashboardBankKey = dashboardBanks.join('|');
   const activeBankInfo = AVAILABLE_BANKS.find(b => b.id === activeBank);
   const dashboardBankLabel = isConsolidated ? 'Todos los bancos' : (activeBankInfo?.label || 'Sin banco');
   const [reportCollapsed, setReportCollapsed] = useState(() => localStorage.getItem('finanzas_report_collapsed') === 'true');
+  const [advancedOpen, setAdvancedOpen] = useState(() => localStorage.getItem('finanzas_advanced_open') === 'true');
   const [periodWasChosen, setPeriodWasChosen] = useState(() => sessionStorage.getItem('finanzas_dash_period_chosen') === 'true');
 
   const [activePreset, setActivePreset] = useState<string>(() => {
@@ -144,7 +221,7 @@ export default function Dashboard() {
       try {
         const parsed = JSON.parse(saved);
         return { start: new Date(parsed.start), end: new Date(parsed.end), label: parsed.label };
-      } catch (e) {}
+      } catch {}
     }
     const presetId = sessionStorage.getItem('finanzas_dash_preset') || 'month';
     const preset = PRESETS.find(p => p.id === presetId) || PRESETS[2];
@@ -235,21 +312,12 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    if (user && dashboardBanks.length > 0) {
-      fetchTransactions();
-    } else {
-      setTransactions([]);
-      setLoading(false);
-    }
-  }, [user, dashboardScope, activeBank, connectedBanks.join('|')]);
-
-  useEffect(() => {
     setPeriodWasChosen(sessionStorage.getItem('finanzas_dash_period_chosen') === 'true');
   }, [dashboardScope, activeBank]);
 
   useEffect(() => {
     if (loading || transactions.length === 0) return;
-    if (periodWasChosen && activePreset !== 'month' && activePreset !== 'prev_month') return;
+    if (periodWasChosen) return;
 
     const now = new Date();
     const currentStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -268,17 +336,18 @@ export default function Dashboard() {
       return d >= previousStart && d <= previousEnd;
     }).length;
 
-    if (currentCount >= MIN_CURRENT_MONTH_TRANSACTIONS) {
-      if (activePreset !== 'month') setDashboardRange('month');
-      return;
-    }
-
-    if (previousCount > 0 && activePreset !== 'prev_month') {
-      setDashboardRange('prev_month');
-    }
+    const suggestedPreset = getSuggestedDashboardPeriod({
+      periodWasChosen,
+      activePreset,
+      currentCount,
+      previousCount,
+      minimumCurrentCount: MIN_CURRENT_MONTH_TRANSACTIONS
+    });
+    if (suggestedPreset) setDashboardRange(suggestedPreset);
   }, [loading, transactions, periodWasChosen, activePreset]);
 
-  const fetchAllForBank = async (bankId: string) => {
+  const fetchAllForBank = useCallback(async (bankId: string) => {
+    if (!user) return [];
     let allData: any[] = [];
     let from = 0;
     const step = 1000;
@@ -286,7 +355,7 @@ export default function Dashboard() {
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
-        .eq('user_id', user!.id)
+        .eq('user_id', user.id)
         .eq('bank', bankId)
         .order('date', { ascending: false })
         .range(from, from + step - 1);
@@ -298,15 +367,18 @@ export default function Dashboard() {
       from += step;
     }
     return allData;
-  };
+  }, [user]);
 
-  const fetchTransactions = async () => {
-    if (!user || dashboardBanks.length === 0) return;
+  const fetchTransactions = useCallback(async () => {
+    const banksToLoad = dashboardBankKey.split('|').filter(Boolean) as Bank[];
+    if (!user || banksToLoad.length === 0) return;
     try {
       setLoading(true);
+      setLoadError(null);
+      setBankLoadErrors([]);
       if (isConsolidated) {
         const results = await Promise.all(
-          dashboardBanks.map(async bank => {
+          banksToLoad.map(async bank => {
             try {
               const data = await fetchAllForBank(bank);
               return { data, bank, error: null };
@@ -316,47 +388,67 @@ export default function Dashboard() {
           })
         );
 
-        const firstError = results.find(result => result.error)?.error;
-        if (firstError) throw firstError;
-
         const rows = results.flatMap(result =>
           (result.data || []).map(tx => ({
             ...tx,
             bank: tx.bank || result.bank
           }))
         );
+        const failedBanks = results
+          .filter(result => result.error)
+          .map(result => AVAILABLE_BANKS.find(bank => bank.id === result.bank)?.label || result.bank);
+
+        if (rows.length === 0 && failedBanks.length > 0) {
+          throw new Error('No fue posible cargar los movimientos de los bancos seleccionados.');
+        }
+
         rows.sort((a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime());
         setTransactions(rows);
+        setBankLoadErrors(failedBanks);
       } else {
-        const data = await fetchAllForBank(dashboardBanks[0]);
+        const data = await fetchAllForBank(banksToLoad[0]);
         // Sort ascending for Dashboard
         data.sort((a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime());
         setTransactions(data);
       }
     } catch (error) {
       console.error('Error fetching transactions:', error);
+      setTransactions([]);
+      setLoadError(error instanceof Error ? error.message : 'No fue posible cargar el dashboard.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [dashboardBankKey, fetchAllForBank, isConsolidated, user]);
+
+  useEffect(() => {
+    if (user && dashboardBankKey) {
+      fetchTransactions();
+    } else {
+      setTransactions([]);
+      setLoadError(null);
+      setBankLoadErrors([]);
+      setLoading(false);
+    }
+  }, [dashboardBankKey, fetchTransactions, user]);
 
   const openDetailsModal = (conceptName: string, type: 'ingreso' | 'egreso') => {
     const { start, end } = dateRange;
     const txs = transactions.filter(t => {
       const d = parseLocalDate(t.date);
-      return d >= start && d <= end && getTransactionKind(t) === type;
+      const report = classifyTransactionForReport(t);
+      return d >= start && d <= end
+        && !report.isInitialBalance
+        && report.kind === type;
     });
 
     let filtered: any[] = [];
     if (type === 'ingreso') {
       filtered = txs.filter(t => {
-        const isInternal = t.tipo_movimiento === 'Movimiento Interno' || 
-                           t.categoria_secundaria === 'Transferencias Propias' || 
-                           t.categoria_secundaria === 'Transferencia personal';
+        const report = classifyTransactionForReport(t);
         const catP = t.categoria_principal?.toLowerCase() || '';
         
-        if (conceptName === 'Ingreso Propio') return isInternal;
-        if (isInternal) return false;
+        if (conceptName === 'Ingreso Propio') return report.isInternalIncome;
+        if (!report.isRealIncome) return false;
         
         if (conceptName === 'Sueldo') return catP.includes('sueldo');
         if (conceptName === 'Honorarios') return catP.includes('honorarios') || catP.includes('profesionales');
@@ -365,14 +457,11 @@ export default function Dashboard() {
       });
     } else {
       filtered = txs.filter(t => {
-        const isInternal = t.tipo_movimiento === 'Movimiento Interno' || 
-                           t.categoria_secundaria === 'Transferencias Propias' || 
-                           t.categoria_secundaria === 'Transferencia personal';
-        const isInv = t.tipo_movimiento === 'Ahorro/Inversión';
+        const report = classifyTransactionForReport(t);
         const catP = t.categoria_principal || 'Sin Clasificar';
         
-        if (conceptName === 'Egreso Propio') return isInternal;
-        if (isInternal || isInv) return false;
+        if (conceptName === 'Egreso Propio') return report.isInternalExpense;
+        if (!report.isRealExpense) return false;
         
         if (conceptName === 'Otros Egresos') {
           const sortedCats = [...stats.current.topCatsPrincipal].filter(x => x.name !== 'Sin Clasificar');
@@ -398,14 +487,10 @@ export default function Dashboard() {
   // Current range comes from dateRange state.
   // Previous range = same duration, shifted backwards.
   const { currentRange, prevRange } = useMemo(() => {
-    const { start, end } = dateRange;
-    const durationMs = end.getTime() - start.getTime();
+    const previous = shiftComparableRange(dateRange, -1);
     return {
-      currentRange: { start, end },
-      prevRange: {
-        start: new Date(start.getTime() - durationMs - 1000),
-        end: new Date(start.getTime() - 1000)
-      }
+      currentRange: { start: dateRange.start, end: dateRange.end },
+      prevRange: previous
     };
   }, [dateRange]);
 
@@ -417,16 +502,14 @@ export default function Dashboard() {
     });
   }, [transactions, dateRange]);
 
-  const isInitialBalanceTx = (t: any) => (t.description || '').toLowerCase().includes('saldo inicial');
-
   const periodMovements = useMemo(() => {
-    return filteredTransactions.filter(t => !isInitialBalanceTx(t));
+    return filteredTransactions.filter(t => !isInitialBalanceTransaction(t));
   }, [filteredTransactions]);
 
   const availablePeriods = useMemo(() => {
     const months = new Map<string, { start: Date; end: Date; label: string; count: number }>();
     transactions.forEach(t => {
-      if (isInitialBalanceTx(t)) return;
+      if (isInitialBalanceTransaction(t)) return;
       const d = parseLocalDate(t.date);
       if (Number.isNaN(d.getTime())) return;
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -485,47 +568,36 @@ export default function Dashboard() {
 
       const txs = transactions.filter(t => {
         const d = parseLocalDate(t.date);
-        return d >= start && d <= end;
+        return d >= start && d <= end && !isInitialBalanceTransaction(t);
       });
 
       txs.forEach(t => {
-        const isInternal = t.tipo_movimiento === 'Movimiento Interno' || 
-                           t.categoria_secundaria === 'Transferencias Propias' || 
-                           t.categoria_secundaria === 'Transferencia personal' ||
-                           t.tipo_movimiento === 'Ahorro/Inversión';
-        const isInvestment = t.tipo_movimiento === 'Ahorro/Inversión';
         const isUnclassified = !t.categoria_principal || t.categoria_principal === 'Sin Clasificar';
+        const report = classifyTransactionForReport(t);
 
-        const kind = getTransactionKind(t);
-        const amount = getTransactionAmount(t);
-
-        if (kind === 'ingreso') {
-          if (isInternal) {
-            aportePropio += amount;
-          } else {
-            ingresos += amount;
+        if (report.isInternalIncome) {
+          aportePropio += report.amount;
+        } else if (report.isRealIncome) {
+            ingresos += report.amount;
             
             const catP = t.categoria_principal?.toLowerCase() || '';
             if (catP.includes('sueldo')) {
-              sueldo += amount;
+              sueldo += report.amount;
             } else if (catP.includes('honorarios') || catP.includes('profesionales')) {
-              honorarios += amount;
+              honorarios += report.amount;
             } else {
-              ingresosOtros += amount;
+              ingresosOtros += report.amount;
             }
 
             // For intelligence
-            if (amount > maxIncomeAmount) {
-              maxIncomeAmount = amount;
+            if (report.amount > maxIncomeAmount) {
+              maxIncomeAmount = report.amount;
               maxIncomeDesc = t.description || t.categoria_principal || 'Ingreso';
             }
-          }
-        } else if (kind === 'egreso') {
-          // Gasto
-          const absAmt = amount;
-          if (isInternal) {
-            movimientoInternoEgreso += absAmt;
-          } else if (!isInvestment) {
+        } else if (report.isInternalExpense) {
+            movimientoInternoEgreso += report.amount;
+        } else if (report.isRealExpense) {
+            const absAmt = report.amount;
             gastosTotales += absAmt;
             
             const catP = t.categoria_principal || 'Sin Clasificar';
@@ -545,7 +617,6 @@ export default function Dashboard() {
             catsSecundaria[catS] = (catsSecundaria[catS] || 0) + absAmt;
 
             if (isUnclassified) unclassifiedCount++;
-          }
         }
       });
 
@@ -560,11 +631,10 @@ export default function Dashboard() {
       // Detalle: group by description
       const catsDetalle: Record<string, number> = {};
       txs.forEach(t => {
-        const isInternal = t.tipo_movimiento === 'Movimiento Interno';
-        const isInvestment = t.tipo_movimiento === 'Ahorro/Inversión';
-        if (getTransactionKind(t) === 'egreso' && !isInternal && !isInvestment) {
+        const report = classifyTransactionForReport(t);
+        if (report.isRealExpense) {
           const desc = (t.description || t.original_description || 'Sin descripción').trim();
-          catsDetalle[desc] = (catsDetalle[desc] || 0) + Math.abs(t.amount);
+          catsDetalle[desc] = (catsDetalle[desc] || 0) + report.amount;
         }
       });
       const topCatsDetalle = Object.entries(catsDetalle)
@@ -626,7 +696,20 @@ export default function Dashboard() {
   }, [transactions, currentRange, prevRange]);
 
   const bankBreakdown = useMemo(() => {
-    const byBank = new Map<string, { bank: string; label: string; color: string; ingresos: number; egresos: number; count: number }>();
+    const byBank = new Map<string, { bank: string; label: string; color: string; ingresos: number; egresos: number; internal: number; count: number }>();
+
+    dashboardBankKey.split('|').filter(Boolean).forEach(bankName => {
+      const bankInfo = AVAILABLE_BANKS.find(bank => bank.id === bankName);
+      byBank.set(bankName, {
+        bank: bankName,
+        label: bankInfo?.label || bankName,
+        color: bankInfo?.color || '#94a3b8',
+        ingresos: 0,
+        egresos: 0,
+        internal: 0,
+        count: 0
+      });
+    });
 
     periodMovements.forEach(t => {
       const bankName = getCanonicalBankId(t.bank);
@@ -638,48 +721,47 @@ export default function Dashboard() {
           color: bankInfo?.color || '#94a3b8',
           ingresos: 0,
           egresos: 0,
+          internal: 0,
           count: 0
         });
       }
 
       const item = byBank.get(bankName)!;
-      const amount = getTransactionAmount(t);
-      const kind = getTransactionKind(t);
-      if (kind === 'ingreso') item.ingresos += amount;
-      if (kind === 'egreso') item.egresos += amount;
+      const report = classifyTransactionForReport(t);
+      if (report.isRealIncome) item.ingresos += report.amount;
+      if (report.isRealExpense) item.egresos += report.amount;
+      if (report.isInternalIncome || report.isInternalExpense) item.internal += report.amount;
       item.count += 1;
     });
 
     return Array.from(byBank.values()).sort((a, b) => (b.ingresos + b.egresos) - (a.ingresos + a.egresos));
-  }, [periodMovements]);
+  }, [periodMovements, dashboardBankKey]);
+
+  const showSingleBank = (bank: string) => {
+    const nextBank = bank as Bank;
+    setActiveBank(nextBank);
+    setDashboardScope(nextBank);
+  };
 
   // Generate 6 buckets history for sparklines (based on dateRange duration)
   const historyData = useMemo(() => {
-    const { start, end } = dateRange;
-    const durationMs = end.getTime() - start.getTime();
     const data = [];
     for (let i = -5; i <= 0; i++) {
-      const bStart = new Date(start.getTime() + i * durationMs);
-      const bEnd = new Date(start.getTime() + (i + 1) * durationMs - 1000);
+      const bucket = shiftComparableRange(dateRange, i);
       let ing = 0, gas = 0;
       transactions.forEach(t => {
         const d = parseLocalDate(t.date);
-        if (d >= bStart && d <= bEnd) {
-          const isInvestment = t.tipo_movimiento === 'Ahorro/Inversión';
-          const kind = getTransactionKind(t);
-          if (kind === 'ingreso') ing += getTransactionAmount(t);
-          if (kind === 'egreso' && !isInvestment) gas += getTransactionAmount(t);
+        if (d >= bucket.start && d <= bucket.end) {
+          const report = classifyTransactionForReport(t);
+          if (report.isRealIncome) ing += report.amount;
+          if (report.isRealExpense) gas += report.amount;
         }
       });
-      let label = '';
-      const days = Math.round(durationMs / (1000 * 60 * 60 * 24));
-      if (days >= 28 && days <= 31) {
-        label = bStart.toLocaleString('es-CL', { month: 'short', timeZone: 'UTC' });
-      } else if (days > 360) {
-        label = bStart.getFullYear().toString();
-      } else {
-        label = `${bStart.getUTCDate()}/${bStart.getUTCMonth()+1}`;
-      }
+      const label = isFullCalendarMonth(dateRange)
+        ? bucket.start.toLocaleString('es-CL', { month: 'short', year: '2-digit' })
+        : isFullCalendarYear(dateRange)
+          ? bucket.start.getFullYear().toString()
+          : bucket.start.toLocaleDateString('es-CL', { day: '2-digit', month: 'short' });
       data.push({ label, Ingresos: ing, Egresos: gas });
     }
     return data;
@@ -726,12 +808,11 @@ export default function Dashboard() {
       transactions.forEach(t => {
         const d = parseLocalDate(t.date);
         if (d >= start && d <= end) {
-          const isInvestment = t.tipo_movimiento === 'Ahorro/Inversión';
           const key = getKey(d);
           if (data[key]) {
-            const kind = getTransactionKind(t);
-            if (kind === 'ingreso') data[key].Ingresos += getTransactionAmount(t);
-            if (kind === 'egreso' && !isInvestment) data[key].Egresos += getTransactionAmount(t);
+            const report = classifyTransactionForReport(t);
+            if (report.isRealIncome) data[key].Ingresos += report.amount;
+            if (report.isRealExpense) data[key].Egresos += report.amount;
           }
         }
       });
@@ -745,8 +826,8 @@ export default function Dashboard() {
       transactions.forEach(t => {
         const d = parseLocalDate(t.date);
         if (d >= start && d <= end) {
-          const isInvestment = t.tipo_movimiento === 'Ahorro/Inversión';
-          if (getTransactionKind(t) === 'egreso' && !isInvestment) {
+          const report = classifyTransactionForReport(t);
+          if (report.isRealExpense) {
             const catField = categoryLevel === 'detalle'
               ? (t.description || t.original_description || '').trim()
               : categoryLevel === 'principal'
@@ -754,7 +835,7 @@ export default function Dashboard() {
                 : (t.categoria_secundaria || 'Sin Clasificar');
             if (selectedCategories.includes(catField)) {
               const key = getKey(d);
-              if (data[key]) data[key][catField] += Math.abs(t.amount);
+              if (data[key]) data[key][catField] += report.amount;
             }
           }
         }
@@ -864,6 +945,7 @@ export default function Dashboard() {
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
               <button
+                type="button"
                 className="btn btn-primary"
                 onClick={() => navigate(dashboardBanks.length > 0 ? '/import' : '/settings#bancos')}
                 style={{ padding: '0.9rem 1.25rem', fontSize: '0.95rem' }}
@@ -872,6 +954,7 @@ export default function Dashboard() {
                 {dashboardBanks.length > 0 ? 'Importar primera cartola' : 'Configurar banco'}
               </button>
               <button
+                type="button"
                 className="btn btn-outline"
                 onClick={() => navigate('/settings#deteccion')}
                 style={{ padding: '0.9rem 1.25rem', fontSize: '0.95rem', backgroundColor: '#fff' }}
@@ -903,6 +986,7 @@ export default function Dashboard() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 230px), 1fr))', gap: '1rem', padding: '1.25rem' }}>
           {steps.map((step, index) => (
             <button
+              type="button"
               key={step.title}
               onClick={() => navigate(step.path)}
               style={{ textAlign: 'left', padding: '1rem', minHeight: '190px', border: '2px solid #000', borderRadius: '10px', boxShadow: '3px 3px 0px #000', backgroundColor: step.color, display: 'flex', flexDirection: 'column', gap: '0.85rem' }}
@@ -939,7 +1023,7 @@ export default function Dashboard() {
     const nextPeriod = closestPeriodWithData;
 
     return (
-      <div style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '12px', boxShadow: '4px 4px 0px #000', padding: '2rem', marginBottom: '2.5rem', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '1.5rem', alignItems: 'center' }}>
+      <div className="dashboard-empty-period">
         <div>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', padding: '0.35rem 0.75rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#fef08a', boxShadow: '2px 2px 0 #000', fontWeight: 900, fontSize: '0.78rem', marginBottom: '1rem' }}>
             <Search size={16} strokeWidth={3} />
@@ -956,6 +1040,7 @@ export default function Dashboard() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', minWidth: '220px' }}>
           {nextPeriod && (
             <button
+              type="button"
               className="btn btn-primary"
               onClick={() => applyRangeObject({ start: nextPeriod.start, end: nextPeriod.end, label: nextPeriod.label })}
               style={{ justifyContent: 'center' }}
@@ -964,6 +1049,7 @@ export default function Dashboard() {
             </button>
           )}
           <button
+            type="button"
             className="btn btn-outline"
             onClick={() => navigate('/import')}
             style={{ justifyContent: 'center', backgroundColor: '#fff' }}
@@ -976,6 +1062,40 @@ export default function Dashboard() {
     );
   };
 
+  const renderLoadErrorState = () => (
+    <section className="dashboard-error-state" role="alert" aria-live="assertive">
+      <div className="dashboard-state-icon" aria-hidden="true">
+        <AlertTriangle size={26} strokeWidth={2.5} />
+      </div>
+      <div className="dashboard-state-copy">
+        <h2>No pudimos cargar el resumen</h2>
+        <p>{loadError || 'Ocurrió un problema al consultar tus movimientos.'}</p>
+      </div>
+      <button type="button" className="btn btn-primary" onClick={fetchTransactions}>
+        <RefreshCw size={18} />
+        Reintentar
+      </button>
+    </section>
+  );
+
+  const renderPartialLoadWarning = () => {
+    if (bankLoadErrors.length === 0) return null;
+
+    return (
+      <div className="dashboard-partial-warning" role="status" aria-live="polite">
+        <AlertTriangle size={20} strokeWidth={2.5} aria-hidden="true" />
+        <div>
+          <strong>El consolidado está incompleto.</strong>
+          <span>No pudimos cargar {bankLoadErrors.join(', ')}. Los totales visibles consideran solo los bancos disponibles.</span>
+        </div>
+        <button type="button" className="btn btn-outline" onClick={fetchTransactions}>
+          <RefreshCw size={17} />
+          Reintentar
+        </button>
+      </div>
+    );
+  };
+
   // BLOCK 1: DATE RANGE PICKER
   const renderHeader = () => {
     const fmt = (d: Date) => d.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -984,14 +1104,31 @@ export default function Dashboard() {
       : dateRange.label;
 
     return (
-      <div style={{ marginBottom: '2rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-          <h1 style={{ margin: 0, fontFamily: '"Montserrat", sans-serif', fontSize: '2.5rem', fontWeight: 900, color: '#000' }}>Resumen Financiero</h1>
+      <header className="dashboard-header">
+        <div className="dashboard-header-main">
+          <div className="dashboard-title-context">
+            <h1>Resumen financiero</h1>
+            <div className="dashboard-context-line" aria-label={`Vista de ${dashboardBankLabel}`}>
+              <span
+                className="dashboard-context-dot"
+                style={{ backgroundColor: isConsolidated ? '#111827' : (activeBankInfo?.color || '#94a3b8') }}
+                aria-hidden="true"
+              />
+              <strong>{dashboardBankLabel}</strong>
+              {periodMovements.length > 0 && (
+                <span>{periodMovements.length.toLocaleString('es-CL')} movimientos en el periodo</span>
+              )}
+            </div>
+          </div>
 
           {/* Date Range Picker Trigger */}
-          <div ref={pickerRef} style={{ position: 'relative' }}>
+          <div ref={pickerRef} className="dashboard-date-control">
             <button
+              type="button"
               onClick={() => setPickerOpen(o => !o)}
+              aria-expanded={pickerOpen}
+              aria-haspopup="dialog"
+              aria-controls="dashboard-date-popover"
               style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 1.25rem', backgroundColor: '#fff', border: '2px solid #000', borderRadius: '2rem', fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer', boxShadow: '4px 4px 0px #000', transition: 'all 0.1s' }}
             >
               <Calendar size={20} strokeWidth={2.5} />
@@ -1001,15 +1138,17 @@ export default function Dashboard() {
 
             {/* Dropdown */}
             {pickerOpen && (
-              <div className="date-popover" style={{ position: 'absolute', top: 'calc(100% + 8px)', backgroundColor: '#fff', border: '2px solid #000', borderRadius: '16px', boxShadow: '4px 4px 0px #000', zIndex: 200, minWidth: '300px' }}>
+              <div id="dashboard-date-popover" role="dialog" aria-label="Seleccionar periodo" className="date-popover" style={{ position: 'absolute', top: 'calc(100% + 8px)', backgroundColor: '#fff', border: '2px solid #000', borderRadius: '16px', boxShadow: '4px 4px 0px #000', zIndex: 200, minWidth: '300px' }}>
                 {/* Preset pills */}
                 <div style={{ padding: '1rem', borderBottom: '2px solid #e2e8f0' }}>
                   <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#94a3b8', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>Accesos rápidos</div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
                     {PRESETS.map(p => (
                       <button
+                        type="button"
                         key={p.id}
                         onClick={() => applyPreset(p.id)}
+                        aria-pressed={activePreset === p.id}
                         style={{ padding: '0.35rem 0.85rem', border: '2px solid #000', borderRadius: '2rem', fontWeight: 800, fontSize: '0.78rem', cursor: 'pointer', backgroundColor: activePreset === p.id ? '#fde047' : '#f1f5f9', transition: 'all 0.1s' }}
                       >
                         {p.label}
@@ -1022,7 +1161,7 @@ export default function Dashboard() {
                 <div style={{ padding: '1rem' }}>
                   <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#94a3b8', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>Rango personalizado</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+                    <div className="dashboard-custom-date-fields">
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: '0.65rem', fontWeight: 800, marginBottom: '0.5rem', color: '#64748b' }}>DESDE</div>
                         <NeoDatePicker 
@@ -1039,6 +1178,7 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <button
+                      type="button"
                       onClick={applyCustomRange}
                       disabled={!customFrom || !customTo}
                       style={{ width: '100%', padding: '0.75rem', backgroundColor: customFrom && customTo ? '#000' : '#e2e8f0', color: customFrom && customTo ? '#fff' : '#94a3b8', border: '2px solid #000', borderRadius: '8px', fontWeight: 800, fontSize: '0.9rem', cursor: customFrom && customTo ? 'pointer' : 'not-allowed', transition: 'all 0.1s' }}
@@ -1051,7 +1191,7 @@ export default function Dashboard() {
             )}
           </div>
         </div>
-      </div>
+      </header>
     );
   };
 
@@ -1065,30 +1205,36 @@ export default function Dashboard() {
 
     return (
       <div style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '12px', padding: '1.5rem', boxShadow: '4px 4px 0px #000', marginBottom: '2.5rem' }}>
-        <div 
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', margin: reportCollapsed ? '0' : '0 0 1rem 0' }}
-          onClick={() => {
+        <div className="dashboard-section-heading" style={{ margin: reportCollapsed ? '0' : '0 0 1rem 0' }}>
+          <h2 className="dashboard-section-title-heading">
+            <Sparkles fill="#fde047" color="#000" size={20} strokeWidth={2} />
+            <span className="dashboard-section-title">Reporte de inteligencia</span>
+            <InfoTooltip content="Análisis automático de tus finanzas que destaca tu balance, tu principal fuente de ingresos y tu mayor fuga de dinero." />
+          </h2>
+          <button
+            type="button"
+            className="dashboard-collapse-button"
+            aria-label={reportCollapsed ? 'Mostrar reporte de inteligencia' : 'Ocultar reporte de inteligencia'}
+            title={reportCollapsed ? 'Mostrar reporte de inteligencia' : 'Ocultar reporte de inteligencia'}
+            aria-expanded={!reportCollapsed}
+            aria-controls="dashboard-intelligence-content"
+            onClick={() => {
             const newVal = !reportCollapsed;
             setReportCollapsed(newVal);
             localStorage.setItem('finanzas_report_collapsed', String(newVal));
           }}
-        >
-          <h2 style={{ fontSize: '1.2rem', margin: 0, fontFamily: '"Montserrat", sans-serif', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Sparkles fill="#fde047" color="#000" size={20} strokeWidth={2} />
-            Reporte de Inteligencia
-            <InfoTooltip content="Análisis automático de tus finanzas que destaca tu balance, tu principal fuente de ingresos y tu mayor fuga de dinero." />
-          </h2>
-          <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          >
+            <span>{reportCollapsed ? 'Mostrar' : 'Ocultar'}</span>
             <ChevronDown size={20} strokeWidth={2.5} style={{ transform: reportCollapsed ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform 0.2s' }} />
           </button>
         </div>
 
         {!reportCollapsed && (
-          <>
+          <div id="dashboard-intelligence-content">
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: '1rem' }}>
           {/* Balance Insight */}
           <div style={{ padding: '1rem', backgroundColor: isDeficit ? '#fef2f2' : '#f0fdf4', border: '2px solid #000', borderRadius: '8px', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-            <Activity size={20} style={{ color: isDeficit ? '#ef4444' : '#22c55e', marginTop: '0.2rem', flexShrink: 0 }} />
+            <Activity size={20} style={{ color: isDeficit ? 'var(--danger-text)' : 'var(--success-text)', marginTop: '0.2rem', flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.25rem' }}>Balance Actual</div>
               <div style={{ fontSize: '1rem', fontWeight: 600 }}>
@@ -1096,8 +1242,8 @@ export default function Dashboard() {
                 <span style={{ fontWeight: 900 }}>${Math.abs(balance).toLocaleString('es-CL')}</span>
               </div>
               {stats.current.aportePropio > 0 && (
-                <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700, marginTop: '0.2rem' }}>
-                  *Incluye aportes propios
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, marginTop: '0.2rem' }}>
+                  ${stats.current.aportePropio.toLocaleString('es-CL')} en movimientos internos, fuera del balance
                 </div>
               )}
             </div>
@@ -1130,38 +1276,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        {isConsolidated && bankBreakdown.length > 0 && (
-          <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '2px solid #e2e8f0' }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: 900, textTransform: 'uppercase', color: '#64748b', marginBottom: '0.75rem', letterSpacing: '0.04em' }}>
-              Consolidado por banco
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '0.75rem' }}>
-              {bankBreakdown.map(bank => {
-                const balance = bank.ingresos - bank.egresos;
-                return (
-                  <div
-                    key={bank.bank}
-                    style={{ border: '2px solid #000', borderRadius: '10px', backgroundColor: '#f8fafc', boxShadow: '2px 2px 0 #000', padding: '0.85rem' }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '0.65rem' }}>
-                      <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: bank.color, border: '2px solid #000', boxShadow: '1px 1px 0 #000' }} />
-                      <strong style={{ fontSize: '0.95rem' }}>{bank.label}</strong>
-                      <span style={{ marginLeft: 'auto', fontSize: '0.72rem', fontWeight: 900, color: '#64748b' }}>{bank.count} mov.</span>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem', fontSize: '0.78rem', fontWeight: 800 }}>
-                      <span style={{ color: '#15803d' }}>+${bank.ingresos.toLocaleString('es-CL')}</span>
-                      <span style={{ color: '#dc2626', textAlign: 'right' }}>-${bank.egresos.toLocaleString('es-CL')}</span>
-                    </div>
-                    <div style={{ marginTop: '0.45rem', fontWeight: 900, fontSize: '0.92rem' }}>
-                      {balance >= 0 ? '+' : '-'}${Math.abs(balance).toLocaleString('es-CL')}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
           </div>
-        )}
-          </>
         )}
       </div>
     );
@@ -1186,7 +1301,7 @@ export default function Dashboard() {
     const others = sorted.slice(3).reduce((acc, curr) => acc + curr.amount, 0);
     const sinClasificarAmount = c.topCatsPrincipal.find(x => x.name === 'Sin Clasificar')?.amount || 0;
     const totalOtros = others + sinClasificarAmount;
-    const totalSalidas = top3.reduce((a, b) => a + b.amount, 0) + totalOtros;
+    const totalSalidas = c.gastosTotales;
     
     const expenseData: { name: string; value: number; isGray?: boolean }[] = [
       ...top3.map(cat => ({ name: cat.name, value: cat.amount })),
@@ -1209,7 +1324,7 @@ export default function Dashboard() {
             </div>
             {renderTrendBadge(totalEntradas, p.ingresos, false)}
           </div>
-          <p style={{ margin: c.aportePropio > 0 ? '0 0 0.25rem 0' : '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '-1px' }}>
+          <p className="dashboard-kpi-amount" style={{ margin: c.aportePropio > 0 ? '0 0 0.25rem 0' : '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '0' }}>
             ${totalEntradas.toLocaleString('es-CL')}
           </p>
           {c.aportePropio > 0 && (
@@ -1240,9 +1355,17 @@ export default function Dashboard() {
                       <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: row.isGray ? '#64748b' : '#000' }}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
                           ${row.value.toLocaleString('es-CL')}
-                          <div className="btn-icon" title="Ver detalles">
+                          <button
+                            type="button"
+                            className="btn-icon"
+                            aria-label={`Ver detalle de ${row.name}`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              openDetailsModal(row.name, 'ingreso');
+                            }}
+                          >
                             <Search size={14} strokeWidth={3} />
-                          </div>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -1274,7 +1397,7 @@ export default function Dashboard() {
             </div>
             {renderTrendBadge(totalSalidas, p.gastosTotales, true)}
           </div>
-          <p style={{ margin: c.movimientoInternoEgreso > 0 ? '0 0 0.25rem 0' : '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '-1px' }}>
+          <p className="dashboard-kpi-amount" style={{ margin: c.movimientoInternoEgreso > 0 ? '0 0 0.25rem 0' : '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '0' }}>
             ${totalSalidas.toLocaleString('es-CL')}
           </p>
           {c.movimientoInternoEgreso > 0 && (
@@ -1305,9 +1428,17 @@ export default function Dashboard() {
                       <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: row.isGray ? '#64748b' : '#000' }}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
                           ${row.value.toLocaleString('es-CL')}
-                          <div className="btn-icon" title="Ver detalles">
+                          <button
+                            type="button"
+                            className="btn-icon"
+                            aria-label={`Ver detalle de ${row.name}`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              openDetailsModal(row.name, 'egreso');
+                            }}
+                          >
                             <Search size={14} strokeWidth={3} />
-                          </div>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -1325,6 +1456,79 @@ export default function Dashboard() {
           {renderSparkline('Egresos', '#fee2e2')}
         </div>
       </div>
+    );
+  };
+
+  const renderBankBreakdown = () => {
+    if (!isConsolidated || bankBreakdown.length === 0) return null;
+
+    const breakdownIncome = bankBreakdown.reduce((sum, bank) => sum + bank.ingresos, 0);
+    const breakdownExpenses = bankBreakdown.reduce((sum, bank) => sum + bank.egresos, 0);
+    const totalsMatch = Math.abs(breakdownIncome - stats.current.ingresos) < 0.5
+      && Math.abs(breakdownExpenses - stats.current.gastosTotales) < 0.5;
+
+    return (
+      <section className="dashboard-bank-section" aria-labelledby="dashboard-bank-breakdown-title">
+        <div className="dashboard-bank-header">
+          <div>
+            <h2 id="dashboard-bank-breakdown-title">
+              <Landmark size={22} strokeWidth={2.5} aria-hidden="true" />
+              Consolidado por banco
+            </h2>
+            <p>Compara qué aporta cada banco usando las mismas reglas del resumen principal.</p>
+          </div>
+          <div className={`dashboard-reconciliation ${totalsMatch ? 'is-ok' : 'is-warning'}`}>
+            {totalsMatch ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
+            {totalsMatch ? 'Totales conciliados' : 'Revisar conciliación'}
+          </div>
+        </div>
+
+        <div className="dashboard-bank-summary" aria-label="Totales consolidados">
+          <span><strong>${breakdownIncome.toLocaleString('es-CL')}</strong> ingresos reales</span>
+          <span><strong>${breakdownExpenses.toLocaleString('es-CL')}</strong> egresos reales</span>
+          <span><strong>{periodMovements.length.toLocaleString('es-CL')}</strong> movimientos</span>
+        </div>
+
+        <div className="dashboard-bank-grid">
+          {bankBreakdown.map(bank => {
+            const balance = bank.ingresos - bank.egresos;
+            return (
+              <article className="dashboard-bank-card" key={bank.bank}>
+                <div className="dashboard-bank-card-title">
+                  <span className="dashboard-bank-dot" style={{ backgroundColor: bank.color }} aria-hidden="true" />
+                  <div>
+                    <h3>{bank.label}</h3>
+                    <span>{bank.count.toLocaleString('es-CL')} movimientos</span>
+                  </div>
+                </div>
+                <dl className="dashboard-bank-metrics">
+                  <div>
+                    <dt>Ingresos</dt>
+                    <dd className="is-income">${bank.ingresos.toLocaleString('es-CL')}</dd>
+                  </div>
+                  <div>
+                    <dt>Egresos</dt>
+                    <dd className="is-expense">${bank.egresos.toLocaleString('es-CL')}</dd>
+                  </div>
+                  <div>
+                    <dt>Balance</dt>
+                    <dd className={balance >= 0 ? 'is-income' : 'is-expense'}>
+                      {balance >= 0 ? '+' : '-'}${Math.abs(balance).toLocaleString('es-CL')}
+                    </dd>
+                  </div>
+                </dl>
+                <div className="dashboard-bank-card-footer">
+                  <span>${bank.internal.toLocaleString('es-CL')} internos, fuera del balance</span>
+                  <button type="button" className="btn btn-outline" onClick={() => showSingleBank(bank.bank)}>
+                    Ver banco
+                    <ChevronRight size={16} strokeWidth={3} />
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
     );
   };
 
@@ -1355,24 +1559,24 @@ export default function Dashboard() {
               <InfoTooltip content="Línea de tiempo para ver tus tendencias. Puedes filtrar categorías abajo en el ranking para ver cómo evolucionan ingresos/gastos específicos a lo largo del tiempo." />
             </h2>
             {selectedCategories.length > 0 && (
-              <button onClick={() => setSelectedCategories([])} style={{ marginTop: '0.5rem', fontSize: '0.75rem', fontWeight: 800, background: '#fef08a', border: '2px solid #000', borderRadius: '2rem', padding: '0.25rem 0.75rem', cursor: 'pointer' }}>
-                ✕ Limpiar selección ({selectedCategories.length})
+              <button type="button" onClick={() => setSelectedCategories([])} style={{ marginTop: '0.5rem', fontSize: '0.75rem', fontWeight: 800, background: '#fef08a', border: '2px solid #000', borderRadius: '2rem', padding: '0.35rem 0.75rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                <X size={14} strokeWidth={3} />
+                Limpiar selección ({selectedCategories.length})
               </button>
             )}
           </div>
           
-          <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '0.35rem', borderRadius: '2rem', border: '2px solid #000' }}>
-            {(['principal', 'secundaria', 'detalle'] as CategoryLevel[]).map((level, idx, arr) => (
-              <>
-                <button
-                  key={level}
-                  onClick={() => { setCategoryLevel(level); setSelectedCategories([]); }}
-                  style={{ padding: '0.4rem 1rem', border: 'none', borderRadius: '2rem', boxShadow: 'none', backgroundColor: categoryLevel === level ? (level === 'principal' ? '#fde047' : level === 'secundaria' ? '#67e8f9' : '#bbf7d0') : 'transparent', fontWeight: 800, cursor: 'pointer', fontSize: '0.9rem', color: '#000', transition: 'all 0.15s' }}
-                >
-                  {level.charAt(0).toUpperCase() + level.slice(1)}
-                </button>
-                {idx < arr.length - 1 && <div style={{ width: '2px', height: '20px', backgroundColor: '#000', margin: '0 0.1rem' }}></div>}
-              </>
+          <div className="dashboard-category-levels" role="group" aria-label="Nivel de categoría">
+            {(['principal', 'secundaria', 'detalle'] as CategoryLevel[]).map(level => (
+              <button
+                type="button"
+                key={level}
+                aria-pressed={categoryLevel === level}
+                onClick={() => { setCategoryLevel(level); setSelectedCategories([]); }}
+                className={`dashboard-category-level ${categoryLevel === level ? `is-active is-${level}` : ''}`}
+              >
+                {level.charAt(0).toUpperCase() + level.slice(1)}
+              </button>
             ))}
           </div>
         </div>
@@ -1424,19 +1628,22 @@ export default function Dashboard() {
                   const maxAmt = barData[0]?.amount || 1;
                   const pct = Math.round((entry.amount / maxAmt) * 100);
                   return (
-                    <div
+                    <button
+                      type="button"
                       key={entry.name}
                       onClick={() => toggleCategory(entry.name)}
-                      style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.6rem', cursor: 'pointer', opacity: selectedCategories.length > 0 && !isSelected ? 0.4 : 1, transition: 'opacity 0.2s' }}
+                      aria-pressed={isSelected}
+                      className="dashboard-ranking-row"
+                      style={{ opacity: selectedCategories.length > 0 && !isSelected ? 0.4 : 1 }}
                     >
                       <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: color, border: '2px solid #000', flexShrink: 0 }}></div>
-                      <div style={{ fontSize: '0.8rem', fontWeight: 700, width: '130px', flexShrink: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={entry.name}>{entry.name}</div>
+                      <div className="dashboard-ranking-label" title={entry.name}>{entry.name}</div>
                       <div style={{ flex: 1, height: '20px', backgroundColor: '#f1f5f9', border: '2px solid #000', borderRadius: '4px', overflow: 'hidden', position: 'relative' }}>
                         <div style={{ height: '100%', width: `${pct}%`, backgroundColor: isSelected ? color : color + 'bb', borderRadius: '2px', transition: 'width 0.3s' }}></div>
                         {isSelected && <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: '2px solid #000', borderRadius: '4px', boxSizing: 'border-box' }}></div>}
                       </div>
-                      <div style={{ fontSize: '0.78rem', fontWeight: 800, minWidth: '80px', textAlign: 'right' }}>${entry.amount.toLocaleString('es-CL')}</div>
-                    </div>
+                      <div className="dashboard-ranking-amount">${entry.amount.toLocaleString('es-CL')}</div>
+                    </button>
                   );
                 })}
               </div>
@@ -1467,9 +1674,9 @@ export default function Dashboard() {
             </p>
           </div>
         </div>
-        <a href="/transactions" style={{ backgroundColor: '#000', color: 'white', padding: '0.75rem 1.5rem', borderRadius: '8px', fontWeight: 800, textDecoration: 'none', border: '2px solid #000', transition: 'all 0.1s' }}>
-          Clasificar Ahora
-        </a>
+        <button type="button" className="btn btn-primary" onClick={() => navigate('/transactions')}>
+          Clasificar ahora
+        </button>
       </div>
     );
   };
@@ -1489,27 +1696,20 @@ export default function Dashboard() {
       transactions.forEach(t => {
         const d = parseLocalDate(t.date);
         if (d >= start && d <= end) {
-          const isInternal = t.tipo_movimiento === 'Movimiento Interno';
-          const isInv = t.tipo_movimiento === 'Ahorro/Inversión';
-          const kind = getTransactionKind(t);
-          const amount = getTransactionAmount(t);
-          if (kind === 'ingreso') {
-            if (isInternal) aporte += amount;
-            else ing += amount;
-          }
-          if (kind === 'egreso' && !isInv) gas += amount;
+          const report = classifyTransactionForReport(t);
+          if (report.isRealIncome) ing += report.amount;
+          if (report.isInternalIncome) aporte += report.amount;
+          if (report.isRealExpense) gas += report.amount;
         }
       });
-      // totalIng includes aportePropio as requested
-      const totalIng = ing + aporte;
       monthlyData.push({
         mes: new Date(year, m, 1).toLocaleString('es-CL', { month: 'short' }),
         mesIdx: m,
-        Ingresos: totalIng,
+        Ingresos: ing,
         AportePropio: aporte,
         Egresos: gas,
-        Balance: totalIng - gas,
-        tasaAhorro: totalIng > 0 ? Math.round(((totalIng - gas) / totalIng) * 100) : 0
+        Balance: ing - gas,
+        tasaAhorro: ing > 0 ? Math.round(((ing - gas) / ing) * 100) : 0
       });
     }
 
@@ -1623,7 +1823,7 @@ export default function Dashboard() {
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
               <span style={{ fontSize: '1.5rem', fontWeight: 900, color: tasaAnual >= 20 ? '#7e22ce' : tasaAnual >= 0 ? '#9333ea' : '#dc2626' }}>{tasaAnual}%</span>
               <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 800 }}>
-                {tasaAnual >= 20 ? 'Excelente 🎯' : tasaAnual >= 10 ? 'Bien 👍' : tasaAnual >= 0 ? 'Ajustado ⚠️' : 'Déficit 🔴'}
+                {tasaAnual >= 20 ? 'Excelente' : tasaAnual >= 10 ? 'Bien' : tasaAnual >= 0 ? 'Ajustado' : 'Déficit'}
               </span>
             </div>
           </div>
@@ -1674,6 +1874,46 @@ export default function Dashboard() {
     );
   };
 
+  const renderAdvancedAnalysis = () => (
+    <section className="dashboard-advanced" aria-labelledby="dashboard-advanced-title">
+      <button
+        type="button"
+        className="dashboard-advanced-toggle"
+        aria-expanded={advancedOpen}
+        aria-controls="dashboard-advanced-content"
+        onClick={() => {
+          const next = !advancedOpen;
+          setAdvancedOpen(next);
+          localStorage.setItem('finanzas_advanced_open', String(next));
+        }}
+      >
+        <div>
+          <span id="dashboard-advanced-title">Análisis avanzado</span>
+          <small>Resumen anual y mapa detallado del flujo de dinero</small>
+        </div>
+        <span className="dashboard-advanced-action">
+          {advancedOpen ? 'Ocultar' : 'Explorar'}
+          <ChevronDown size={20} strokeWidth={2.5} style={{ transform: advancedOpen ? 'rotate(180deg)' : 'none' }} />
+        </span>
+      </button>
+
+      {advancedOpen && (
+        <div id="dashboard-advanced-content" className="dashboard-advanced-content">
+          {renderYearlyChart()}
+          <div className="card dashboard-mind-map">
+            <h2>Mapa de flujo de dinero</h2>
+            <p>
+              Explora cómo se distribuyen los movimientos del periodo. El saldo inicial se excluye del análisis.
+            </p>
+            <Suspense fallback={<div className="skeleton dashboard-advanced-skeleton" role="status"><span className="sr-only">Cargando mapa de flujo</span></div>}>
+              <MindMapChart transactions={periodMovements} taxonomy={taxonomy} />
+            </Suspense>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+
   return (
     <div style={{ maxWidth: '1100px', margin: '0 auto', paddingBottom: '4rem', padding: '0 1rem', paddingTop: '2rem' }}>
       {renderHeader()}
@@ -1681,7 +1921,8 @@ export default function Dashboard() {
       {dashboardBanks.length === 0 ? (
         renderOnboardingWizard()
       ) : loading ? (
-        <div style={{ marginTop: '2rem' }}>
+        <div style={{ marginTop: '2rem' }} role="status" aria-live="polite" aria-busy="true">
+          <span className="sr-only">Cargando resumen financiero</span>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
             <div className="skeleton" style={{ height: '150px' }}></div>
             <div className="skeleton" style={{ height: '150px' }}></div>
@@ -1693,10 +1934,13 @@ export default function Dashboard() {
             <div className="skeleton" style={{ height: '100px' }}></div>
           </div>
         </div>
+      ) : loadError ? (
+        renderLoadErrorState()
       ) : transactions.length === 0 ? (
         renderOnboardingWizard()
       ) : (
         <>
+          {renderPartialLoadWarning()}
           {periodMovements.length === 0 ? (
             renderEmptyPeriodState()
           ) : (
@@ -1704,32 +1948,30 @@ export default function Dashboard() {
               {renderIntelligenceReport()}
               {renderUnclassifiedAlert()}
               {renderMainNumbers()}
+              {renderBankBreakdown()}
               {renderAnalysisBlock()}
-              {renderYearlyChart()}
-              <div className="card" style={{ marginTop: '2rem' }}>
-                <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Mapa de Flujo de Dinero</h2>
-                <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
-                  Visualiza orgánicamente cómo se distribuye tu dinero en este periodo. Los montos se calculan en base a tus movimientos filtrados.
-                </p>
-                <MindMapChart transactions={filteredTransactions} taxonomy={taxonomy} />
-              </div>
+              {renderAdvancedAnalysis()}
             </>
           )}
         </>
       )}
 
       {/* Details Modal */}
-      {detailsModal && detailsModal.isOpen && createPortal(
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backdropFilter: 'blur(4px)' }} onClick={() => setDetailsModal(null)}>
-          <div style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '12px', boxShadow: '4px 4px 0px #000', width: '100%', maxWidth: '700px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
-            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '2px solid #000', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f1f5f9', borderRadius: '9px 9px 0 0' }}>
+      {detailsModal && detailsModal.isOpen && (
+        <Dialog
+          onClose={() => setDetailsModal(null)}
+          labelledBy="dashboard-detail-dialog-title"
+          describedBy="dashboard-detail-dialog-period"
+          panelStyle={{ width: 'min(94vw, 980px)', maxWidth: '980px', maxHeight: '80vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+        >
+            <div className="dialog-header">
               <div>
-                <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: '"Montserrat", sans-serif' }}>{detailsModal.title}</h2>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 700, marginTop: '0.25rem', textTransform: 'capitalize' }}>
+                <h2 id="dashboard-detail-dialog-title" style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: '"Montserrat", sans-serif' }}>{detailsModal.title}</h2>
+                <div id="dashboard-detail-dialog-period" style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 700, marginTop: '0.25rem', textTransform: 'capitalize' }}>
                   {dateRange.start.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' })} — {dateRange.end.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' })}
                 </div>
               </div>
-              <button onClick={() => setDetailsModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: '0.5rem' }}>
+              <button type="button" className="dialog-close" onClick={() => setDetailsModal(null)} aria-label={`Cerrar detalle de ${detailsModal.title}`}>
                 <X size={24} strokeWidth={3} />
               </button>
             </div>
@@ -1739,7 +1981,7 @@ export default function Dashboard() {
                   <p style={{ margin: 0, fontWeight: 700, fontSize: '1.1rem', color: '#64748b' }}>No hay movimientos para este concepto.</p>
                 </div>
               ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse', border: '2px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
+                <table className="dashboard-detail-table" style={{ width: '100%', borderCollapse: 'collapse', border: '2px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 800, fontSize: '0.9rem', color: '#475569' }}>Fecha</th>
@@ -1747,6 +1989,7 @@ export default function Dashboard() {
                         <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 800, fontSize: '0.9rem', color: '#475569' }}>Banco</th>
                       )}
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 800, fontSize: '0.9rem', color: '#475569' }}>Descripción</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 800, fontSize: '0.9rem', color: '#475569' }}>Categoría</th>
                       <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, fontSize: '0.9rem', color: '#475569' }}>Monto</th>
                     </tr>
                   </thead>
@@ -1756,24 +1999,31 @@ export default function Dashboard() {
                       const bankInfo = AVAILABLE_BANKS.find(bank => bank.id === bankId);
                       const bankLabel = bankInfo?.label || bankId;
                       const bankColor = bankInfo?.color || '#94a3b8';
+                      const categoryPath = Array.from(new Set([
+                        t.categoria_principal,
+                        t.categoria_secundaria
+                      ].filter(Boolean))).join(' > ');
 
                       if (editingTxId === t.id) {
                         return (
-                          <tr key={t.id} style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #000' }}>
-                            <td colSpan={isConsolidated ? 4 : 3} style={{ padding: '1rem' }}>
+                          <tr className="dashboard-detail-edit-row" key={t.id} style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #000' }}>
+                            <td colSpan={isConsolidated ? 5 : 4} style={{ padding: '1rem' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                                 <span style={{ fontWeight: 800, fontSize: '0.95rem' }}>Clasificar "{t.description || t.original_description}"</span>
-                                <button className="btn btn-outline" style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem' }} onClick={() => setEditingTxId(null)}>Cancelar</button>
+                                <button type="button" className="btn btn-outline" style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem' }} onClick={() => setEditingTxId(null)}>Cancelar</button>
                               </div>
                               <div style={{ border: '2px solid #000', borderRadius: '6px', overflow: 'hidden' }}>
-                                <CascadingCategorySelector
-                                  initialPrincipal={t.categoria_principal || "Sin Especificar"}
-                                  initialSecundaria={t.categoria_secundaria || "Sin Especificar"}
-                                  contextDescription={t.description || t.original_description}
-                                  onSave={async (tipo: string, princ: string, sec: string) => {
-                                    await applySingleTx(t.id, { tipo_movimiento: tipo, categoria_principal: princ, categoria_secundaria: sec });
-                                  }}
-                                />
+                                <Suspense fallback={<div className="skeleton dashboard-classifier-skeleton" role="status"><span className="sr-only">Cargando clasificador</span></div>}>
+                                  <CascadingCategorySelector
+                                    initialTipo={t.tipo_movimiento}
+                                    initialPrincipal={t.categoria_principal || ''}
+                                    initialSecundaria={t.categoria_secundaria || ''}
+                                    contextDescription={t.description || t.original_description}
+                                    onSave={async (tipo: string, princ: string, sec: string) => {
+                                      await applySingleTx(t.id, { tipo_movimiento: tipo, categoria_principal: princ, categoria_secundaria: sec });
+                                    }}
+                                  />
+                                </Suspense>
                               </div>
                             </td>
                           </tr>
@@ -1782,26 +2032,33 @@ export default function Dashboard() {
 
                       return (
                         <tr key={t.id} style={{ borderBottom: i === detailsModal.transactions.length - 1 ? 'none' : '1px solid #e2e8f0', backgroundColor: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
-                          <td style={{ padding: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap', fontSize: '0.9rem' }}>{t.date}</td>
+                          <td data-label="Fecha" style={{ padding: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap', fontSize: '0.9rem' }}>{t.date}</td>
                           {isConsolidated && (
-                            <td style={{ padding: '0.75rem', whiteSpace: 'nowrap' }}>
+                            <td data-label="Banco" style={{ padding: '0.75rem', whiteSpace: 'nowrap' }}>
                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.55rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#fff', boxShadow: '1px 1px 0 #000', fontSize: '0.72rem', fontWeight: 900 }}>
                                 <span style={{ width: '9px', height: '9px', borderRadius: '50%', backgroundColor: bankColor, border: '1.5px solid #000', flexShrink: 0 }} />
                                 {bankLabel}
                               </span>
                             </td>
                           )}
-                          <td style={{ padding: '0.75rem', fontSize: '0.9rem', fontWeight: 500 }}>{t.description || t.original_description || 'Sin descripción'}</td>
-                          <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: getTransactionKind(t) === 'ingreso' ? '#16a34a' : '#000' }}>
+                          <td data-label="Descripción" style={{ padding: '0.75rem', fontSize: '0.9rem', fontWeight: 500 }}>{t.description || t.original_description || 'Sin descripción'}</td>
+                          <td data-label="Categoría" className="dashboard-detail-category" style={{ padding: '0.75rem' }}>
+                            <span className={categoryPath ? '' : 'is-unclassified'}>
+                              {categoryPath || 'Sin clasificar'}
+                            </span>
+                          </td>
+                          <td data-label="Monto" style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: getTransactionKind(t) === 'ingreso' ? '#16a34a' : '#000' }}>
                             <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
                               ${Math.abs(t.amount).toLocaleString('es-CL')}
                               <button 
+                                type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setEditingTxId(t.id);
                                 }}
                                 className="btn-icon"
                                 title="Clasificar aquí mismo"
+                                aria-label={`Clasificar ${t.description || t.original_description || 'movimiento'} aquí mismo`}
                                 style={{ padding: '0.2rem' }}
                               >
                                 <Edit2 size={14} strokeWidth={3} />
@@ -1814,7 +2071,7 @@ export default function Dashboard() {
                   </tbody>
                   <tfoot>
                     <tr style={{ backgroundColor: '#f1f5f9', borderTop: '2px solid #000' }}>
-                      <td colSpan={isConsolidated ? 3 : 2} style={{ padding: '1rem 0.75rem', fontWeight: 900, fontSize: '1rem', color: '#000' }}>Total</td>
+                      <td colSpan={isConsolidated ? 4 : 3} style={{ padding: '1rem 0.75rem', fontWeight: 900, fontSize: '1rem', color: '#000' }}>Total</td>
                       <td style={{ padding: '1rem 0.75rem', textAlign: 'right', fontWeight: 900, fontSize: '1rem', color: '#000' }}>
                         ${(detailsModal.transactions.reduce((acc, t) => acc + Math.abs(t.amount), 0)).toLocaleString('es-CL')}
                       </td>
@@ -1823,9 +2080,7 @@ export default function Dashboard() {
                 </table>
               )}
             </div>
-          </div>
-        </div>,
-        document.body
+        </Dialog>
       )}
     </div>
   );

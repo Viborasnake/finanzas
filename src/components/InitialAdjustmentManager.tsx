@@ -1,11 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
-import { useAuth } from '../contexts/AuthContext';
-import { AVAILABLE_BANKS, useBanks } from '../contexts/BankContext';
-import { Edit2, Trash2, Plus, AlertCircle, ChevronDown } from 'lucide-react';
+import { useAuth } from '../contexts/authContextValue';
+import { AVAILABLE_BANKS, useBanks } from '../contexts/bankContextValue';
+import { Edit2, Trash2, Plus, AlertCircle, ChevronDown, Lightbulb } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { parseLocalDateInput, toLocalDateInput } from '../utils/localDate';
+import { useLocation } from 'react-router-dom';
 
 export function InitialAdjustmentManager() {
+  const { hash } = useLocation();
   const { user } = useAuth();
   const { connectedBanks } = useBanks();
   
@@ -15,13 +18,15 @@ export function InitialAdjustmentManager() {
   const [loading, setLoading] = useState(true);
 
   // Form states (reset when editingBank changes)
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(() => toLocalDateInput(new Date()));
   const [desc, setDesc] = useState('Saldo Inicial (Calculado de Cartola)');
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<'ingreso'|'egreso'>('ingreso');
 
-  const fetchAllData = async () => {
+  const fetchAllData = useCallback(async () => {
     if (!user || connectedBanks.length === 0) {
+      setAdjustments({});
+      setSuggestions({});
       setLoading(false);
       return;
     }
@@ -84,11 +89,11 @@ export function InitialAdjustmentManager() {
     
     setSuggestions(newSuggestions);
     setLoading(false);
-  };
+  }, [connectedBanks, user]);
 
   useEffect(() => {
-    fetchAllData();
-  }, [user, connectedBanks]);
+    void fetchAllData();
+  }, [fetchAllData]);
 
   const handleEditClick = (bank: string) => {
     const existing = adjustments[bank];
@@ -98,7 +103,7 @@ export function InitialAdjustmentManager() {
       setAmount(existing.amount.toString());
       setType(existing.type);
     } else {
-      setDate(new Date().toISOString().split('T')[0]);
+      setDate(toLocalDateInput(new Date()));
       setDesc('Saldo Inicial (Calculado de Cartola)');
       setAmount('');
       setType('ingreso');
@@ -113,9 +118,9 @@ export function InitialAdjustmentManager() {
     setType(sug.type);
     setDesc(`Saldo Inicial (Calculado de Cartola)`);
     
-    const d = new Date(sug.refDate);
+    const d = parseLocalDateInput(sug.refDate);
     d.setDate(d.getDate() - 1);
-    setDate(d.toISOString().split('T')[0]);
+    setDate(toLocalDateInput(d));
   };
 
   const handleDelete = async (bank: string) => {
@@ -191,14 +196,27 @@ export function InitialAdjustmentManager() {
   };
 
   const [isCollapsed, setIsCollapsed] = useState(true);
+  const contentId = 'initial-adjustment-content';
+
+  useEffect(() => {
+    if (hash !== '#ajuste') return;
+    setIsCollapsed(false);
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById('ajuste')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [hash]);
 
   if (connectedBanks.length === 0) return null;
 
   return (
     <div id="ajuste" className="card settings-card settings-card-wide settings-anchor" style={{ position: 'relative', zIndex: 9, padding: '1.25rem' }}>
-      <div 
+      <button
+        type="button"
         onClick={() => setIsCollapsed(!isCollapsed)}
-        style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+        aria-expanded={!isCollapsed}
+        aria-controls={contentId}
+        style={{ width: '100%', minHeight: '44px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', color: 'inherit', textAlign: 'left' }}
       >
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', backgroundColor: '#f1f5f9', borderRadius: '8px' }}>
@@ -209,14 +227,14 @@ export function InitialAdjustmentManager() {
             <span style={{ display: 'block', color: '#64748b', fontSize: '0.82rem', fontWeight: 800 }}>Configura el saldo base para que cuadre todo</span>
           </div>
         </div>
-        <button type="button" style={{ background: 'transparent', border: 'none', boxShadow: 'none', padding: 0, display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontWeight: 900, fontSize: '0.9rem', cursor: 'pointer', color: 'var(--text-primary)' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontWeight: 900, fontSize: '0.9rem', color: 'var(--text-primary)', flexShrink: 0 }}>
           {isCollapsed ? 'Mostrar' : 'Ocultar'}
           <ChevronDown size={18} strokeWidth={3} style={{ transform: isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform 0.2s' }} />
-        </button>
-      </div>
+        </span>
+      </button>
       
       {!isCollapsed && (
-        <div style={{ marginTop: '1.25rem' }}>
+        <div id={contentId} style={{ marginTop: '1.25rem' }}>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 600 }}>
             Configura o edita el saldo base de tus cuentas bancarias para que el balance sea exacto.
           </p>
@@ -238,10 +256,10 @@ export function InitialAdjustmentManager() {
                     <h3 style={{ margin: '0 0 0.5rem 0', fontWeight: 900, fontSize: '1.1rem' }}>{bankLabel}</h3>
                     {adj ? (
                       <div>
-                        <p style={{ margin: 0, fontSize: '1.4rem', fontWeight: 900, color: adj.type === 'ingreso' ? 'var(--success)' : 'var(--danger)' }}>
+                        <p style={{ margin: 0, fontSize: '1.4rem', fontWeight: 900, color: adj.type === 'ingreso' ? 'var(--success-text)' : 'var(--danger-text)' }}>
                           {adj.type === 'ingreso' ? '+' : '-'}${adj.amount.toLocaleString('es-CL')}
                         </p>
-                        <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600 }}>Fecha base: {new Date(adj.date).toLocaleDateString('es-CL')}</p>
+                        <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600 }}>Fecha base: {parseLocalDateInput(adj.date).toLocaleDateString('es-CL')}</p>
                       </div>
                     ) : (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#854d0e', fontWeight: 700, fontSize: '0.9rem' }}>
@@ -253,15 +271,15 @@ export function InitialAdjustmentManager() {
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     {adj ? (
                       <>
-                        <button className="btn" onClick={() => isEditingThis ? setEditingBank(null) : handleEditClick(bank)} style={{ backgroundColor: 'white', border: '2px solid black', boxShadow: '2px 2px 0px black' }}>
+                        <button type="button" className="btn" onClick={() => isEditingThis ? setEditingBank(null) : handleEditClick(bank)} style={{ backgroundColor: 'white', border: '2px solid black', boxShadow: '2px 2px 0px black' }}>
                           <Edit2 size={16} /> {isEditingThis ? 'Ocultar' : 'Editar'}
                         </button>
-                        <button className="btn" onClick={() => handleDelete(bank)} style={{ backgroundColor: '#fee2e2', color: 'var(--danger)', border: '2px solid black', boxShadow: '2px 2px 0px black' }}>
+                        <button type="button" className="btn" onClick={() => handleDelete(bank)} style={{ backgroundColor: '#fee2e2', color: 'var(--danger-text)', border: '2px solid black', boxShadow: '2px 2px 0px black' }}>
                           <Trash2 size={16} /> Borrar
                         </button>
                       </>
                     ) : (
-                      <button className="btn btn-primary" onClick={() => isEditingThis ? setEditingBank(null) : handleEditClick(bank)}>
+                      <button type="button" className="btn btn-primary" onClick={() => isEditingThis ? setEditingBank(null) : handleEditClick(bank)}>
                         {isEditingThis ? 'Ocultar' : <><Plus size={16} /> Configurar</>}
                       </button>
                     )}
@@ -275,7 +293,7 @@ export function InitialAdjustmentManager() {
                     
                     {!adj && suggestions[bank] && (
                       <div style={{ backgroundColor: '#f0fdf4', border: '2px dashed #166534', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
-                        <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: '#166534', fontWeight: 800 }}>💡 Sugerencia del Sistema</p>
+                        <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: '#166534', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Lightbulb size={17} aria-hidden="true" /> Sugerencia del sistema</p>
                         <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: '#166534' }}>
                           Basado en tu primera transacción importada, tu saldo inicial debió ser de <strong>${suggestions[bank].amount.toLocaleString('es-CL')}</strong> ({suggestions[bank].type}).
                         </p>
@@ -289,7 +307,7 @@ export function InitialAdjustmentManager() {
                       </div>
                     )}
 
-                    <form onSubmit={(e) => handleSubmit(e, bank)} style={{ display: 'grid', gap: '1rem', gridTemplateColumns: '1fr 1fr' }}>
+                    <form className="initial-adjustment-form" onSubmit={(e) => handleSubmit(e, bank)}>
                       <div style={{ gridColumn: '1 / -1' }}>
                         <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>FECHA</label>
                         <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} required style={{ width: '100%' }} />
@@ -309,7 +327,7 @@ export function InitialAdjustmentManager() {
                           <option value="egreso">Egreso (-)</option>
                         </select>
                       </div>
-                      <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                      <div className="initial-adjustment-actions" style={{ gridColumn: '1 / -1', marginTop: '1rem' }}>
                         <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
                           Guardar Ajuste
                         </button>

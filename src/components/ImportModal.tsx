@@ -1,21 +1,34 @@
-import { useCallback, useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
-import Papa from 'papaparse';
-import * as XLSX from 'xlsx';
 import { UploadCloud, CheckCircle2, AlertTriangle, Edit2, X } from 'lucide-react';
 import { supabase } from '../services/supabase';
-import { useAuth } from '../contexts/AuthContext';
-import { useSettings } from '../contexts/SettingsContext';
+import { useAuth } from '../contexts/authContextValue';
+import { useSettings } from '../contexts/settingsContextValue';
 import toast from 'react-hot-toast';
 import { extractAndNormalizeRUT } from '../utils/rutParser';
 import { applyRules } from '../utils/classificationRules';
-import { useBanks, type Bank, AVAILABLE_BANKS } from '../contexts/BankContext';
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.js';
+import { useBanks, type Bank, AVAILABLE_BANKS } from '../contexts/bankContextValue';
 import pdfWorkerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.js?url';
 import { cleanRut } from '../utils/rutParser';
+import { Dialog } from './Dialog';
+import {
+  getUnsupportedImportFileMessage,
+  IMPORT_DROPZONE_ACCEPT,
+  IMPORT_FORMAT_LABEL,
+  isSupportedImportFile
+} from '../utils/importFileTypes';
+import {
+  buildStrongTransactionIdentity,
+  buildTransactionCandidateFingerprint,
+  hashImportFile,
+  partitionByStrongIdentity
+} from '../utils/transactionIdentity';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+const loadPdfJs = async () => {
+  const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.js');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+  return pdfjsLib;
+};
 
 interface Transaction {
   date: string;
@@ -24,13 +37,15 @@ interface Transaction {
   amount: number;
   type: 'ingreso' | 'egreso';
   raw_data: any;
+  sourceRowKey: string;
 }
 
 interface ImportModalProps {
   onClose?: () => void;
+  presentation?: 'dialog' | 'page';
 }
 
-export default function ImportModal({ onClose }: ImportModalProps = {}) {
+export default function ImportModal({ onClose, presentation = 'dialog' }: ImportModalProps = {}) {
   const [data, setData] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +59,8 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
   const [step, setStep] = useState<ImportStep>('upload');
   const [detectedBank, setDetectedBank] = useState<Bank | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFileHash, setSelectedFileHash] = useState<string | null>(null);
+  const saveInFlightRef = useRef(false);
 
   // Password Decryption States
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -94,8 +111,9 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
 
   const parseItauXls = (file: File) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
+        const XLSX = await import('xlsx');
         const dataBuffer = e.target?.result;
         const workbook = XLSX.read(dataBuffer, { type: 'array' });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -190,7 +208,8 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
             original_description: String(descRaw).trim(),
             amount,
             type,
-            raw_data
+            raw_data,
+            sourceRowKey: `sheet:0:row:${i}`
           });
         }
 
@@ -210,7 +229,8 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
     reader.readAsArrayBuffer(file);
   };
 
-  const parseCsvStandard = (file: File) => {
+  const parseCsvStandard = async (file: File) => {
+    const { default: Papa } = await import('papaparse');
     Papa.parse(file, {
         header: false,
         skipEmptyLines: true,
@@ -284,7 +304,8 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
               original_description: descRaw.trim(),
               amount,
               type,
-              raw_data
+              raw_data,
+              sourceRowKey: `row:${i}`
             });
           }
 
@@ -309,9 +330,10 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
       setLoading(true);
       setError(null);
       setPasswordError(null);
+      const pdfjsLib = await loadPdfJs();
       const arrayBuffer = await file.arrayBuffer();
       let pdf;
-      
+
       const tryPassword = async (pwd?: string) => {
         return await pdfjsLib.getDocument({ data: arrayBuffer.slice(0), password: pwd }).promise;
       };
@@ -325,7 +347,7 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
       } catch (err: any) {
         if (err.name === 'PasswordException') {
           let success = false;
-          
+
           if (!manualPassword && myRut) {
             const cleaned = cleanRut(myRut);
             const autoPassword = cleaned.slice(0, -1);
@@ -414,7 +436,7 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
            
            let amountItem = null;
            for (let i = lineItems.length - 1; i >= 0; i--) {
-              if (lineItems[i].str.includes('$') || /^[0-9\.]+$/.test(lineItems[i].str.trim())) {
+              if (lineItems[i].str.includes('$') || /^[0-9.]+$/.test(lineItems[i].str.trim())) {
                  amountItem = lineItems[i];
                  break;
               }
@@ -459,7 +481,8 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
              original_description: description,
              amount,
              type,
-             raw_data: { fullLine: lineItems.map((i: any) => i.str).join(' '), 'Descripción': description }
+             raw_data: { fullLine: lineItems.map((i: any) => i.str).join(' '), 'Descripción': description },
+             sourceRowKey: `page:${pageNum}:line:${l}`
            });
         }
       }
@@ -483,13 +506,9 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
     try {
       setLoading(true);
       setError(null);
+      const pdfjsLib = await loadPdfJs();
       const arrayBuffer = await file.arrayBuffer();
-      let pdf;
-      try {
-        pdf = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
-      } catch (err: any) {
-        throw err;
-      }
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
       if (!pdf) return;
 
       const parsedTransactions: Transaction[] = [];
@@ -530,13 +549,13 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
 
         for (let l = 0; l < lines.length; l++) {
            const lineItems = lines[l];
-           const fullText = lineItems.map((i: any) => i.str).join(' ').replace(/\s+/g, ' ').replace(/\s*\/\s*/g, '/').replace(/\s*\-\s*/g, '-').trim();
+           const fullText = lineItems.map((i: any) => i.str).join(' ').replace(/\s+/g, ' ').replace(/\s*\/\s*/g, '/').replace(/\s*-\s*/g, '-').trim();
            
-           const regex = /^(\d{2}[/\-\.]\d{2}[/\-\.]\d{2,4})(?:\s+\d{2}:\d{2}:\d{2})?\s+(.+?)\s*(?:\$\s*)?(-?[\d\.\,]+)\s*(?:\$\s*)?(-?[\d\.\,]+)\s*(?:\$\s*)?(-?[\d\.\,]+)$/;
+           const regex = /^(\d{2}[/.-]\d{2}[/.-]\d{2,4})(?:\s+\d{2}:\d{2}:\d{2})?\s+(.+?)\s*(?:\$\s*)?(-?[\d.,]+)\s*(?:\$\s*)?(-?[\d.,]+)\s*(?:\$\s*)?(-?[\d.,]+)$/;
            const match = fullText.match(regex);
            if (!match) continue;
 
-           const dateMatch = match[1].match(/^(\d{2})[/\-\.](\d{2})[/\-\.](\d{2,4})/);
+           const dateMatch = match[1].match(/^(\d{2})[/.-](\d{2})[/.-](\d{2,4})/);
            if (!dateMatch) continue;
            let year = dateMatch[3];
            if (year.length === 2) year = '20' + year;
@@ -566,7 +585,8 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
              original_description: description,
              amount,
              type,
-             raw_data: { fullLine: fullText, 'Descripción': description }
+             raw_data: { fullLine: fullText, 'Descripción': description },
+             sourceRowKey: `page:${pageNum}:line:${l}`
            });
         }
       }
@@ -595,10 +615,11 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
       if (name.includes('mach')) return 'Mach';
       
       try {
+        const pdfjsLib = await loadPdfJs();
         const arrayBuffer = await file.arrayBuffer();
         await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
         return 'Consorcio';
-      } catch (e) {
+      } catch {
         return 'Mach';
       }
     }
@@ -630,27 +651,35 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
     const file = acceptedFiles[0];
 
     setSelectedFile(file);
+    try {
+      const hash = await hashImportFile(file);
+      setSelectedFileHash(hash);
+
+      if (user) {
+        const { data: batch } = await supabase
+          .from('transaction_import_batches')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('file_hash', hash)
+          .eq('status', 'completed')
+          .limit(1)
+          .maybeSingle();
+
+        if (batch) {
+          toast.error("Esta cartola ya fue importada previamente. Las repeticiones exactas serán ignoradas.", { duration: 6000 });
+        }
+      }
+    } catch (hashError) {
+      console.error('Could not hash import file:', hashError);
+      setSelectedFileHash(null);
+    }
     const guessedBank = await detectBankFromFile(file);
     setDetectedBank(guessedBank || activeBank || 'Scotiabank');
     setStep('confirm');
-  }, [activeBank]);
+  }, [activeBank, user]);
 
-  const handleConfirmBank = async () => {
+  const handleConfirmBank = () => {
     if (!selectedFile || !detectedBank) return;
-    
-    if (!connectedBanks.includes(detectedBank)) {
-      try {
-        await addBank(detectedBank);
-        toast.success(`${detectedBank} ha sido agregado a tus bancos`, { duration: 2000 });
-      } catch (e) {
-        console.error('Error auto-adding bank:', e);
-      }
-    }
-
-    if (activeBank !== detectedBank) {
-      setActiveBank(detectedBank);
-      toast.success(`Cambiado automáticamente a ${detectedBank}`, { duration: 2000 });
-    }
     
     if (selectedFile.name.toLowerCase().endsWith('.pdf')) {
       if (detectedBank === 'Consorcio') {
@@ -669,19 +698,40 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
     setData([]);
     setStep('upload');
     setSelectedFile(null);
+    setSelectedFileHash(null);
+    setDetectedBank(null);
     setError(null);
   };
 
+  const finalizeImportedBank = async (bank: Bank) => {
+    try {
+      if (!connectedBanks.includes(bank)) {
+        await addBank(bank);
+        toast.success(`${bank} fue agregado a tus bancos`, { duration: 2000 });
+      }
+      if (activeBank !== bank) setActiveBank(bank);
+      return true;
+    } catch (bankError) {
+      console.error('Error connecting imported bank:', bankError);
+      setError(`Los movimientos se guardaron, pero no pudimos conectar ${bank}. Intenta conectarlo desde Configuración.`);
+      toast.error(`La cartola se guardó, pero falta conectar ${bank}.`);
+      return false;
+    }
+  };
+
   const handleSave = async () => {
+    if (saveInFlightRef.current) return;
     if (!user) {
       setError("Debes iniciar sesión para guardar transacciones.");
       return;
     }
-    if (!activeBank) {
-      setError("Debes tener un banco seleccionado antes de importar.");
+    const importBank = detectedBank || activeBank;
+    if (!importBank) {
+      setError("Confirma el banco de la cartola antes de importar.");
       return;
     }
     
+    saveInFlightRef.current = true;
     setLoading(true);
     setError(null);
 
@@ -689,6 +739,10 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
       if (data.length === 0) {
         toast.error("No hay datos para guardar.");
         return;
+      }
+
+      if (!selectedFileHash) {
+        throw new Error('No pudimos identificar el archivo de forma segura. Vuelve a seleccionarlo e intenta otra vez.');
       }
 
       // Buscar rango de fechas de la subida para limitar la consulta
@@ -705,37 +759,92 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
 
       const { data: existing, error: fetchError } = await supabase
         .from('transactions')
-        .select('id, date, amount, raw_data, tipo_movimiento, categoria_principal, categoria_secundaria')
+        .select('id, date, description, amount, type, raw_data, tipo_movimiento, categoria_principal, categoria_secundaria')
         .eq('user_id', user.id)
-        .eq('bank', activeBank)
+        .eq('bank', importBank)
         .gte('date', minDateStrPadded)
         .lte('date', maxDateStrPadded);
 
       if (fetchError) throw fetchError;
 
-      // Crear firmas únicas para lo que ya existe (para evitar doble importación de cartola)
-      const existingSet = new Set(existing?.map(t => {
-        const descKey = Object.keys(t.raw_data || {}).find(k => k.toLowerCase().includes('descripc') || k.toLowerCase().includes('movimiento') || k.toLowerCase().includes('detalle')) || '';
-        const origDesc = t.raw_data ? (t.raw_data[descKey] || '') : '';
-        const amountToUse = t.raw_data && typeof t.raw_data.original_amount !== 'undefined' ? t.raw_data.original_amount : t.amount;
-        return `${t.date}_${amountToUse}_${String(origDesc).trim()}`;
-      }));
-
-      // Filtrar las transacciones entrantes contra las firmas
-      const newTransactions = data.filter(t => {
-        const sig = `${t.date}_${t.amount}_${t.original_description}`;
-        return !existingSet.has(sig);
+      const existingStrongIdentities = (existing || []).flatMap(t => {
+        const source = t.raw_data?._source;
+        const identity = buildStrongTransactionIdentity({
+          bank: importBank,
+          date: t.date,
+          amount: t.raw_data?.original_amount ?? t.amount,
+          type: t.type,
+          originalDescription: t.raw_data?.original_description ?? t.description,
+          sourceFileHash: source?.file_hash,
+          sourceRowKey: source?.row_key,
+          sourceTransactionId: source?.transaction_id
+        });
+        return identity ? [identity] : [];
       });
+
+      const sourceRows = data.map(t => ({
+        ...t,
+        bank: importBank,
+        sourceFileHash: selectedFileHash,
+        sourceRowKey: t.sourceRowKey
+      }));
+      const exactPartition = partitionByStrongIdentity(sourceRows, existingStrongIdentities);
+
+      // Similar financial attributes are candidates for review, not proof of a
+      // duplicate. Only source-backed identities may omit a row automatically.
+      // Deduplicación inteligente de divisiones de transacciones
+      // Si la transacción ya fue dividida, la omitimos automáticamente para no volver a cargar la original.
+      const existingCandidateFingerprints = new Map<string, any>();
+      (existing || []).forEach(t => {
+        const fingerprint = buildTransactionCandidateFingerprint({
+          bank: importBank,
+          date: t.date,
+          amount: t.raw_data?.original_amount ?? t.amount,
+          type: t.type,
+          originalDescription: t.raw_data?.original_description ?? t.description
+        });
+        existingCandidateFingerprints.set(fingerprint, t);
+      });
+
+      const newTransactions = exactPartition.accepted.filter(t => {
+        const fp = buildTransactionCandidateFingerprint({
+          bank: importBank,
+          date: t.date,
+          amount: t.amount,
+          type: t.type,
+          originalDescription: t.original_description
+        });
+        const match = existingCandidateFingerprints.get(fp);
+        if (match) {
+          if (match.raw_data?.split_group_id) {
+            // Es una transacción que fue dividida. La descartamos silenciosamente.
+            exactPartition.repeated.push(t);
+            return false;
+          }
+          if (match.raw_data?.is_manual) {
+            // Es un pago manual, lo conservamos para que se pueda enlazar más abajo
+            return true;
+          }
+          // Es un duplicado probable (cartola solapada). Lo omitimos automáticamente.
+          exactPartition.repeated.push(t);
+          return false;
+        }
+        return true;
+      });
+
+      // Ya no insertamos duplicados probables, pero los contamos para el log si existieran.
+      // potentialExistingMatches ahora será 0 ya que los filtramos arriba.
+      const potentialExistingMatches = 0;
       
       // Deduplicación inteligente de pagos manuales
       const manualTransactions = existing?.filter(t => t.raw_data && t.raw_data.is_manual) || [];
-      const manualIdsToDelete: string[] = [];
+      const manualCandidateIds: string[] = [];
       const manualMatches = new Map<string, any>();
 
       newTransactions.forEach(t => {
         const tDate = parseLocalDate(t.date).getTime();
         const match = manualTransactions.find(m => {
-          if (manualIdsToDelete.includes(m.id)) return false;
+          if (manualCandidateIds.includes(m.id)) return false;
           if (m.amount !== t.amount) return false; // El monto debe ser idéntico
           const mDate = parseLocalDate(m.date).getTime();
           const diffDays = Math.abs(tDate - mDate) / (1000 * 60 * 60 * 24);
@@ -743,93 +852,131 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
         });
 
         if (match) {
-          manualIdsToDelete.push(match.id);
+          manualCandidateIds.push(match.id);
           const sig = `${t.date}_${t.amount}_${t.original_description}`;
           manualMatches.set(sig, match);
         }
       });
 
       if (newTransactions.length === 0) {
+        const bankReady = await finalizeImportedBank(importBank);
         toast.success("No hay datos nuevos. ¡Todas estas transacciones ya estaban en tu sistema!");
-        if (onClose) onClose();
+        if (bankReady && onClose) onClose();
         return;
       }
 
-      if (newTransactions.length > 0) {
-        const { error: insertError } = await supabase.from('transactions').insert(
-          newTransactions.map(t => {
-            const sig = `${t.date}_${t.amount}_${t.original_description}`;
-            const manualMatch = manualMatches.get(sig);
+      const rowsToImport = newTransactions.map(t => {
+        const sig = `${t.date}_${t.amount}_${t.original_description}`;
+        const manualMatch = manualMatches.get(sig);
+        const candidateFingerprint = buildTransactionCandidateFingerprint({
+          bank: importBank,
+          date: t.date,
+          amount: t.amount,
+          type: t.type,
+          originalDescription: t.original_description
+        });
 
-            if (manualMatch) {
-              // Heredar categorías del pago manual
-              return {
-                user_id: user.id,
-                bank: activeBank,
-                date: t.date,
-                description: t.description,
-                amount: t.amount,
-                type: t.type,
-                raw_data: t.raw_data,
-                tipo_movimiento: manualMatch.tipo_movimiento,
-                categoria_principal: manualMatch.categoria_principal,
-                categoria_secundaria: manualMatch.categoria_secundaria
-              };
-            }
-
-            const descForCheck = (t.original_description || t.description || '').toLowerCase();
-            
-            let tipo_movimiento = null;
-            let categoria_principal = null;
-            let categoria_secundaria = null;
-            
-            const rutExtracted = extractAndNormalizeRUT(descForCheck);
-            const normalizedMyRut = myRut ? extractAndNormalizeRUT(myRut) : null;
-            
-            if (rutExtracted && normalizedMyRut && rutExtracted === normalizedMyRut) {
-              tipo_movimiento = 'Movimiento Interno';
-              categoria_principal = descForCheck.includes('fondo') ? 'Traspaso fondo' : 'Transferencia personal';
-              categoria_secundaria = categoria_principal;
-            }
-
-            if (!tipo_movimiento) {
-              const ruleMatch = applyRules(descForCheck, classificationRules);
-              if (ruleMatch) {
-                tipo_movimiento = ruleMatch.tipo_movimiento;
-                categoria_principal = ruleMatch.categoria_principal;
-                categoria_secundaria = ruleMatch.categoria_secundaria;
+        if (manualMatch) {
+          // A fuzzy match may inherit the user's classification, but the manual
+          // payment is preserved until the user explicitly resolves the pair.
+          return {
+            date: t.date,
+            description: t.description,
+            amount: t.amount,
+            type: t.type,
+            source_row_key: t.sourceRowKey,
+            candidate_fingerprint: candidateFingerprint,
+            raw_data: {
+              ...t.raw_data,
+              _source: {
+                ...(t.raw_data?._source || {}),
+                candidate_fingerprint: candidateFingerprint,
+                manual_candidate_id: manualMatch.id
               }
-            }
+            },
+            tipo_movimiento: manualMatch.tipo_movimiento,
+            categoria_principal: manualMatch.categoria_principal,
+            categoria_secundaria: manualMatch.categoria_secundaria
+          };
+        }
 
-            return {
-              user_id: user.id,
-              bank: activeBank,
-              date: t.date,
-              description: t.description,
-              amount: t.amount,
-              type: t.type,
-              raw_data: t.raw_data,
-              tipo_movimiento,
-              categoria_principal,
-              categoria_secundaria
-            };
-          })
-        );
-        if (insertError) throw insertError;
+        const descForCheck = (t.original_description || t.description || '').toLowerCase();
+        let tipo_movimiento = null;
+        let categoria_principal = null;
+        let categoria_secundaria = null;
+
+        const rutExtracted = extractAndNormalizeRUT(descForCheck);
+        const normalizedMyRut = myRut ? extractAndNormalizeRUT(myRut) : null;
+
+        if (rutExtracted && normalizedMyRut && rutExtracted === normalizedMyRut) {
+          tipo_movimiento = 'Movimiento Interno';
+          categoria_principal = descForCheck.includes('fondo') ? 'Traspaso fondo' : 'Transferencia personal';
+          categoria_secundaria = categoria_principal;
+        }
+
+        if (!tipo_movimiento) {
+          const ruleMatch = applyRules(descForCheck, classificationRules);
+          if (ruleMatch) {
+            tipo_movimiento = ruleMatch.tipo_movimiento;
+            categoria_principal = ruleMatch.categoria_principal;
+            categoria_secundaria = ruleMatch.categoria_secundaria;
+          }
+        }
+
+        return {
+          date: t.date,
+          description: t.description,
+          amount: t.amount,
+          type: t.type,
+          source_row_key: t.sourceRowKey,
+          candidate_fingerprint: candidateFingerprint,
+          raw_data: {
+            ...t.raw_data,
+            _source: {
+              ...(t.raw_data?._source || {}),
+              candidate_fingerprint: candidateFingerprint
+            }
+          },
+          tipo_movimiento,
+          categoria_principal,
+          categoria_secundaria
+        };
+      });
+
+      const { data: importResult, error: insertError } = await supabase.rpc(
+        'ingest_statement_transactions',
+        {
+          p_bank: importBank,
+          p_file_hash: selectedFileHash,
+          p_rows: rowsToImport,
+          p_source_kind: 'statement_import'
+        }
+      );
+      if (insertError) throw insertError;
+
+      const importSummary = Array.isArray(importResult) ? importResult[0] : importResult;
+      const insertedCount = Number(importSummary?.inserted_count || 0);
+      const serverSkippedCount = Number(importSummary?.skipped_count || 0);
+      const replayed = Boolean(importSummary?.replayed);
+      const omittedCount = exactPartition.repeated.length + serverSkippedCount;
+
+      const bankReady = await finalizeImportedBank(importBank);
+      if (replayed) {
+        toast.success('Esta cartola ya había sido procesada. No se duplicó ningún movimiento.');
+      } else {
+        toast.success(`Se guardaron ${insertedCount} nuevas transacciones.` + (omittedCount > 0 ? ` Se omitieron ${omittedCount} repeticiones exactas.` : ''));
       }
-      
-      // Eliminar los pagos manuales que fueron reemplazados
-      if (manualIdsToDelete.length > 0) {
-        await supabase.from('transactions').delete().in('id', manualIdsToDelete);
-        toast.success(`Se reemplazaron ${manualIdsToDelete.length} pagos manuales con los movimientos oficiales.`);
+      if (manualCandidateIds.length > 0) {
+        toast(`Se conservaron ${manualCandidateIds.length} pagos manuales como posibles coincidencias para revisión.`);
       }
-      
-      const omitidas = data.length - newTransactions.length;
-      toast.success(`Se guardaron ${newTransactions.length} nuevas transacciones.` + (omitidas > 0 ? ` (Se omitieron ${omitidas} duplicadas)` : ''));
-      if (onClose) onClose();
+      if (potentialExistingMatches > 0) {
+        toast(`Detectamos ${potentialExistingMatches} movimientos similares. Se conservaron porque podrían ser válidos.`);
+      }
+      if (bankReady && onClose) onClose();
     } catch (err: any) {
       setError(err.message || "Error al guardar en la base de datos.");
     } finally {
+      saveInFlightRef.current = false;
       setLoading(false);
     }
   };
@@ -854,6 +1001,7 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
             </p>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button 
+                type="button"
                 className="btn btn-outline" 
                 style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }} 
                 onClick={() => toast.dismiss(t.id)}
@@ -861,6 +1009,7 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
                 Solo a esta
               </button>
               <button 
+                type="button"
                 className="btn btn-primary" 
                 style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }} 
                 onClick={() => {
@@ -885,30 +1034,40 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'text/csv': ['.csv'],
-      'application/vnd.ms-excel': ['.xls'],
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-      'application/octet-stream': ['.dat'],
-      'application/pdf': ['.pdf']
+    onDrop: async acceptedFiles => {
+      const file = acceptedFiles[0];
+      if (file && !isSupportedImportFile(file)) {
+        setError(getUnsupportedImportFileMessage(file.name));
+        return;
+      }
+      await onDrop(acceptedFiles);
     },
+    onDropRejected: rejections => {
+      const file = rejections[0]?.file;
+      setSelectedFile(null);
+      setDetectedBank(null);
+      setStep('upload');
+      setError(getUnsupportedImportFileMessage(file?.name));
+    },
+    accept: IMPORT_DROPZONE_ACCEPT,
     multiple: false
   });
 
+  const closeModal = onClose || handleCancelProcess;
+
   const content = (
-    <div style={{ backgroundColor: 'var(--bg-color)', minHeight: '100%', padding: '2rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h1 style={{ margin: 0, fontSize: '2rem' }}>Importar Cartola Bancaria</h1>
-        {onClose && (
-          <button className="btn btn-outline" onClick={onClose} style={{ padding: '0.5rem' }}>
+    <div className="import-flow-content">
+      {presentation === 'dialog' && (
+        <div className="import-flow-header">
+          <h2 id="import-dialog-title">Importar cartola bancaria</h2>
+          <button type="button" className="dialog-close" onClick={closeModal} aria-label="Cerrar importación">
             <X size={24} />
           </button>
-        )}
-      </div>
+        </div>
+      )}
       
       {error && (
-        <div style={{ backgroundColor: 'var(--danger)', color: 'white', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', border: '2px solid black', boxShadow: '4px 4px 0px black', display: 'flex', alignItems: 'center', gap: '0.75rem', fontWeight: 600 }}>
+        <div role="alert" style={{ backgroundColor: 'var(--danger-surface)', color: 'var(--danger-text)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', border: '2px solid black', boxShadow: '4px 4px 0px black', display: 'flex', alignItems: 'center', gap: '0.75rem', fontWeight: 700 }}>
           <AlertTriangle />
           {error}
         </div>
@@ -917,7 +1076,7 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
       {step === 'upload' && (
         <div 
           {...getRootProps()} 
-          className="card" 
+          className="card import-dropzone"
           style={{ 
             textAlign: 'center', 
             padding: '4rem 2rem', 
@@ -929,13 +1088,13 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
             transition: 'all 0.2s ease'
           }}
         >
-          <input {...getInputProps({ accept: '.csv, .xls, .xlsx, .dat, .txt, .pdf' })} />
+          <input {...getInputProps({ 'aria-label': 'Seleccionar archivo de cartola bancaria' })} />
           <UploadCloud size={64} style={{ margin: '0 auto 1rem', color: isDragActive ? 'var(--primary)' : 'var(--text-secondary)' }} />
           <h3 style={{ marginBottom: '1rem', fontSize: '1.5rem' }}>
-            {isDragActive ? 'Suelta el archivo aquí...' : 'Arrastra tu cartola CSV, Excel, DAT o PDF aquí'}
+            {isDragActive ? 'Suelta el archivo aquí...' : 'Arrastra tu cartola bancaria aquí'}
           </h3>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
-            O haz clic para seleccionar un archivo desde tu computador
+            Formatos admitidos: {IMPORT_FORMAT_LABEL}. También puedes hacer clic para elegirla.
           </p>
           <button className="btn btn-primary" type="button">
             Seleccionar Archivo
@@ -944,12 +1103,14 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
       )}
 
       {step === 'confirm' && (
-        <div className="card animate-fade-in" style={{ textAlign: 'center', padding: '4rem 2rem', border: '2px solid black', boxShadow: '4px 4px 0px black' }}>
-           <h3 style={{ fontSize: '2rem', marginBottom: '1rem', fontWeight: 900 }}>Confirma tu Banco</h3>
+        <div className="card animate-fade-in import-confirm-card" style={{ textAlign: 'center', border: '2px solid black', boxShadow: '4px 4px 0px black' }}>
+           <h3 style={{ fontSize: '2rem', marginBottom: '1rem', fontWeight: 900 }}>Confirma el banco</h3>
            <p style={{ fontSize: '1.1rem', marginBottom: '2rem', color: 'var(--text-secondary)' }}>Hemos analizado el archivo y detectado que pertenece a:</p>
            
            <div style={{ marginBottom: '3rem' }}>
-             <select 
+             <label htmlFor="import-bank" className="sr-only">Banco de la cartola</label>
+             <select
+               id="import-bank"
                className="form-input" 
                style={{ maxWidth: '300px', margin: '0 auto', fontSize: '1.25rem', textAlign: 'center', padding: '1rem', border: '2px solid black', borderRadius: '12px', boxShadow: '4px 4px 0px black', cursor: 'pointer', fontWeight: 800 }}
                value={detectedBank || ''} 
@@ -961,11 +1122,11 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
              </select>
            </div>
            
-           <div style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem' }}>
-             <button className="btn btn-outline" style={{ padding: '0.8rem 2rem', fontSize: '1.1rem' }} onClick={handleCancelProcess} disabled={loading}>
+           <div className="import-flow-actions centered">
+             <button type="button" className="btn btn-outline" style={{ padding: '0.8rem 2rem', fontSize: '1.1rem' }} onClick={handleCancelProcess} disabled={loading}>
                Cancelar
              </button>
-             <button className="btn btn-primary" style={{ padding: '0.8rem 2rem', fontSize: '1.1rem' }} onClick={handleConfirmBank} disabled={loading}>
+             <button type="button" className="btn btn-primary" style={{ padding: '0.8rem 2rem', fontSize: '1.1rem' }} onClick={handleConfirmBank} disabled={loading}>
                {loading ? 'Procesando...' : 'Confirmar y Procesar'}
              </button>
            </div>
@@ -973,14 +1134,14 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
       )}
 
       {step === 'preview' && data.length > 0 && (
-        <div className="card animate-fade-in">
+        <div className="card animate-fade-in import-preview-card">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
             <CheckCircle2 color="var(--success)" size={32} />
             <h3 style={{ fontSize: '1.5rem', margin: 0 }}>Archivo analizado con éxito</h3>
           </div>
           
           <p style={{ marginBottom: '1.5rem', fontWeight: 600 }}>
-            Se detectaron {data.length} transacciones. Puedes editar los nombres haciendo clic en ellos antes de guardar.
+            Se detectaron {data.length} transacciones de {detectedBank}. Puedes editar los nombres antes de guardar. El banco activo no cambiará hasta que confirmes.
           </p>
 
           <div style={{ maxHeight: '400px', overflowY: 'auto', border: '2px solid black', borderRadius: 'var(--radius-sm)' }}>
@@ -1033,34 +1194,45 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
             </table>
           </div>
 
-          <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-            <button className="btn btn-outline" onClick={handleCancelProcess} disabled={loading}>
+          <div className="import-flow-actions" style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+            <button type="button" className="btn btn-outline" onClick={handleCancelProcess} disabled={loading}>
               Cancelar
             </button>
-            <button className="btn btn-primary" onClick={handleSave} disabled={loading}>
-              {loading ? 'Guardando...' : 'Guardar en Base de Datos'}
+            <button type="button" className="btn btn-primary" onClick={handleSave} disabled={loading}>
+              {loading ? 'Guardando...' : 'Confirmar y Procesar'}
             </button>
           </div>
         </div>
       )}
 
-      {showPasswordModal && createPortal(
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, backdropFilter: 'blur(4px)' }}>
-          <div className="card animate-fade-in" style={{ width: '90%', maxWidth: '400px', padding: '2rem', border: '3px solid black', boxShadow: '6px 6px 0px black', backgroundColor: 'white', borderRadius: '12px', textAlign: 'left' }}>
-            <h3 style={{ fontSize: '1.5rem', marginTop: 0, marginBottom: '1rem', fontWeight: 900 }}>Archivo Protegido</h3>
-            <p style={{ fontSize: '0.95rem', marginBottom: '1.5rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+      {showPasswordModal && (
+        <Dialog
+          onClose={() => { setShowPasswordModal(false); setStep('upload'); }}
+          labelledBy="pdf-password-dialog-title"
+          describedBy="pdf-password-dialog-help"
+          closeOnBackdrop={false}
+          backdropStyle={{ zIndex: 100000 }}
+          panelStyle={{ maxWidth: '400px', padding: '2rem' }}
+        >
+            <h3 id="pdf-password-dialog-title" style={{ fontSize: '1.5rem', marginTop: 0, marginBottom: '1rem', fontWeight: 900 }}>Archivo protegido</h3>
+            <p id="pdf-password-dialog-help" style={{ fontSize: '0.95rem', marginBottom: '1.5rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
               Este PDF está protegido por contraseña. Para cartolas de MACH, la clave es tu RUT sin puntos, guión ni dígito verificador (ej: 17673553).
             </p>
             {passwordError && (
-              <div style={{ color: 'var(--danger)', fontWeight: 700, marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#fee2e2', borderRadius: '8px', border: '2px solid black', fontSize: '0.9rem' }}>
+              <div role="alert" style={{ color: 'var(--danger-text)', fontWeight: 700, marginBottom: '1rem', padding: '0.75rem', backgroundColor: 'var(--danger-surface)', borderRadius: '8px', border: '2px solid black', fontSize: '0.9rem' }}>
                 {passwordError}
               </div>
             )}
+            <label className="label" htmlFor="pdf-password">Contraseña del PDF</label>
             <input 
               type="password" 
+              id="pdf-password"
+              name="pdf-password"
+              autoComplete="off"
               placeholder="Ej: 17673553" 
-              className="form-input" 
-              style={{ width: '100%', padding: '0.8rem 1rem', border: '2px solid black', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '1.1rem', fontWeight: 700, outline: 'none' }}
+              className="input"
+              data-dialog-initial-focus
+              style={{ width: '100%', marginBottom: '1.5rem', fontSize: '1.1rem', fontWeight: 700 }}
               value={pdfPasswordInput}
               onChange={(e) => setPdfPasswordInput(e.target.value)}
               onKeyDown={(e) => {
@@ -1070,6 +1242,7 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
             />
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
               <button 
+                type="button"
                 className="btn btn-outline" 
                 onClick={() => { setShowPasswordModal(false); setStep('upload'); }}
                 disabled={loading}
@@ -1077,6 +1250,7 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
                 Cancelar
               </button>
               <button 
+                type="button"
                 className="btn btn-primary" 
                 onClick={handlePasswordSubmit}
                 disabled={loading || !pdfPasswordInput.trim()}
@@ -1084,35 +1258,27 @@ export default function ImportModal({ onClose }: ImportModalProps = {}) {
                 {loading ? 'Validando...' : 'Desbloquear'}
               </button>
             </div>
-          </div>
-        </div>,
-        document.body
+        </Dialog>
       )}
     </div>
   );
 
-  return createPortal(
-    <div className="modal-overlay" style={{
-      position: 'fixed',
-      top: 0, left: 0, right: 0, bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 9999,
-      padding: '2rem'
-    }}>
-      <div className="card" style={{
-        width: '100%',
-        maxWidth: '1200px',
-        maxHeight: '90vh',
-        overflowY: 'auto',
-        position: 'relative',
-        backgroundColor: 'var(--bg-color)'
-      }}>
+  if (presentation === 'page') {
+    return (
+      <section className="import-flow-page">
         {content}
-      </div>
-    </div>,
-    document.body
+      </section>
+    );
+  }
+
+  return (
+    <Dialog
+      onClose={closeModal}
+      labelledBy="import-dialog-title"
+      closeOnBackdrop={false}
+      panelStyle={{ maxWidth: '1200px', maxHeight: '90vh', backgroundColor: 'var(--bg-color)' }}
+    >
+      {content}
+    </Dialog>
   );
 }

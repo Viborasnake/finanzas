@@ -1,13 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../services/supabase';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { useBanks, AVAILABLE_BANKS } from '../contexts/BankContext';
-import type { Bank } from '../contexts/BankContext';
+import { useAuth } from '../contexts/authContextValue';
+import { useBanks, AVAILABLE_BANKS, type Bank } from '../contexts/bankContextValue';
 import LaikaPet from '../components/LaikaPet';
 
 type Step = 'auth' | 'bank_setup' | 'verify_email';
+
+const getAuthErrorMessage = (message?: string) => {
+  const normalized = (message || '').toLowerCase();
+  if (normalized.includes('invalid login credentials')) return 'El correo o la contraseña no coinciden.';
+  if (normalized.includes('password should be at least')) return 'La contraseña debe tener al menos 6 caracteres.';
+  if (normalized.includes('user already registered')) return 'Ya existe una cuenta con este correo.';
+  if (normalized.includes('email rate limit')) return 'Espera unos minutos antes de solicitar otro correo.';
+  return 'No pudimos completar la solicitud. Inténtalo nuevamente.';
+};
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -16,6 +24,10 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<Step>('auth');
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
+  const [recoverySent, setRecoverySent] = useState(false);
+  const loginTabRef = useRef<HTMLButtonElement>(null);
+  const signupTabRef = useRef<HTMLButtonElement>(null);
 
   // Bank setup step
   const [selectedBanks, setSelectedBanks] = useState<Bank[]>([]);
@@ -23,7 +35,29 @@ export default function Login() {
   
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { addBank, setMainBankAndSave, connectedBanks, loading: banksLoading } = useBanks();
+  const { saveBankSetup, connectedBanks, loading: banksLoading } = useBanks();
+
+  const selectAuthMode = (signUp: boolean) => {
+    setIsSignUp(signUp);
+    setError(null);
+  };
+
+  const handleAuthTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    let nextIsSignUp: boolean | null = null;
+
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown' || event.key === 'End') {
+      nextIsSignUp = true;
+    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp' || event.key === 'Home') {
+      nextIsSignUp = false;
+    }
+
+    if (nextIsSignUp === null) return;
+    event.preventDefault();
+    selectAuthMode(nextIsSignUp);
+    window.requestAnimationFrame(() => {
+      (nextIsSignUp ? signupTabRef : loginTabRef).current?.focus();
+    });
+  };
 
   // If already logged in and not in setup, redirect or show bank setup
   useEffect(() => {
@@ -67,7 +101,25 @@ export default function Login() {
         navigate('/');
       }
     } catch (err: any) {
-      setError(err.message || 'Ocurrió un error al autenticar.');
+      setError(getAuthErrorMessage(err.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordRecovery = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`
+      });
+      if (resetError) throw resetError;
+      setRecoverySent(true);
+    } catch (err: any) {
+      setError(getAuthErrorMessage(err.message));
     } finally {
       setLoading(false);
     }
@@ -80,15 +132,11 @@ export default function Login() {
     }
     setLoading(true);
     try {
-      for (const bank of selectedBanks) {
-        await addBank(bank);
-      }
-      if (mainBankChoice) {
-        await setMainBankAndSave(mainBankChoice);
-      }
+      await saveBankSetup(selectedBanks, mainBankChoice || selectedBanks[0]);
       toast.success('¡Configuración guardada!');
       navigate('/');
-    } catch (err) {
+    } catch (error) {
+      console.error('Error guardando configuración bancaria:', error);
       toast.error('Error guardando configuración');
     } finally {
       setLoading(false);
@@ -118,6 +166,16 @@ export default function Login() {
                 <div
                   key={bank.id}
                   onClick={() => toggleBankSelection(bank.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      toggleBankSelection(bank.id);
+                    }
+                  }}
+                  role="checkbox"
+                  aria-checked={isSelected}
+                  aria-label={`Integrar ${bank.label}`}
+                  tabIndex={0}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '1rem',
                     padding: '1rem 1.25rem',
@@ -141,7 +199,10 @@ export default function Login() {
                   </div>
                   {isSelected && selectedBanks.length > 1 && (
                     <button
+                      type="button"
                       onClick={(e) => { e.stopPropagation(); setMainBankChoice(bank.id); }}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      aria-pressed={isMain}
                       style={{
                         fontSize: '0.7rem', fontWeight: 800,
                         padding: '0.3rem 0.6rem',
@@ -166,16 +227,19 @@ export default function Login() {
           </div>
 
           <button
+            type="button"
             onClick={handleBankSetup}
             disabled={loading || selectedBanks.length === 0}
+            aria-busy={loading}
             className="btn btn-primary"
             style={{ width: '100%', fontSize: '1rem', padding: '0.875rem', marginBottom: '0.75rem' }}
           >
             {loading ? 'Guardando...' : `Continuar con ${selectedBanks.length > 0 ? selectedBanks.join(' + ') : '...'}`}
           </button>
           <button
+            type="button"
             onClick={() => navigate('/')}
-            style={{ width: '100%', fontSize: '0.875rem', fontWeight: 600, color: '#64748b', background: 'none', border: 'none', cursor: 'pointer' }}
+            style={{ width: '100%', minHeight: '44px', fontSize: '0.875rem', fontWeight: 700, color: '#475569', background: 'none', border: 'none', cursor: 'pointer' }}
           >
             Omitir por ahora
           </button>
@@ -192,12 +256,13 @@ export default function Login() {
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
             <LaikaPet pose="love" size={136} title="Laika celebra tu registro" />
           </div>
-          <h2 style={{ fontSize: '2rem', fontWeight: 900, marginBottom: '1rem', letterSpacing: '-1px' }}>Revisa tu correo</h2>
+          <h2 style={{ fontSize: '2rem', fontWeight: 900, marginBottom: '1rem' }}>Revisa tu correo</h2>
           <p style={{ color: '#64748b', fontWeight: 600, fontSize: '1rem', marginBottom: '2rem', lineHeight: 1.6 }}>
             Te hemos enviado un enlace de confirmación a <strong>{email}</strong>. 
             Haz clic en él para validar tu cuenta y comenzar a usar MisFinanzas.
           </p>
           <button
+            type="button"
             onClick={() => setStep('auth')}
             className="btn btn-outline"
             style={{ width: '100%', padding: '0.875rem', fontSize: '1rem', border: '2px solid black' }}
@@ -211,7 +276,7 @@ export default function Login() {
 
   // --- Auth Step ---
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#fdfdfc' }}>
+    <div className="auth-shell" style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#fdfdfc' }}>
       {/* Left Column (Marketing) */}
       <div 
         className="auth-left-col" 
@@ -226,10 +291,6 @@ export default function Login() {
           overflow: 'hidden'
         }}
       >
-        {/* Background decorative circles typical of neobrutalism/modern design */}
-        <div style={{ position: 'absolute', top: '-10%', right: '-10%', width: '400px', height: '400px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.2)' }}></div>
-        <div style={{ position: 'absolute', bottom: '-5%', left: '-10%', width: '300px', height: '300px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.2)' }}></div>
-
         <div style={{ fontWeight: 900, fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 'auto', position: 'relative', zIndex: 10 }}>
           <div style={{ background: 'black', color: 'white', padding: '0.2rem', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>✨</span>
@@ -238,7 +299,7 @@ export default function Login() {
         </div>
         
         <div style={{ marginBottom: 'auto', maxWidth: '500px', position: 'relative', zIndex: 10 }}>
-          <h1 style={{ fontSize: '3.5rem', fontWeight: 900, lineHeight: 1.1, marginBottom: '1.5rem', letterSpacing: '-2px' }}>
+          <h1 style={{ fontSize: '3.5rem', fontWeight: 900, lineHeight: 1.1, marginBottom: '1.5rem' }}>
             Tu dinero bajo<br />tu control.
           </h1>
           <p style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '3rem', color: 'rgba(0,0,0,0.7)' }}>
@@ -250,7 +311,7 @@ export default function Login() {
               <div style={{ background: 'transparent', border: '2px solid black', borderRadius: '50%', padding: '0.25rem', display: 'flex' }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
               </div>
-              Categorización masiva en segundos
+              Clasificación asistida en segundos
             </li>
             <li style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '1rem', fontWeight: 700 }}>
               <div style={{ background: 'transparent', border: '2px solid black', borderRadius: '50%', padding: '0.25rem', display: 'flex' }}>
@@ -268,12 +329,13 @@ export default function Login() {
         </div>
 
         <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(0,0,0,0.5)', position: 'relative', zIndex: 10 }}>
-          © 2026 MisFinanzas · Hecho con ❤️ en Chile
+          © 2026 MisFinanzas · Hecho en Chile
         </div>
       </div>
 
       {/* Right Column (Auth) */}
       <div 
+        className="auth-form-col"
         style={{ 
           flex: 1, 
           backgroundColor: '#fdfdfc', 
@@ -284,51 +346,128 @@ export default function Login() {
           padding: '2rem' 
         }}
       >
-        <div style={{ width: '100%', maxWidth: '400px' }}>
+        <div className="auth-form-inner" style={{ width: '100%', maxWidth: '400px' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.25rem' }}>
-            <LaikaPet pose={isSignUp ? 'pointing' : 'welcome'} size={136} title="Laika te da la bienvenida" />
+            <LaikaPet pose={isPasswordRecovery ? 'love' : (isSignUp ? 'pointing' : 'welcome')} size={136} title="Laika te da la bienvenida" />
           </div>
 
           {/* Tabs */}
-          <div style={{ display: 'flex', backgroundColor: '#fff', borderRadius: '2rem', border: '2px solid black', marginBottom: '2.5rem', padding: '0.25rem', boxShadow: '4px 4px 0px black' }}>
-            <button 
-              onClick={() => { setIsSignUp(false); setError(null); }}
-              style={{ flex: 1, padding: '0.75rem', borderRadius: '1.5rem', background: !isSignUp ? 'var(--pastel-blue)' : 'transparent', color: 'black', fontWeight: 800, fontSize: '0.875rem', cursor: 'pointer', transition: 'all 0.1s', border: !isSignUp ? '2px solid black' : '2px solid transparent' }}
-            >
-              Iniciar sesión
-            </button>
-            <button 
-              onClick={() => { setIsSignUp(true); setError(null); }}
-              style={{ flex: 1, padding: '0.75rem', borderRadius: '1.5rem', background: isSignUp ? 'var(--pastel-blue)' : 'transparent', color: 'black', fontWeight: 800, fontSize: '0.875rem', cursor: 'pointer', transition: 'all 0.1s', border: isSignUp ? '2px solid black' : '2px solid transparent' }}
-            >
-              Registrarse
-            </button>
-          </div>
+          {!isPasswordRecovery && (
+            <div className="auth-tabs" role="tablist" aria-label="Acceso a MisFinanzas" style={{ display: 'flex', backgroundColor: '#fff', borderRadius: '2rem', border: '2px solid black', marginBottom: '2.5rem', padding: '0.25rem', boxShadow: '4px 4px 0px black' }}>
+              <button
+                type="button"
+                role="tab"
+                id="auth-tab-login"
+                ref={loginTabRef}
+                aria-selected={!isSignUp}
+                aria-controls="auth-panel"
+                tabIndex={!isSignUp ? 0 : -1}
+                onClick={() => selectAuthMode(false)}
+                onKeyDown={handleAuthTabKeyDown}
+                style={{ flex: 1, padding: '0.75rem', borderRadius: '1.5rem', background: !isSignUp ? 'var(--pastel-blue)' : 'transparent', color: 'black', fontWeight: 800, fontSize: '0.875rem', cursor: 'pointer', transition: 'all 0.1s', border: !isSignUp ? '2px solid black' : '2px solid transparent' }}
+              >
+                Iniciar sesión
+              </button>
+              <button
+                type="button"
+                role="tab"
+                id="auth-tab-signup"
+                ref={signupTabRef}
+                aria-selected={isSignUp}
+                aria-controls="auth-panel"
+                tabIndex={isSignUp ? 0 : -1}
+                onClick={() => selectAuthMode(true)}
+                onKeyDown={handleAuthTabKeyDown}
+                style={{ flex: 1, padding: '0.75rem', borderRadius: '1.5rem', background: isSignUp ? 'var(--pastel-blue)' : 'transparent', color: 'black', fontWeight: 800, fontSize: '0.875rem', cursor: 'pointer', transition: 'all 0.1s', border: isSignUp ? '2px solid black' : '2px solid transparent' }}
+              >
+                Registrarse
+              </button>
+            </div>
+          )}
 
           {/* Form Card */}
-          <div className="card" style={{ width: '100%', padding: '2.5rem 2rem' }}>
+          <div
+            id="auth-panel"
+            role="tabpanel"
+            aria-labelledby={isSignUp ? 'auth-tab-signup' : 'auth-tab-login'}
+            className="card auth-form-card"
+            style={{ width: '100%', padding: '2.5rem 2rem' }}
+          >
             <h2 style={{ fontSize: '1.5rem', marginBottom: '0.25rem', fontWeight: 900 }}>
-              {isSignUp ? 'Crear cuenta' : 'Bienvenido de nuevo'}
+              {isPasswordRecovery ? 'Recupera tu acceso' : (isSignUp ? 'Crear cuenta' : 'Bienvenido de nuevo')}
             </h2>
             <p style={{ color: '#64748b', fontWeight: 600, fontSize: '0.875rem', marginBottom: '2rem' }}>
-              {isSignUp ? 'Solo toma un minuto.' : 'Ingresa tus credenciales para continuar.'}
+              {isPasswordRecovery
+                ? 'Te enviaremos un enlace seguro para crear una nueva contraseña.'
+                : (isSignUp ? 'Solo toma un minuto.' : 'Ingresa tus credenciales para continuar.')}
             </p>
             
             {error && (
-              <div style={{ backgroundColor: 'var(--danger)', color: 'white', padding: '0.75rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', border: '2px solid black', boxShadow: '2px 2px 0px black', fontWeight: 600, fontSize: '0.875rem' }}>
+              <div role="alert" style={{ backgroundColor: 'var(--danger-surface)', color: 'var(--danger-text)', padding: '0.75rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', border: '2px solid black', boxShadow: '2px 2px 0px black', fontWeight: 700, fontSize: '0.875rem' }}>
                 {error}
               </div>
             )}
 
+            {isPasswordRecovery ? (
+              recoverySent ? (
+                <div role="status" aria-live="polite">
+                  <div style={{ padding: '1rem', background: 'var(--pastel-green)', border: '2px solid black', borderRadius: 'var(--radius-md)', fontWeight: 700, lineHeight: 1.5 }}>
+                    Si existe una cuenta asociada a <strong>{email}</strong>, recibirás un correo con el enlace de recuperación.
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    style={{ width: '100%', marginTop: '1.25rem' }}
+                    onClick={() => { setIsPasswordRecovery(false); setRecoverySent(false); setError(null); }}
+                  >
+                    Volver a iniciar sesión
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handlePasswordRecovery} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div>
+                    <label htmlFor="recovery-email" className="label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b' }}>Email</label>
+                    <input
+                      type="email"
+                      id="recovery-email"
+                      name="email"
+                      autoComplete="email"
+                      className="input"
+                      placeholder="tu@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      autoFocus
+                      style={{ width: '100%', borderRadius: '8px' }}
+                    />
+                  </div>
+                  <button type="submit" className="btn btn-primary" disabled={loading} aria-busy={loading} style={{ width: '100%' }}>
+                    {loading ? 'Enviando...' : 'Enviar enlace de recuperación'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() => { setIsPasswordRecovery(false); setRecoverySent(false); setError(null); }}
+                    disabled={loading}
+                    style={{ width: '100%' }}
+                  >
+                    Cancelar
+                  </button>
+                </form>
+              )
+            ) : (
             <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div>
-                <label className="label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.05em' }}>Email</label>
+                <label htmlFor="auth-email" className="label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b' }}>Email</label>
                 <div style={{ position: 'relative' }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>
                     <rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m2 7 10 7 10-7"></path>
                   </svg>
                   <input 
                     type="email" 
+                    id="auth-email"
+                    name="email"
+                    autoComplete="email"
                     className="input" 
                     placeholder="tu@email.com" 
                     value={email}
@@ -339,13 +478,16 @@ export default function Login() {
                 </div>
               </div>
               <div>
-                <label className="label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.05em' }}>Contraseña</label>
+                <label htmlFor="auth-password" className="label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b' }}>Contraseña</label>
                 <div style={{ position: 'relative' }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>
                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                   </svg>
                   <input 
                     type="password" 
+                    id="auth-password"
+                    name="password"
+                    autoComplete={isSignUp ? 'new-password' : 'current-password'}
                     className="input" 
                     placeholder={isSignUp ? "Mínimo 6 caracteres" : "••••••••"}
                     value={password}
@@ -355,31 +497,45 @@ export default function Login() {
                     minLength={isSignUp ? 6 : undefined}
                   />
                 </div>
+                {!isSignUp && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.35rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => { setIsPasswordRecovery(true); setRecoverySent(false); setError(null); }}
+                      style={{ minHeight: '44px', padding: '0.4rem 0', background: 'none', border: 0, color: '#334155', fontWeight: 800, cursor: 'pointer' }}
+                    >
+                      ¿Olvidaste tu contraseña?
+                    </button>
+                  </div>
+                )}
               </div>
               <button 
                 type="submit" 
                 className="btn btn-primary" 
                 style={{ marginTop: '0.5rem', width: '100%', fontSize: '0.9rem', padding: '0.875rem', backgroundColor: 'var(--pastel-blue)', color: 'black', border: '2px solid black' }}
                 disabled={loading}
+                aria-busy={loading}
               >
                 {loading ? 'Cargando...' : (isSignUp ? 'Crear cuenta gratis' : 'Entrar a mi cuenta')}
               </button>
             </form>
+            )}
           </div>
 
-          <div style={{ marginTop: '2rem', textAlign: 'center' }}>
+          {!isPasswordRecovery && <div style={{ marginTop: '2rem', textAlign: 'center' }}>
             <span style={{ color: '#64748b', fontWeight: 600, fontSize: '0.875rem' }}>
               {isSignUp ? '¿Ya tienes cuenta?' : '¿No tienes cuenta?'}
             </span>
             {' '}
             <button 
+              type="button"
               onClick={() => { setIsSignUp(!isSignUp); setError(null); }}
-              style={{ fontWeight: 800, color: 'var(--success)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
+              style={{ minHeight: '44px', padding: '0.5rem', fontWeight: 800, color: 'var(--success-text)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
               disabled={loading}
             >
               {isSignUp ? 'Inicia sesión' : 'Regístrate gratis'}
             </button>
-          </div>
+          </div>}
         </div>
       </div>
     </div>

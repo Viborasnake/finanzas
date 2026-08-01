@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useCallback, useEffect, useState } from 'react';
+import { useAuth } from '../contexts/authContextValue';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
-import { Shield, Search, Power, Trash2, Edit, Key, Users, Receipt, Landmark, RefreshCw } from 'lucide-react';
+import { Shield, Search, Power, Trash2, Edit, Key, Users, Receipt, Landmark, RefreshCw, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cleanRut } from '../utils/rutParser';
-import { AVAILABLE_BANKS } from '../contexts/BankContext';
+import { AVAILABLE_BANKS } from '../contexts/bankContextValue';
+import { Dialog } from '../components/Dialog';
 
 interface AdminUser {
   id: string;
@@ -19,7 +20,7 @@ interface AdminUser {
 }
 
 export default function AdminDashboard() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,12 +35,8 @@ export default function AdminDashboard() {
   const [deletingUser, setDeletingUser] = useState<AdminUser | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
-  // Guard: ONLY viborasnake@gmail.com
-  if (!user || user.email !== 'viborasnake@gmail.com') {
-    return <Navigate to="/" replace />;
-  }
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
+    if (!isAdmin) return;
     setLoading(true);
     try {
       const { data, error } = await supabase.rpc('admin_get_dashboard_data');
@@ -51,13 +48,22 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [isAdmin]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
+
+  if (!isAdmin) {
+    return <Navigate to="/" replace />;
+  }
 
   const handleToggleStatus = async (targetUser: AdminUser) => {
+    if (targetUser.id === user?.id) {
+      toast.error('No puedes pausar tu propia cuenta administradora.');
+      return;
+    }
+
     const newStatus = targetUser.status === 'paused' ? 'active' : 'paused';
     const actionName = newStatus === 'paused' ? 'pausar' : 'activar';
     
@@ -112,7 +118,7 @@ export default function AdminDashboard() {
     }
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/login`
+        redirectTo: `${window.location.origin}/reset-password`
       });
       if (error) throw error;
       toast.success('Correo de restablecimiento enviado con éxito');
@@ -123,6 +129,12 @@ export default function AdminDashboard() {
 
   const handleDeleteUser = async () => {
     if (!deletingUser) return;
+    if (deletingUser.id === user?.id) {
+      toast.error('No puedes eliminar tu propia cuenta desde el panel administrativo.');
+      setDeletingUser(null);
+      setDeleteConfirmText('');
+      return;
+    }
     if (deleteConfirmText.toLowerCase() !== 'eliminar') {
       toast.error('Por favor escribe ELIMINAR para confirmar');
       return;
@@ -171,10 +183,10 @@ export default function AdminDashboard() {
             <Shield size={36} /> Panel de Administración
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontWeight: 600, marginTop: '0.25rem' }}>
-            Acceso exclusivo para viborasnake@gmail.com
+            Acceso protegido según el rol asignado a tu cuenta.
           </p>
         </div>
-        <button className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '2px solid black' }} onClick={loadData} disabled={loading}>
+        <button type="button" className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '2px solid black' }} onClick={loadData} disabled={loading}>
           <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
           Actualizar datos
         </button>
@@ -188,7 +200,7 @@ export default function AdminDashboard() {
           </div>
           <div>
             <div style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Cuentas Creadas</div>
-            <div style={{ fontSize: '1.85rem', fontWeight: 900 }}>{totalUsers} <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--danger)' }}>({pausedUsers} pausadas)</span></div>
+            <div style={{ fontSize: '1.85rem', fontWeight: 900 }}>{totalUsers} <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--danger-text)' }}>({pausedUsers} pausadas)</span></div>
           </div>
         </div>
 
@@ -214,13 +226,14 @@ export default function AdminDashboard() {
       </div>
 
       {/* Main Table Card */}
-      <div className="card" style={{ padding: '2rem' }}>
+      <div className="card admin-users-card" style={{ padding: '2rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
           <div style={{ position: 'relative', flex: 1 }}>
             <Search size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
             <input 
               type="text" 
               className="input" 
+              aria-label="Buscar usuarios por email, nombre o RUT"
               placeholder="Buscar por email, nombre o RUT..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -236,7 +249,7 @@ export default function AdminDashboard() {
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table className="responsive-table" style={{ width: '100%', minWidth: '950px', tableLayout: 'fixed' }}>
+            <table className="responsive-table admin-users-table" style={{ width: '100%', minWidth: '950px', tableLayout: 'fixed' }}>
               <thead>
                 <tr>
                   <th style={{ width: '220px' }}>Email / Usuario</th>
@@ -252,6 +265,7 @@ export default function AdminDashboard() {
                   const createdDate = new Date(u.created_at).toLocaleDateString('es-CL', {
                     day: 'numeric', month: 'short', year: 'numeric'
                   });
+                  const isCurrentUser = u.id === user?.id;
 
                   return (
                     <tr key={u.id} style={{ backgroundColor: u.status === 'paused' ? '#fee2e2' : 'white' }}>
@@ -303,32 +317,42 @@ export default function AdminDashboard() {
                       <td data-label="Acciones" style={{ whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                           <button 
+                            type="button"
                             className="btn-icon" 
-                            title={u.status === 'active' ? 'Pausar accesos' : 'Reactivar accesos'}
+                            title={isCurrentUser ? 'No puedes pausar tu propia cuenta' : (u.status === 'active' ? 'Pausar accesos' : 'Reactivar accesos')}
+                            aria-label={isCurrentUser ? 'No puedes pausar tu propia cuenta administradora' : `${u.status === 'active' ? 'Pausar accesos' : 'Reactivar accesos'} de ${u.email}`}
+                            disabled={isCurrentUser}
                             onClick={() => handleToggleStatus(u)}
                             style={{ backgroundColor: u.status === 'active' ? '#ffedd5' : '#dcfce7' }}
                           >
                             <Power size={14} style={{ color: u.status === 'active' ? '#d97706' : '#16a34a' }} />
                           </button>
                           <button 
+                            type="button"
                             className="btn-icon" 
                             title="Editar info de usuario"
+                            aria-label={`Editar información de ${u.email}`}
                             onClick={() => handleEditDetails(u)}
                             style={{ backgroundColor: '#e0f2fe' }}
                           >
                             <Edit size={14} style={{ color: '#0284c7' }} />
                           </button>
                           <button 
+                            type="button"
                             className="btn-icon" 
                             title="Reenviar correo cambiar password"
+                            aria-label={`Reenviar cambio de contraseña a ${u.email}`}
                             onClick={() => handleResendPasswordReset(u.email)}
                             style={{ backgroundColor: '#f3e8ff' }}
                           >
                             <Key size={14} style={{ color: '#7c3aed' }} />
                           </button>
                           <button 
+                            type="button"
                             className="btn-icon" 
-                            title="Eliminar cuenta para siempre"
+                            title={isCurrentUser ? 'No puedes eliminar tu propia cuenta' : 'Eliminar cuenta para siempre'}
+                            aria-label={isCurrentUser ? 'No puedes eliminar tu propia cuenta administradora' : `Eliminar cuenta de ${u.email}`}
+                            disabled={isCurrentUser}
                             onClick={() => setDeletingUser(u)}
                             style={{ backgroundColor: '#fee2e2' }}
                           >
@@ -354,14 +378,30 @@ export default function AdminDashboard() {
 
       {/* Edit User Modal */}
       {editingUser && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, backdropFilter: 'blur(4px)' }}>
-          <div className="card" style={{ width: '90%', maxWidth: '400px', padding: '2rem', border: '3px solid black', boxShadow: '6px 6px 0px black', backgroundColor: 'white', borderRadius: '12px' }}>
-            <h3 style={{ fontSize: '1.5rem', marginTop: 0, marginBottom: '1.5rem', fontWeight: 900 }}>Editar Cuenta</h3>
+        <Dialog
+          onClose={() => setEditingUser(null)}
+          labelledBy="admin-edit-title"
+          panelClassName="admin-dialog"
+          panelStyle={{ maxWidth: '440px' }}
+        >
+          <div className="dialog-header">
+            <h3 id="admin-edit-title" style={{ fontSize: '1.35rem', fontWeight: 900 }}>Editar cuenta</h3>
+            <button
+              type="button"
+              className="dialog-close"
+              onClick={() => setEditingUser(null)}
+              aria-label="Cerrar edición de cuenta"
+            >
+              <X size={20} aria-hidden="true" />
+            </button>
+          </div>
+          <div className="admin-dialog-body">
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginBottom: '2rem' }}>
               <div>
-                <label className="label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b' }}>Usuario (Email)</label>
+                <label htmlFor="admin-user-email" className="label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b' }}>Usuario (Email)</label>
                 <input 
+                  id="admin-user-email"
                   type="text" 
                   className="input" 
                   value={editingUser.email}
@@ -371,8 +411,9 @@ export default function AdminDashboard() {
               </div>
 
               <div>
-                <label className="label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b' }}>Nombre Completo</label>
+                <label htmlFor="admin-user-name" className="label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b' }}>Nombre completo</label>
                 <input 
+                  id="admin-user-name"
                   type="text" 
                   className="input" 
                   placeholder="Ej: Cristian Pizarro" 
@@ -383,8 +424,9 @@ export default function AdminDashboard() {
               </div>
 
               <div>
-                <label className="label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b' }}>RUT Asociado</label>
+                <label htmlFor="admin-user-rut" className="label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b' }}>RUT asociado</label>
                 <input 
+                  id="admin-user-rut"
                   type="text" 
                   className="input" 
                   placeholder="Ej: 17.673.553-9" 
@@ -395,8 +437,9 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+            <div className="admin-dialog-actions">
               <button 
+                type="button"
                 className="btn btn-outline" 
                 onClick={() => setEditingUser(null)}
                 disabled={actionLoading}
@@ -404,36 +447,56 @@ export default function AdminDashboard() {
                 Cancelar
               </button>
               <button 
+                type="button"
                 className="btn btn-primary" 
                 onClick={handleSaveDetails}
                 disabled={actionLoading}
               >
-                {actionLoading ? 'Guardando...' : 'Guardar Cambios'}
+                {actionLoading ? 'Guardando...' : 'Guardar cambios'}
               </button>
             </div>
           </div>
-        </div>
+        </Dialog>
       )}
 
       {/* Delete Confirmation Modal */}
       {deletingUser && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, backdropFilter: 'blur(4px)' }}>
-          <div className="card" style={{ width: '90%', maxWidth: '400px', padding: '2rem', border: '3px solid black', boxShadow: '6px 6px 0px #dc2626', backgroundColor: 'white', borderRadius: '12px' }}>
-            <h3 style={{ fontSize: '1.5rem', marginTop: 0, marginBottom: '1rem', fontWeight: 900, color: '#dc2626' }}>¡Advertencia Crítica!</h3>
+        <Dialog
+          onClose={() => { setDeletingUser(null); setDeleteConfirmText(''); }}
+          labelledBy="admin-delete-title"
+          describedBy="admin-delete-description"
+          panelClassName="admin-dialog admin-dialog-danger"
+          panelStyle={{ maxWidth: '440px' }}
+        >
+          <div className="dialog-header">
+            <h3 id="admin-delete-title" style={{ fontSize: '1.35rem', fontWeight: 900, color: '#dc2626' }}>Eliminar cuenta</h3>
+            <button
+              type="button"
+              className="dialog-close"
+              onClick={() => { setDeletingUser(null); setDeleteConfirmText(''); }}
+              aria-label="Cerrar confirmación de eliminación"
+            >
+              <X size={20} aria-hidden="true" />
+            </button>
+          </div>
+          <div className="admin-dialog-body">
             <p style={{ fontSize: '0.9rem', marginBottom: '1.5rem', color: 'var(--text-secondary)', lineHeight: '1.5', fontWeight: 600 }}>
+              <span id="admin-delete-description">
               Estás a punto de eliminar definitivamente la cuenta de <strong>{deletingUser.email}</strong>. 
               Esta acción es irreversible y borrará:
+              </span>
             </p>
-            <ul style={{ fontSize: '0.85rem', margin: '0 0 1.5rem 1rem', padding: 0, color: '#64748b', fontWeight: 600, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-              <li>• Todos sus datos de inicio de sesión</li>
-              <li>• Sus transacciones importadas ({deletingUser.tx_count} registros)</li>
-              <li>• Sus configuraciones, RUT y reglas de clasificación</li>
-              <li>• Sus contactos conocidos registrados</li>
+            <ul style={{ fontSize: '0.85rem', margin: '0 0 1.5rem 1rem', paddingLeft: '1rem', color: '#64748b', fontWeight: 600, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <li>Todos sus datos de inicio de sesión</li>
+              <li>Sus transacciones importadas ({deletingUser.tx_count} registros)</li>
+              <li>Sus configuraciones, RUT y reglas de clasificación</li>
+              <li>Sus contactos conocidos registrados</li>
             </ul>
             <p style={{ fontSize: '0.9rem', marginBottom: '1rem', fontWeight: 700 }}>
               Para confirmar, escribe la palabra <span style={{ color: '#dc2626' }}>ELIMINAR</span> abajo:
             </p>
             <input 
+              id="admin-delete-confirm"
               type="text" 
               className="input" 
               placeholder="Escribe ELIMINAR" 
@@ -441,8 +504,9 @@ export default function AdminDashboard() {
               onChange={(e) => setDeleteConfirmText(e.target.value)}
               style={{ width: '100%', marginBottom: '1.5rem', border: '2px solid #dc2626', fontWeight: 800, textTransform: 'uppercase' }}
             />
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+            <div className="admin-dialog-actions">
               <button 
+                type="button"
                 className="btn btn-outline" 
                 onClick={() => { setDeletingUser(null); setDeleteConfirmText(''); }}
                 disabled={actionLoading}
@@ -450,16 +514,17 @@ export default function AdminDashboard() {
                 Cancelar
               </button>
               <button 
+                type="button"
                 className="btn btn-primary" 
                 onClick={handleDeleteUser}
                 disabled={actionLoading || deleteConfirmText.toLowerCase() !== 'eliminar'}
                 style={{ backgroundColor: '#dc2626', color: 'white', border: '2px solid black' }}
               >
-                {actionLoading ? 'Eliminando...' : 'Eliminar Cuenta'}
+                {actionLoading ? 'Eliminando...' : 'Eliminar cuenta'}
               </button>
             </div>
           </div>
-        </div>
+        </Dialog>
       )}
     </div>
   );

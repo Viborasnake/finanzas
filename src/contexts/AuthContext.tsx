@@ -1,52 +1,52 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../services/supabase';
+import { AuthContext } from './authContextValue';
 
-interface AuthContextType {
-  session: Session | null;
-  user: User | null;
-  signOut: () => Promise<void>;
-  loading: boolean;
-  isPaused: boolean;
-}
-
-const AuthContext = createContext<AuthContextType>({
-  session: null,
-  user: null,
-  signOut: async () => {},
-  loading: true,
-  isPaused: false,
-});
-
-export const useAuth = () => useContext(AuthContext);
+const LEGACY_ADMIN_EMAIL = 'viborasnake@gmail.com';
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const checkUserStatus = async (currentUser: User | null) => {
       if (!currentUser) {
         setIsPaused(false);
+        setIsAdmin(false);
         return;
       }
+
+      const legacyAdminAccess = currentUser.email?.toLocaleLowerCase('es-CL') === LEGACY_ADMIN_EMAIL;
       try {
-        const { data } = await supabase
-          .from('profiles')
-          .select('status')
-          .eq('id', currentUser.id)
-          .maybeSingle();
+        const [profileResult, adminResult] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('status')
+            .eq('id', currentUser.id)
+            .maybeSingle(),
+          supabase.rpc('is_current_user_admin')
+        ]);
+
+        if (profileResult.error) throw profileResult.error;
         
-        if (data && data.status === 'paused') {
-          setIsPaused(true);
+        setIsPaused(profileResult.data?.status === 'paused');
+
+        if (adminResult.error) {
+          setIsAdmin(Boolean(legacyAdminAccess));
+          if (adminResult.error.code !== 'PGRST202') {
+            console.error('Error checking admin access:', adminResult.error);
+          }
         } else {
-          setIsPaused(false);
+          setIsAdmin(Boolean(adminResult.data));
         }
       } catch (err) {
         console.error("Error checking user profile status:", err);
         setIsPaused(false);
+        setIsAdmin(Boolean(legacyAdminAccess));
       }
     };
 
@@ -78,7 +78,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, signOut, loading, isPaused }}>
+    <AuthContext.Provider value={{ session, user, signOut, loading, isPaused, isAdmin }}>
       {!loading && children}
     </AuthContext.Provider>
   );

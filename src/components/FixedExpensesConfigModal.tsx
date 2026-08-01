@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Plus, Settings, X, Edit, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useSettings } from '../contexts/SettingsContext';
-import type { FixedExpense } from '../contexts/SettingsContext';
+import { useSettings, type FixedExpense } from '../contexts/settingsContextValue';
 import { CascadingCategorySelector } from '../pages/Transactions';
+import { Dialog } from './Dialog';
 
 interface Props {
   onClose: () => void;
@@ -43,12 +43,12 @@ export function FixedExpensesConfigModal({ onClose }: Props) {
     setNewFixedName('');
     setNewFixedKeyword('');
     setNewFixedCategory({ tipo: null, principal: null, secundaria: null });
-    toast.success('Gasto fijo agregado');
+    toast.success('Cuenta agregada');
   };
 
   const handleDeleteFixedExpense = async (id: string) => {
     await saveFixedExpenses(fixedExpenses.filter(item => item.id !== id));
-    toast.success('Gasto fijo eliminado');
+    toast.success('Cuenta eliminada');
   };
 
   const startEditFixedExpense = (item: FixedExpense) => {
@@ -91,37 +91,53 @@ export function FixedExpensesConfigModal({ onClose }: Props) {
 
     await saveFixedExpenses(next);
     cancelEditFixedExpense();
-    toast.success('Gasto fijo actualizado');
+    toast.success('Cuenta actualizada');
   };
 
   const handleLoadSuggestedFixedExpenses = async () => {
     const suggested: FixedExpense[] = [
-      { id: generateId(), name: 'Luz', tipo_movimiento: 'Egreso', categoria_principal: 'Cuentas y Servicios', categoria_secundaria: 'Luz', keyword: 'enel' },
-      { id: generateId(), name: 'Agua', tipo_movimiento: 'Egreso', categoria_principal: 'Cuentas y Servicios', categoria_secundaria: 'Agua', keyword: 'aguas andinas' },
-      { id: generateId(), name: 'Gas', tipo_movimiento: 'Egreso', categoria_principal: 'Cuentas y Servicios', categoria_secundaria: 'Gas', keyword: 'metrogas' },
-      { id: generateId(), name: 'Internet Hogar', tipo_movimiento: 'Egreso', categoria_principal: 'Cuentas y Servicios', categoria_secundaria: 'Internet y TV', keyword: 'vtr' },
-      { id: generateId(), name: 'Netflix', tipo_movimiento: 'Egreso', categoria_principal: 'Suscripciones', categoria_secundaria: 'Streaming', keyword: 'netflix' },
-      { id: generateId(), name: 'Spotify', tipo_movimiento: 'Egreso', categoria_principal: 'Suscripciones', categoria_secundaria: 'Música', keyword: 'spotify' },
-      { id: generateId(), name: 'Dividendo / Arriendo', tipo_movimiento: 'Egreso', categoria_principal: 'Hogar', categoria_secundaria: 'Arriendo / Dividendo' },
-      { id: generateId(), name: 'CAE', tipo_movimiento: 'Egreso', categoria_principal: 'Educación', categoria_secundaria: 'Crédito Estudiantil' },
-      { id: generateId(), name: 'Seguro Auto', tipo_movimiento: 'Egreso', categoria_principal: 'Transporte', categoria_secundaria: 'Seguro Vehículo', keyword: 'seguro' }
+      { id: generateId(), name: 'Luz', tipo_movimiento: 'Egreso', categoria_principal: 'Cuentas Básicas', categoria_secundaria: 'Luz', keyword: 'enel' },
+      { id: generateId(), name: 'Agua', tipo_movimiento: 'Egreso', categoria_principal: 'Cuentas Básicas', categoria_secundaria: 'Agua', keyword: 'pac agua' },
+      { id: generateId(), name: 'Gas', tipo_movimiento: 'Egreso', categoria_principal: 'Cuentas Básicas', categoria_secundaria: 'Gas', keyword: 'pac gas' },
+      { id: generateId(), name: 'Internet Hogar', tipo_movimiento: 'Egreso', categoria_principal: 'Cuentas Básicas', categoria_secundaria: 'Internet Hogar', keyword: 'internet' },
+      { id: generateId(), name: 'GPT', tipo_movimiento: 'Egreso', categoria_principal: 'Suscripciones', categoria_secundaria: 'Chat GPT', keyword: 'openai' },
+      { id: generateId(), name: 'HBO Max', tipo_movimiento: 'Egreso', categoria_principal: 'Suscripciones', categoria_secundaria: 'HBO MAX', keyword: 'hbo' },
+      { id: generateId(), name: 'Dividendo', tipo_movimiento: 'Egreso', categoria_principal: 'Vivienda', categoria_secundaria: 'Dividendo' },
+      { id: generateId(), name: 'Seguro Auto', tipo_movimiento: 'Egreso', categoria_principal: 'Transporte', categoria_secundaria: 'Seguro Auto', keyword: 'falabella' },
+      { id: generateId(), name: 'CAE', tipo_movimiento: 'Egreso', categoria_principal: null, categoria_secundaria: null, keyword: 'credito aval' },
+      { id: generateId(), name: 'Apple Music', tipo_movimiento: 'Egreso', categoria_principal: null, categoria_secundaria: null, keyword: 'apple music' },
+      { id: generateId(), name: 'iCloud', tipo_movimiento: 'Egreso', categoria_principal: null, categoria_secundaria: null, keyword: 'icloud' },
+      { id: generateId(), name: 'Gemini', tipo_movimiento: 'Egreso', categoria_principal: null, categoria_secundaria: null, keyword: 'gemini' }
     ];
 
-    const next = [...fixedExpenses, ...suggested];
+    const existingNames = new Set(fixedExpenses.map(item => item.name.trim().toLocaleLowerCase('es')));
+    const next = [...fixedExpenses, ...suggested.filter(item => !existingNames.has(item.name.trim().toLocaleLowerCase('es')))];
+    if (next.length === fixedExpenses.length) {
+      toast('Las cuentas sugeridas ya están creadas');
+      return;
+    }
     await saveFixedExpenses(next);
-    toast.success('Gastos fijos sugeridos cargados');
+    toast.success('Cuentas sugeridas cargadas');
   };
 
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backgroundColor: 'rgba(241, 245, 249, 0.85)', backdropFilter: 'blur(8px)' }}>
-      <div className="card" style={{ width: '100%', maxWidth: '750px', maxHeight: '90vh', overflowY: 'auto', backgroundColor: '#fff', padding: 0 }}>
-        
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem 1.5rem', borderBottom: '3px solid #000', backgroundColor: '#f8fafc', position: 'sticky', top: 0, zIndex: 10 }}>
+    <Dialog
+      onClose={onClose}
+      labelledBy="fixed-expenses-dialog-title"
+      describedBy="fixed-expenses-dialog-description"
+      panelStyle={{ maxWidth: '750px' }}
+    >
+        <div className="dialog-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <Settings size={26} strokeWidth={2.5} />
-            <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Configurar Cuentas</h2>
+            <div>
+              <h2 id="fixed-expenses-dialog-title" style={{ margin: 0, fontSize: '1.25rem' }}>Configurar cuentas</h2>
+              <p id="fixed-expenses-dialog-description" style={{ margin: '0.2rem 0 0', color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 700 }}>
+                Crea una cuenta y vincúlala con la categoría que detectará sus pagos.
+              </p>
+            </div>
           </div>
-          <button className="btn" type="button" onClick={onClose} style={{ padding: '0.45rem', border: 'none', boxShadow: 'none', background: 'transparent' }} title="Cerrar">
+          <button className="dialog-close" type="button" onClick={onClose} aria-label="Cerrar configuración de cuentas" title="Cerrar">
             <X size={24} />
           </button>
         </div>
@@ -141,23 +157,32 @@ export function FixedExpensesConfigModal({ onClose }: Props) {
           )}
 
           <form className="settings-fixed-expense-form" onSubmit={handleAddFixedExpense} style={{ marginBottom: '2rem' }}>
-            <input
-              type="text"
-              className="input"
-              placeholder="Nombre (ej. Luz, CAE, HBO Max)"
-              value={newFixedName}
-              onChange={(e) => setNewFixedName(e.target.value)}
-              required
-            />
-            <input
-              type="text"
-              className="input"
-              placeholder="Palabra opcional (ej. Enel, Falabella)"
-              value={newFixedKeyword}
-              onChange={(e) => setNewFixedKeyword(e.target.value)}
-            />
+            <label className="settings-field-label">
+              <span>Nombre de la cuenta</span>
+              <input
+                type="text"
+                className="input"
+                data-dialog-initial-focus
+                placeholder="Ej: Luz, CAE, HBO Max"
+                value={newFixedName}
+                onChange={(e) => setNewFixedName(e.target.value)}
+                required
+              />
+            </label>
+            <label className="settings-field-label">
+              <span>Palabra de búsqueda <small>(opcional)</small></span>
+              <input
+                type="text"
+                className="input"
+                placeholder="Ej: Enel, PAC Agua"
+                value={newFixedKeyword}
+                onChange={(e) => setNewFixedKeyword(e.target.value)}
+              />
+            </label>
             <div className="settings-rule-category">
+              <span className="settings-field-title">Categoría que confirma el pago</span>
               <CascadingCategorySelector
+                initialTipo={newFixedCategory.tipo}
                 initialPrincipal={null}
                 initialSecundaria={null}
                 onSave={(t: any, p: any, s: any) => setNewFixedCategory({ tipo: t, principal: p, secundaria: s })}
@@ -180,6 +205,7 @@ export function FixedExpensesConfigModal({ onClose }: Props) {
                       <input
                         type="text"
                         className="input"
+                        aria-label={`Nombre de ${item.name}`}
                         value={editFixedName}
                         onChange={(e) => setEditFixedName(e.target.value)}
                         placeholder="Nombre"
@@ -187,19 +213,21 @@ export function FixedExpensesConfigModal({ onClose }: Props) {
                       <input
                         type="text"
                         className="input"
+                        aria-label={`Palabra de búsqueda para ${item.name}`}
                         value={editFixedKeyword}
                         onChange={(e) => setEditFixedKeyword(e.target.value)}
                         placeholder="Keyword"
                       />
                       <div style={{ flex: 2 }}>
                         <CascadingCategorySelector
+                          initialTipo={editFixedCategory.tipo}
                           initialPrincipal={editFixedCategory.principal}
                           initialSecundaria={editFixedCategory.secundaria}
                           onSave={(t: any, p: any, s: any) => setEditFixedCategory({ tipo: t, principal: p, secundaria: s })}
                         />
                       </div>
-                      <button className="btn btn-primary" onClick={() => handleSaveFixedExpense(item.id)}>Guardar</button>
-                      <button className="btn btn-outline" onClick={cancelEditFixedExpense}>Cancelar</button>
+                        <button type="button" className="btn btn-primary" onClick={() => handleSaveFixedExpense(item.id)}>Guardar</button>
+                        <button type="button" className="btn btn-outline" onClick={cancelEditFixedExpense}>Cancelar</button>
                     </div>
                   ) : (
                     <div className="settings-rule-view">
@@ -213,8 +241,8 @@ export function FixedExpensesConfigModal({ onClose }: Props) {
                         )}
                       </div>
                       <div className="settings-rule-actions">
-                        <button className="btn btn-icon" onClick={() => startEditFixedExpense(item)} title="Editar"><Edit size={16} /></button>
-                        <button className="btn btn-icon danger" onClick={() => handleDeleteFixedExpense(item.id)} title="Eliminar"><Trash2 size={16} /></button>
+                        <button type="button" className="btn-icon" onClick={() => startEditFixedExpense(item)} aria-label={`Editar ${item.name}`} title="Editar"><Edit size={16} /></button>
+                        <button type="button" className="btn-icon danger" onClick={() => handleDeleteFixedExpense(item.id)} aria-label={`Eliminar ${item.name}`} title="Eliminar"><Trash2 size={16} /></button>
                       </div>
                     </div>
                   )}
@@ -224,7 +252,6 @@ export function FixedExpensesConfigModal({ onClose }: Props) {
           </div>
         </div>
 
-      </div>
-    </div>
+    </Dialog>
   );
 }

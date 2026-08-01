@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useSettings } from '../contexts/SettingsContext';
+import { useSettings } from '../contexts/settingsContextValue';
 
 export const BASE_TAXONOMY: Record<string, Record<string, string[]>> = {
   'Ingreso': {

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { Info } from 'lucide-react';
 
@@ -7,31 +7,74 @@ interface InfoTooltipProps {
 }
 
 export default function InfoTooltip({ content }: InfoTooltipProps) {
-  const [isHovered, setIsHovered] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
-  const iconRef = useRef<HTMLDivElement>(null);
+  const iconRef = useRef<HTMLButtonElement>(null);
+  const tooltipId = useId();
 
   useEffect(() => {
-    if (isHovered && iconRef.current) {
+    if (!isOpen) return;
+
+    const updatePosition = () => {
+      if (!iconRef.current) return;
       const rect = iconRef.current.getBoundingClientRect();
+      const halfWidth = Math.min(125, (window.innerWidth - 32) / 2);
       setCoords({
-        top: rect.top + window.scrollY,
-        left: rect.left + window.scrollX + rect.width / 2
+        top: rect.top,
+        left: Math.min(
+          Math.max(rect.left + rect.width / 2, halfWidth + 16),
+          window.innerWidth - halfWidth - 16
+        )
       });
-    }
-  }, [isHovered]);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+        iconRef.current?.focus();
+      }
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen]);
 
   return (
-    <div 
-      ref={iconRef}
-      style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '0.5rem' }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+    <span
+      className="info-tooltip"
+      onMouseEnter={() => setIsOpen(true)}
+      onMouseLeave={() => {
+        if (document.activeElement !== iconRef.current) setIsOpen(false);
+      }}
     >
-      <Info size={16} color="#64748b" style={{ cursor: 'help' }} />
-      {isHovered && createPortal(
-        <div style={{
-          position: 'absolute',
+    <button
+      type="button"
+      ref={iconRef}
+      className="info-tooltip-trigger"
+      aria-label="Más información"
+      aria-expanded={isOpen}
+      aria-controls={isOpen ? tooltipId : undefined}
+      aria-describedby={isOpen ? tooltipId : undefined}
+      onFocus={() => setIsOpen(true)}
+      onBlur={() => setIsOpen(false)}
+      onClick={() => setIsOpen(true)}
+    >
+      <Info size={16} aria-hidden="true" />
+    </button>
+      {isOpen && createPortal(
+        <div
+          id={tooltipId}
+          role="tooltip"
+          style={{
+          position: 'fixed',
           top: coords.top - 8,
           left: coords.left,
           transform: 'translate(-50%, -100%)',
@@ -41,7 +84,7 @@ export default function InfoTooltip({ content }: InfoTooltipProps) {
           padding: '0.75rem',
           boxShadow: '4px 4px 0px #000',
           width: 'max-content',
-          maxWidth: '250px',
+          maxWidth: 'min(250px, calc(100vw - 2rem))',
           zIndex: 99999,
           fontSize: '0.8rem',
           fontWeight: 600,
@@ -66,6 +109,6 @@ export default function InfoTooltip({ content }: InfoTooltipProps) {
         </div>,
         document.body
       )}
-    </div>
+    </span>
   );
 }
