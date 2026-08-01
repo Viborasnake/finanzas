@@ -6,6 +6,7 @@ import Layout from './components/Layout';
 import { AlertTriangle, LockKeyhole, RefreshCw } from 'lucide-react';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
+const LightDashboard = lazy(() => import('./pages/LightDashboard'));
 const Login = lazy(() => import('./pages/Login'));
 const Transactions = lazy(() => import('./pages/Transactions'));
 const Accounts = lazy(() => import('./pages/Accounts'));
@@ -125,6 +126,7 @@ function App() {
         <Route path="/login" element={<LazyPage><Login /></LazyPage>} />
         <Route path="/reset-password" element={<LazyPage><ResetPassword /></LazyPage>} />
         {import.meta.env.DEV && <Route path="/dev/import" element={<LazyPage><ImportRoute /></LazyPage>} />}
+        {import.meta.env.DEV && <Route path="/dev/light" element={<LazyPage><LightDashboard /></LazyPage>} />}
         
         <Route path="/" element={
           <ProtectedRoute>
@@ -132,6 +134,7 @@ function App() {
           </ProtectedRoute>
         }>
           <Route index element={<LazyPage><Dashboard /></LazyPage>} />
+          <Route path="light" element={<LazyPage><LightDashboard /></LazyPage>} />
           <Route path="transactions" element={<LazyPage><Transactions /></LazyPage>} />
           <Route path="accounts" element={<LazyPage><Accounts /></LazyPage>} />
           <Route path="import" element={<LazyPage><ImportRoute /></LazyPage>} />

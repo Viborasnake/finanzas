@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useId } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Receipt, Settings, LogOut, Menu, X, ChevronDown, Check, ChevronLeft, ChevronRight, User as UserIcon, Shield, CalendarCheck, FileSpreadsheet } from 'lucide-react';
+import { LayoutDashboard, Receipt, Settings, LogOut, Menu, X, ChevronDown, Check, ChevronLeft, ChevronRight, User as UserIcon, Shield, CalendarCheck, FileSpreadsheet, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/authContextValue';
 import { useBanks, AVAILABLE_BANKS, type DashboardBankScope } from '../contexts/bankContextValue';
 import { useSettings } from '../contexts/settingsContextValue';
@@ -8,6 +8,7 @@ import { RutOnboardingModal } from './RutOnboardingModal';
 import './Layout.css'; 
 
 const navItems = [
+  { name: 'Vista Light', path: '/light', icon: <Sparkles size={20} /> },
   { name: 'Dashboard', path: '/', icon: <LayoutDashboard size={20} /> },
   { name: 'Transacciones', path: '/transactions', icon: <Receipt size={20} /> },
   { name: 'Cuentas', path: '/accounts', icon: <CalendarCheck size={20} /> },

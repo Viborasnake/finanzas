@@ -17,6 +17,7 @@
 /reset-password → ResetPassword (public)
 /               → ProtectedRoute > Layout (Outlet)
   /             → Dashboard
+  /light        → LightDashboard (mes en curso, pagos importantes y gasto macro)
   /transactions → Transactions
   /accounts     → Accounts (Gastos Fijos tracker)
   /import       → ImportRoute
@@ -204,6 +205,7 @@ MisFinanzas usa **Neo-Brutalist** como lenguaje visual. Siempre respetar:
 | `src/components/SplitTransactionModal.tsx` | Modal para dividir transacciones en múltiples categorías |
 | `src/components/ImportModal.tsx` & `TransactionCaptureImport.tsx` | Lógica y UI de importación de cartolas |
 | `src/pages/Dashboard.tsx` | Dashboard principal con charts (Recharts), filtros de período, KPIs |
+| `src/pages/LightDashboard.tsx` | Resumen mensual simplificado con balance, pagos fijos y gasto macro |
 | `src/pages/Transactions.tsx` | Lista editable de TX + `CascadingCategorySelector` (exportado) |
 | `src/pages/Accounts.tsx` | Tracker de gastos fijos mensuales |
 | `src/pages/ImportRoute.tsx` | Ruta base para el importador multiformato |

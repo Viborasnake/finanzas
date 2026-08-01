@@ -1,0 +1,132 @@
+import type { FixedExpense } from '../contexts/settingsContextValue.ts';
+import { evaluateAccountMatch } from './fixedExpenseMatching.ts';
+import { parseLocalDateInput } from './localDate.ts';
+
+export interface LightTransaction {
+  id: string;
+  date: string;
+  description?: string | null;
+  original_description?: string | null;
+  amount: number;
+  type?: string | null;
+  bank?: string | null;
+  tipo_movimiento?: string | null;
+  categoria_principal?: string | null;
+  categoria_secundaria?: string | null;
+  raw_data?: Record<string, unknown> | null;
+}
+
+export interface LightFixedExpenseStatus {
+  item: FixedExpense;
+  state: 'paid' | 'pending' | 'unconfigured';
+  payments: LightTransaction[];
+  paidAmount: number;
+  lastPaymentDate: string | null;
+}
+
+export interface LightCategoryTotal {
+  name: string;
+  amount: number;
+  percentage: number;
+}
+
+const normalize = (value: unknown) => String(value || '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+  .trim();
+
+const money = (transaction: LightTransaction) => Math.abs(Number(transaction.amount || 0));
+
+const getKind = (transaction: LightTransaction): 'ingreso' | 'egreso' | null => {
+  const sourceType = normalize(transaction.type);
+  if (sourceType.includes('ingreso') || sourceType.includes('abono') || sourceType.includes('credit')) return 'ingreso';
+  if (sourceType.includes('egreso') || sourceType.includes('cargo') || sourceType.includes('debit')) return 'egreso';
+
+  const semanticType = normalize(transaction.tipo_movimiento);
+  if (semanticType === 'ingreso') return 'ingreso';
+  if (semanticType === 'egreso') return 'egreso';
+  if (transaction.amount < 0) return 'egreso';
+  if (transaction.amount > 0) return 'ingreso';
+  return null;
+};
+
+const isExcludedMovement = (transaction: LightTransaction) => {
+  const semanticType = normalize(transaction.tipo_movimiento);
+  const secondary = normalize(transaction.categoria_secundaria);
+  const description = normalize(`${transaction.description || ''} ${transaction.original_description || ''}`);
+
+  return description.includes('saldo inicial')
+    || semanticType === 'movimiento interno'
+    || semanticType === 'ahorro/inversion'
+    || secondary === 'transferencias propias'
+    || secondary === 'transferencia personal';
+};
+
+export const getCurrentMonthRange = (now = new Date()) => ({
+  start: new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0),
+  end: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999),
+  startInput: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`,
+  endInput: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()).padStart(2, '0')}`,
+  label: now.toLocaleString('es-CL', { month: 'long', year: 'numeric' })
+});
+
+export const buildMonthlyLightSummary = (
+  transactions: LightTransaction[],
+  fixedExpenses: FixedExpense[],
+  now = new Date()
+) => {
+  const range = getCurrentMonthRange(now);
+  const monthTransactions = transactions.filter(transaction => {
+    const date = parseLocalDateInput(transaction.date);
+    return date >= range.start && date <= range.end;
+  });
+  const reportable = monthTransactions.filter(transaction => !isExcludedMovement(transaction));
+  const expenses = reportable.filter(transaction => getKind(transaction) === 'egreso');
+  const incomes = reportable.filter(transaction => getKind(transaction) === 'ingreso');
+  const totalExpenses = expenses.reduce((total, transaction) => total + money(transaction), 0);
+  const totalIncome = incomes.reduce((total, transaction) => total + money(transaction), 0);
+
+  const categoryMap = new Map<string, number>();
+  expenses.forEach(transaction => {
+    const category = transaction.categoria_principal || 'Sin clasificar';
+    categoryMap.set(category, (categoryMap.get(category) || 0) + money(transaction));
+  });
+  const categories = Array.from(categoryMap, ([name, amount]) => ({
+    name,
+    amount,
+    percentage: totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0
+  })).sort((first, second) => second.amount - first.amount);
+
+  const fixedExpenseStatuses: LightFixedExpenseStatus[] = fixedExpenses.map(item => {
+    const payments = monthTransactions
+      .filter(transaction => evaluateAccountMatch(transaction, item).matches)
+      .sort((first, second) => parseLocalDateInput(second.date).getTime() - parseLocalDateInput(first.date).getTime());
+    const configured = Boolean(item.categoria_principal);
+
+    return {
+      item,
+      state: !configured ? 'unconfigured' : payments.length > 0 ? 'paid' : 'pending',
+      payments,
+      paidAmount: payments.reduce((total, transaction) => total + money(transaction), 0),
+      lastPaymentDate: payments[0]?.date || null
+    };
+  });
+
+  const paidCommitments = fixedExpenseStatuses.filter(status => status.state === 'paid');
+
+  return {
+    range,
+    transactionCount: monthTransactions.length,
+    totalIncome,
+    totalExpenses,
+    balance: totalIncome - totalExpenses,
+    categories,
+    fixedExpenseStatuses,
+    paidCommitmentCount: paidCommitments.length,
+    pendingCommitmentCount: fixedExpenseStatuses.filter(status => status.state === 'pending').length,
+    unconfiguredCommitmentCount: fixedExpenseStatuses.filter(status => status.state === 'unconfigured').length,
+    fixedPaidAmount: paidCommitments.reduce((total, status) => total + status.paidAmount, 0),
+    unclassifiedExpenseCount: expenses.filter(transaction => !transaction.categoria_principal).length
+  };
+};
