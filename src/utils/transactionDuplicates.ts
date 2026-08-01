@@ -36,6 +36,19 @@ export interface DuplicateReviewGroup {
   reason: string;
 }
 
+/**
+ * Keeps the preferred logical movement in every candidate group and returns
+ * every other physical row. The caller must still require explicit user
+ * confirmation because weak groups can contain legitimate repeated charges.
+ */
+export const getBatchDuplicateDeleteIds = (groups: DuplicateReviewGroup[]) => (
+  Array.from(new Set(groups.flatMap(group => (
+    group.entries
+      .filter(entry => entry.key !== group.keepEntryKey)
+      .flatMap(entry => entry.transactionIds)
+  ))))
+);
+
 const getSplitGroupId = (transaction: DuplicateReviewTransaction) => (
   transaction.raw_data?.split_group_id || null
 );

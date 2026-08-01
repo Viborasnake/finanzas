@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildDuplicateReviewGroups } from '../src/utils/transactionDuplicates.ts';
+import { buildDuplicateReviewGroups, getBatchDuplicateDeleteIds } from '../src/utils/transactionDuplicates.ts';
 
 const base = {
   bank: 'Scotiabank',
@@ -20,6 +20,17 @@ test('detecta movimientos equivalentes sin recomendar un borrado débil', () => 
   assert.equal(groups.length, 1);
   assert.equal(groups[0].keepEntryKey, 'transaction:old');
   assert.deepEqual(groups[0].recommendedDeleteIds, []);
+});
+
+test('el lote conserva un movimiento por grupo y elimina solamente los restantes', () => {
+  const groups = buildDuplicateReviewGroups([
+    { ...base, id: 'old', created_at: '2026-07-09T10:00:00Z' },
+    { ...base, id: 'new-1', created_at: '2026-07-10T10:00:00Z' },
+    { ...base, id: 'new-2', created_at: '2026-07-11T10:00:00Z' }
+  ]);
+
+  assert.equal(groups[0].keepEntryKey, 'transaction:old');
+  assert.deepEqual(getBatchDuplicateDeleteIds(groups), ['new-1', 'new-2']);
 });
 
 test('colapsa las partes divididas y recomienda conservar el grupo procesado', () => {

@@ -112,7 +112,8 @@ Las normalizaciones ya no se ejecutan desde el frontend. Están versionadas en `
 *   `buildDuplicateReviewGroups()` colapsa un grupo dividido como un solo movimiento lógico antes de comparar.
 *   Coincidencias débiles se muestran para revisión y nunca se borran automáticamente.
 *   Si una división coincide con una reimportación completa, se recomienda conservar la división y eliminar solamente el movimiento reimportado.
-*   Toda eliminación requiere confirmación explícita escribiendo `ELIMINAR`.
+*   La corrección por lote conserva el movimiento priorizado de cada grupo (división o registro más antiguo) y elimina los restantes.
+*   Toda eliminación requiere confirmación explícita; el lote completo exige escribir `ELIMINAR LOTE`.
 
 ### Smart Assistant (`SmartAssistant.tsx`)
 *   Analiza transacciones sin categorizar y propone clasificaciones.

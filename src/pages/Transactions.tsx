@@ -13,7 +13,7 @@ import SplitTransactionModal from '../components/SplitTransactionModal';
 import { Dialog } from '../components/Dialog';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { buildTransactionCandidateFingerprint } from '../utils/transactionIdentity';
-import { buildDuplicateReviewGroups } from '../utils/transactionDuplicates';
+import { buildDuplicateReviewGroups, getBatchDuplicateDeleteIds } from '../utils/transactionDuplicates';
 
 const normalizeBankName = (value: any) => String(value || '')
   .normalize('NFD')
@@ -571,6 +571,7 @@ export default function Transactions() {
     ids: string[];
     title: string;
     description: string;
+    confirmationText?: string;
   }>(null);
 
   const handleSaveSplit = async (parts: any[]) => {
@@ -734,6 +735,11 @@ export default function Transactions() {
     new Set(duplicateGroups.flatMap(group => group.recommendedDeleteIds)).size
   ), [duplicateGroups]);
 
+  const batchDuplicateDeleteIds = useMemo(
+    () => getBatchDuplicateDeleteIds(duplicateGroups),
+    [duplicateGroups]
+  );
+
   const handleDateChange = async (transactionId: string, nextDate: string) => {
     const previous = transactions.find(transaction => transaction.id === transactionId);
     if (!previous || !nextDate || previous.date === nextDate) return;
@@ -761,15 +767,18 @@ export default function Transactions() {
   const confirmDeleteTransactions = async () => {
     if (!pendingDeletion || pendingDeletion.ids.length === 0) return;
 
-    const { error } = await supabase
+    const { data: deletedRows, error } = await supabase
       .from('transactions')
       .delete()
-      .in('id', pendingDeletion.ids);
+      .eq('user_id', user!.id)
+      .in('id', pendingDeletion.ids)
+      .select('id');
     if (error) throw error;
 
-    const deletedIds = new Set(pendingDeletion.ids);
+    const deletedIds = new Set((deletedRows || []).map(row => row.id));
+    if (deletedIds.size === 0) throw new Error('No se eliminaron movimientos');
     setTransactions(current => current.filter(transaction => !deletedIds.has(transaction.id)));
-    toast.success(`${pendingDeletion.ids.length} movimiento${pendingDeletion.ids.length === 1 ? '' : 's'} eliminado${pendingDeletion.ids.length === 1 ? '' : 's'}.`);
+    toast.success(`${deletedIds.size} movimiento${deletedIds.size === 1 ? '' : 's'} eliminado${deletedIds.size === 1 ? '' : 's'}.`);
   };
 
   const requestTransactionDeletion = (transaction: any) => {
@@ -1294,9 +1303,28 @@ export default function Transactions() {
                 El sistema agrupa coincidencias por banco, fecha original, monto, tipo y descripción. No elimina nada sin tu confirmación y trata una división completa como un solo movimiento lógico.
               </p>
             </div>
-            <div className="transactions-summary">
-              <span>{duplicateGroups.length} grupo{duplicateGroups.length === 1 ? '' : 's'} para revisar</span>
-              <span>{duplicateTransactionCount} {duplicateTransactionCount === 1 ? 'eliminación sugerida' : 'eliminaciones sugeridas'}</span>
+            <div style={{ display: 'grid', gap: '0.7rem', justifyItems: 'end' }}>
+              <div className="transactions-summary">
+                <span>{duplicateGroups.length} grupo{duplicateGroups.length === 1 ? '' : 's'} para revisar</span>
+                <span>{batchDuplicateDeleteIds.length} movimiento{batchDuplicateDeleteIds.length === 1 ? '' : 's'} repetido{batchDuplicateDeleteIds.length === 1 ? '' : 's'}</span>
+              </div>
+              <button
+                type="button"
+                className="btn"
+                disabled={batchDuplicateDeleteIds.length === 0}
+                style={{ background: '#fecaca', color: '#991b1b' }}
+                onClick={() => setPendingDeletion({
+                  ids: batchDuplicateDeleteIds,
+                  title: 'Resolver lote completo de duplicados',
+                  description: `Se conservará un movimiento por cada uno de los ${duplicateGroups.length} grupos y se eliminarán ${batchDuplicateDeleteIds.length} registros restantes. En coincidencias sin división se conserva el registro más antiguo. Revisa que no sean compras legítimas repetidas antes de continuar.`,
+                  confirmationText: 'ELIMINAR LOTE'
+                })}
+              >
+                <Trash2 size={17} aria-hidden="true" /> Resolver lote completo
+              </button>
+              {duplicateTransactionCount > 0 && (
+                <small style={{ color: '#475569', fontWeight: 750 }}>{duplicateTransactionCount} corrección{duplicateTransactionCount === 1 ? '' : 'es'} de reimportación con división</small>
+              )}
             </div>
           </div>
 
@@ -1656,7 +1684,7 @@ export default function Transactions() {
         title={pendingDeletion?.title || 'Eliminar transacción'}
         description={pendingDeletion?.description || ''}
         confirmLabel="Eliminar definitivamente"
-        confirmationText="ELIMINAR"
+        confirmationText={pendingDeletion?.confirmationText || 'ELIMINAR'}
         onClose={() => setPendingDeletion(null)}
         onConfirm={confirmDeleteTransactions}
       />

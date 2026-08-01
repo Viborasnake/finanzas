@@ -9,7 +9,7 @@ MisFinanzas es una plataforma moderna e inteligente para el control y seguimient
 *   **Dashboard Consolidado:** Reportes por banco o consolidados, con contexto de periodo y desglose de movimientos.
 *   **Vista Light:** Resumen de baja carga cognitiva enfocado exclusivamente en el mes en curso, sus pagos importantes y las categorías macro de gasto.
 *   **Cuentas:** Seguimiento mensual de gastos fijos vinculados por categoría, historial y corrección de asociaciones.
-*   **Revisión de Duplicados:** Agrupa coincidencias para revisión, conserva las divisiones procesadas y permite eliminar registros únicamente con confirmación explícita.
+*   **Revisión de Duplicados:** Agrupa coincidencias, conserva las divisiones procesadas y permite corregir un registro, un grupo o el lote completo únicamente con confirmación explícita.
 *   **Trazabilidad de Cartolas:** Cada fila importada mantiene una identidad de origen que evita reimportar el monto original después de dividirlo o cambiarlo de periodo.
 *   **Panel de Administración Seguro:** Panel de control de usuarios para la cuenta de administración principal (`viborasnake@gmail.com`) con permisos para pausar accesos, editar detalles, reenviar restablecimiento de credenciales y eliminar cuentas definitivamente.
 
