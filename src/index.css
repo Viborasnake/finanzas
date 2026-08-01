@@ -737,6 +737,24 @@ select.input {
   text-underline-offset: 3px;
 }
 
+.light-more-button {
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.6rem;
+  border: 2px solid #000;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #000;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.light-more-button:hover {
+  background: var(--pastel-yellow);
+}
+
 .light-empty {
   min-height: 145px;
   padding: 1rem;

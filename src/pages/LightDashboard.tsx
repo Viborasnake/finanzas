@@ -24,6 +24,7 @@ export default function LightDashboard() {
   const [transactions, setTransactions] = useState<LightTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [showAllPayments, setShowAllPayments] = useState(false);
   const monthRange = useMemo(() => getCurrentMonthRange(), []);
   const isConsolidated = dashboardScope === 'all' && connectedBanks.length > 1;
   const scopedBanks = isConsolidated ? connectedBanks : (activeBank ? [activeBank] : []);
@@ -78,6 +79,15 @@ export default function LightDashboard() {
     ? Math.round((summary.paidCommitmentCount / commitmentTotal) * 100)
     : 0;
   const leadingCategory = summary.categories[0];
+  const prioritizedCommitments = useMemo(() => (
+    [...summary.fixedExpenseStatuses].sort((first, second) => {
+      const priority = { pending: 0, unconfigured: 1, paid: 2 };
+      return priority[first.state] - priority[second.state];
+    })
+  ), [summary.fixedExpenseStatuses]);
+  const visibleCommitments = showAllPayments
+    ? prioritizedCommitments
+    : prioritizedCommitments.slice(0, 6);
 
   if (loading || (user && loadingSettings)) {
     return (
@@ -152,7 +162,7 @@ export default function LightDashboard() {
                 <span style={{ width: `${commitmentProgress}%` }} />
               </div>
               <div className="light-payment-list">
-                {summary.fixedExpenseStatuses.map(status => (
+                {visibleCommitments.map(status => (
                   <article className="light-payment-row" key={status.item.id}>
                     <span className={`light-status-icon is-${status.state}`}>
                       {status.state === 'paid' ? <Check size={17} aria-hidden="true" /> : <CircleAlert size={17} aria-hidden="true" />}
@@ -167,6 +177,11 @@ export default function LightDashboard() {
                   </article>
                 ))}
               </div>
+              {commitmentTotal > 6 && (
+                <button type="button" className="light-more-button" onClick={() => setShowAllPayments(value => !value)}>
+                  {showAllPayments ? 'Mostrar solo prioridades' : `Ver los ${commitmentTotal} pagos`}
+                </button>
+              )}
             </>
           ) : (
             <div className="light-empty">
