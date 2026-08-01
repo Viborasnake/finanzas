@@ -37,18 +37,25 @@ const transactions = [
     type: 'egreso', tipo_movimiento: 'Movimiento Interno', categoria_principal: 'Transferencias'
   },
   {
+    id: 'internal-income', date: '2026-08-10', description: 'Transferencia desde cuenta propia', amount: 300_000,
+    type: 'ingreso', tipo_movimiento: 'Ingreso', categoria_principal: 'Transferencias', categoria_secundaria: 'Transferencias Propias'
+  },
+  {
     id: 'previous', date: '2026-07-31', description: 'Gasto anterior', amount: -999_999,
     type: 'egreso', tipo_movimiento: 'Egreso', categoria_principal: 'Otros'
   }
 ];
 
-test('la vista Light resume exclusivamente el mes en curso y excluye movimientos internos', () => {
+test('la vista Light suma transferencias propias recibidas y excluye las enviadas de los gastos', () => {
   const summary = buildMonthlyLightSummary(transactions, fixedExpenses, new Date(2026, 7, 15));
 
-  assert.equal(summary.transactionCount, 4);
+  assert.equal(summary.transactionCount, 5);
   assert.equal(summary.totalIncome, 2_000_000);
+  assert.equal(summary.receivedTransferAmount, 300_000);
+  assert.equal(summary.sentTransferAmount, 300_000);
+  assert.equal(summary.totalAvailable, 2_300_000);
   assert.equal(summary.totalExpenses, 800_000);
-  assert.equal(summary.balance, 1_200_000);
+  assert.equal(summary.balance, 1_500_000);
   assert.deepEqual(summary.categories.map(category => category.name), ['Vivienda', 'Alimentación']);
 });
 

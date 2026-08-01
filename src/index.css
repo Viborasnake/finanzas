@@ -621,6 +621,27 @@ select.input {
   line-height: 1.1;
 }
 
+.light-kpi small {
+  display: block;
+  margin-top: 0.35rem;
+  color: #475569;
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.light-accounting-note {
+  margin: -0.2rem 0 0;
+  padding: 0.7rem 0.9rem;
+  border: 2px solid #94a3b8;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
 .light-main-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);

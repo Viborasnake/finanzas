@@ -144,19 +144,24 @@ export default function LightDashboard() {
 
       <section className={`light-balance-card ${summary.balance < 0 ? 'is-negative' : ''}`} aria-labelledby="light-balance-title">
         <div>
-          <span className="light-card-label" id="light-balance-title">Balance del mes</span>
-          <strong>{formatMoney(summary.balance)}</strong>
+          <span className="light-card-label" id="light-balance-title">{summary.balance < 0 ? 'Uso de saldo previo estimado' : 'Disponible después de gastos'}</span>
+          <strong>{formatMoney(summary.balance < 0 ? Math.abs(summary.balance) : summary.balance)}</strong>
           <p>{summary.transactionCount === 0
             ? `No hay movimientos registrados en ${summary.range.label}.`
-            : summary.balance >= 0 ? 'Ingresos menos gastos reales del mes.' : 'Este mes los gastos superan a los ingresos registrados.'}</p>
+            : summary.balance >= 0
+              ? 'Ingresos y transferencias recibidas, menos gastos reales del mes.'
+              : 'Es la parte de los gastos cubierta con dinero que ya estaba en tus cuentas.'}</p>
         </div>
         <Gauge size={58} strokeWidth={1.8} aria-hidden="true" />
       </section>
 
       <section className="light-kpis" aria-label="Resumen financiero del mes">
         <article className="light-kpi light-kpi-income">
-          <span><TrendingUp size={18} aria-hidden="true" /> Ingresos</span>
-          <strong>{formatMoney(summary.totalIncome)}</strong>
+          <span><TrendingUp size={18} aria-hidden="true" /> Entradas disponibles</span>
+          <strong>{formatMoney(summary.totalAvailable)}</strong>
+          {summary.receivedTransferAmount > 0 && (
+            <small>{formatMoney(summary.totalIncome)} ingresos + {formatMoney(summary.receivedTransferAmount)} transferencias</small>
+          )}
         </article>
         <article className="light-kpi light-kpi-expense">
           <span><TrendingDown size={18} aria-hidden="true" /> Gastos</span>
@@ -167,6 +172,10 @@ export default function LightDashboard() {
           <strong>{summary.transactionCount}</strong>
         </article>
       </section>
+
+      <p className="light-accounting-note">
+        Las transferencias recibidas aumentan tus entradas disponibles. Las transferencias propias enviadas se registran, pero no cuentan como gasto.
+      </p>
 
       <div className="light-main-grid">
         <section className="light-section light-commitments" aria-labelledby="light-payments-title">
