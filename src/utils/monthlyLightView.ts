@@ -100,7 +100,7 @@ export const buildMonthlyLightSummary = (
   const reportable = monthTransactions.filter(transaction => !isInitialBalance(transaction));
   const periodAnalysis = analyzeFinancialPeriod(reportable, transactions);
   const expenses = reportable.filter(transaction => classifyFinancialTreatment(transaction).economicExpense > 0);
-  const incomes = reportable.filter(transaction => getKind(transaction) === 'ingreso' && !isOwnTransferMovement(transaction) && !isInvestmentMovement(transaction));
+  const incomes = reportable.filter(transaction => getKind(transaction) === 'ingreso' && !isInvestmentMovement(transaction));
   const receivedTransfers = reportable.filter(transaction => getKind(transaction) === 'ingreso' && isOwnTransferMovement(transaction));
   const sentTransfers = reportable.filter(transaction => getKind(transaction) === 'egreso' && isOwnTransferMovement(transaction));
   const investmentRedemptions = reportable.filter(transaction => getKind(transaction) === 'ingreso' && isInvestmentMovement(transaction));
@@ -113,7 +113,7 @@ export const buildMonthlyLightSummary = (
   const investmentRedemptionAmount = investmentRedemptions.reduce((total, transaction) => total + money(transaction), 0);
   const investmentPlacementAmount = investmentPlacements.reduce((total, transaction) => total + money(transaction), 0);
   const debtSettlementAmount = debtSettlements.reduce((total, transaction) => total + money(transaction), 0);
-  const totalAvailable = totalIncome + receivedTransferAmount;
+  const totalAvailable = totalIncome;
   const cashPosition = calculatePeriodCashPosition(openingBalance, periodAnalysis.totals.cashInflow, periodAnalysis.totals.cashOutflow);
 
   const categoryMap = new Map<string, number>();

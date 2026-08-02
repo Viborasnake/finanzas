@@ -224,7 +224,13 @@ export const classifyFinancialTreatment = (transaction: SemanticTransaction): Fi
       : { ...base, eventType: 'investment_placement', assetImpact: amount };
   }
 
-  if (isOwnTransferMovement(transaction)) return { ...base, eventType: 'own_transfer' };
+  if (isOwnTransferMovement(transaction)) {
+    return {
+      ...base,
+      eventType: 'own_transfer',
+      economicIncome: kind === 'ingreso' ? amount : 0
+    };
+  }
 
   if (kind === 'egreso' && isCreditCardSettlement(transaction)) {
     return { ...base, eventType: 'credit_card_settlement', liabilityImpact: -amount, confidence: 'unknown' };

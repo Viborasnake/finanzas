@@ -30,10 +30,17 @@ test('considera colocación y rescate como inversión, no transferencia propia',
 });
 
 test('mantiene las transferencias propias separadas de las inversiones', () => {
-  assert.equal(isOwnTransferMovement({
+  const received = {
+    amount: 300_000,
+    type: 'ingreso',
     tipo_movimiento: 'Ingreso',
     categoria_secundaria: 'Transferencias Propias'
-  }), true);
+  };
+  const sent = { ...received, amount: -300_000, type: 'egreso', tipo_movimiento: 'Egreso' };
+
+  assert.equal(isOwnTransferMovement(received), true);
+  assert.equal(classifyFinancialTreatment(received).economicIncome, 300_000);
+  assert.equal(classifyFinancialTreatment(sent).economicExpense, 0);
 });
 
 test('detecta el pago de tarjeta como liquidación de deuda y no como consumo nuevo', () => {

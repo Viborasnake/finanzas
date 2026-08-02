@@ -192,11 +192,9 @@ export default function LightDashboard() {
 
       <section className="light-kpis" aria-label="Resumen financiero del mes">
         <article className="light-kpi light-kpi-income">
-          <span><TrendingUp size={18} aria-hidden="true" /> Ingresos reales</span>
+          <span><TrendingUp size={18} aria-hidden="true" /> Ingresos</span>
           <strong>{formatMoney(summary.economicIncome)}</strong>
-          {summary.receivedTransferAmount > 0 && (
-            <small>Además recibiste {formatMoney(summary.receivedTransferAmount)} desde cuentas propias</small>
-          )}
+          {summary.receivedTransferAmount > 0 && <small>Incluye {formatMoney(summary.receivedTransferAmount)} desde cuentas propias</small>}
         </article>
         <article className="light-kpi light-kpi-expense">
           <span><TrendingDown size={18} aria-hidden="true" /> Gastos y consumo</span>

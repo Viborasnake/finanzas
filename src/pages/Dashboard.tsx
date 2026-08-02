@@ -1262,7 +1262,8 @@ export default function Dashboard() {
     const incomeData: { name: string; value: number; isGray?: boolean }[] = [
       { name: 'Sueldo', value: c.sueldo },
       { name: 'Honorarios', value: c.honorarios },
-      { name: 'Otros Ingresos', value: c.ingresosOtros }
+      { name: 'Otros Ingresos', value: c.ingresosOtros },
+      { name: 'Transferencias propias recibidas', value: c.aportePropio }
     ];
 
     // Expense Logic
@@ -1307,8 +1308,8 @@ export default function Dashboard() {
                 <Wallet size={24} strokeWidth={2.5} />
               </div>
               <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: '"Montserrat", sans-serif', display: 'flex', alignItems: 'center' }}>
-                Ingresos reales
-                <InfoTooltip content="Ingresos económicos del período. Transferencias propias y rescates de capital se muestran en el flujo de caja, pero no crean ingreso nuevo." />
+                Ingresos
+                <InfoTooltip content="Dinero recibido durante el período. Incluye transferencias desde cuentas propias; los rescates de capital se mantienen separados." />
               </h3>
             </div>
             {renderTrendBadge(totalEntradas, p.economicIncome, false)}
@@ -1321,12 +1322,6 @@ export default function Dashboard() {
               *Además rescataste ${c.rescateInversion.toLocaleString('es-CL')} desde inversiones; no se contabiliza como ingreso
             </div>
           )}
-          {c.aportePropio > 0 && (
-            <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 700, marginBottom: '1rem', position: 'relative', zIndex: 10 }}>
-              *Además recibiste ${c.aportePropio.toLocaleString('es-CL')} desde cuentas propias; afecta caja, no ingresos
-            </div>
-          )}
-          
           {totalEntradas > 0 && (
             <div style={{ position: 'relative', zIndex: 10, flex: 1, paddingBottom: '1rem' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', border: '2px solid #000', borderRadius: '8px', overflow: 'hidden', display: 'table', backgroundColor: 'rgba(255,255,255,0.9)' }}>

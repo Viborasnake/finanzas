@@ -66,7 +66,7 @@ test('la vista Light suma transferencias propias recibidas y excluye las enviada
   const summary = buildMonthlyLightSummary(transactions, fixedExpenses, new Date(2026, 7, 15), ['Scotiabank']);
 
   assert.equal(summary.transactionCount, 8);
-  assert.equal(summary.totalIncome, 2_000_000);
+  assert.equal(summary.totalIncome, 2_300_000);
   assert.equal(summary.receivedTransferAmount, 300_000);
   assert.equal(summary.sentTransferAmount, 300_000);
   assert.equal(summary.investmentPlacementAmount, 10_000_000);
@@ -75,7 +75,7 @@ test('la vista Light suma transferencias propias recibidas y excluye las enviada
   assert.equal(summary.cashInflow, 12_400_000);
   assert.equal(summary.cashOutflow, 11_500_000);
   assert.equal(summary.netCashFlow, 900_000);
-  assert.equal(summary.economicIncome, 2_000_000);
+  assert.equal(summary.economicIncome, 2_300_000);
   assert.equal(summary.economicExpense, 800_000);
   assert.equal(summary.cardCoverage.status, 'absent');
   assert.equal(summary.semanticWarnings.length, 2);
