@@ -42,3 +42,14 @@ export const isOwnTransferMovement = (transaction: SemanticTransaction) => {
     || secondary === 'transferencias propias'
     || secondary === 'transferencia personal';
 };
+
+export const isCreditCardSettlement = (transaction: SemanticTransaction) => {
+  const principal = normalizeSemanticText(transaction.categoria_principal);
+  const secondary = normalizeSemanticText(transaction.categoria_secundaria);
+  const description = normalizeSemanticText(`${transaction.description || ''} ${transaction.original_description || ''}`);
+
+  return principal === 'pago tarjeta credito'
+    || secondary === 'tarjeta credito'
+    || description.includes('pago tarjeta de credito')
+    || description.includes('pago tarjeta credito');
+};

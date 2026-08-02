@@ -55,18 +55,23 @@ const transactions = [
   {
     id: 'dap-redemption', date: '2026-08-20', description: 'ABONO LIQUIDACIÓN CAPTACIÓN 552769441642', amount: 10_100_000,
     type: 'ingreso', tipo_movimiento: 'Ingreso', categoria_principal: 'Otros Ingresos'
+  },
+  {
+    id: 'card-settlement', date: '2026-08-22', description: 'PAGO POR SWEB DE CAT ADMINISTR', amount: -400_000,
+    type: 'egreso', tipo_movimiento: 'Egreso', categoria_principal: 'Pago Tarjeta Crédito', categoria_secundaria: 'Tarjeta Credito'
   }
 ];
 
 test('la vista Light suma transferencias propias recibidas y excluye las enviadas de los gastos', () => {
   const summary = buildMonthlyLightSummary(transactions, fixedExpenses, new Date(2026, 7, 15), ['Scotiabank']);
 
-  assert.equal(summary.transactionCount, 7);
+  assert.equal(summary.transactionCount, 8);
   assert.equal(summary.totalIncome, 2_000_000);
   assert.equal(summary.receivedTransferAmount, 300_000);
   assert.equal(summary.sentTransferAmount, 300_000);
   assert.equal(summary.investmentPlacementAmount, 10_000_000);
   assert.equal(summary.investmentRedemptionAmount, 10_100_000);
+  assert.equal(summary.debtSettlementAmount, 400_000);
   assert.equal(summary.totalAvailable, 2_300_000);
   assert.equal(summary.totalExpenses, 800_000);
   assert.equal(summary.balance, 1_500_000);

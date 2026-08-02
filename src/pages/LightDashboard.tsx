@@ -207,7 +207,10 @@ export default function LightDashboard() {
       </section>
 
       <p className="light-accounting-note">
-        Las transferencias recibidas aumentan tus entradas disponibles. Las propias enviadas no cuentan como gasto. Constituir o rescatar un DAP es neutro: solo la rentabilidad explícita cuenta como ingreso.
+        El resultado muestra el consumo del mes. Pagos de tarjeta por deuda anterior, transferencias propias y capital de inversiones se registran aparte para no duplicar gastos.
+        {summary.debtSettlementAmount > 0 && (
+          <small>Pago de deuda anterior: {formatMoney(summary.debtSettlementAmount)}.</small>
+        )}
         {(summary.investmentRedemptionAmount > 0 || summary.investmentPlacementAmount > 0) && (
           <small>
             Inversiones del mes: {formatMoney(summary.investmentPlacementAmount)} colocados · {formatMoney(summary.investmentRedemptionAmount)} rescatados.

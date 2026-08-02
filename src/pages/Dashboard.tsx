@@ -21,7 +21,7 @@ import { useTaxonomy } from '../hooks/useTaxonomy';
 import { toast } from 'react-hot-toast';
 import { Dialog } from '../components/Dialog';
 import { getShiftedCalendarMonth, getSuggestedDashboardPeriod } from '../utils/dashboardPeriod';
-import { isInvestmentMovement, isOwnTransferMovement } from '../utils/transactionSemantics';
+import { isCreditCardSettlement, isInvestmentMovement, isOwnTransferMovement } from '../utils/transactionSemantics';
 
 const MindMapChart = lazy(() => import('../components/MindMapChart'));
 const CascadingCategorySelector = lazy(() => import('./Transactions').then(module => ({
@@ -140,6 +140,7 @@ const classifyTransactionForReport = (tx: any) => {
   const amount = getTransactionAmount(tx);
   const isInvestment = isInvestmentMovement(tx);
   const isInternal = isOwnTransferMovement(tx);
+  const isDebtSettlement = isCreditCardSettlement(tx);
   const isInitialBalance = isInitialBalanceTransaction(tx);
 
   return {
@@ -148,12 +149,14 @@ const classifyTransactionForReport = (tx: any) => {
     isInternal,
     isInvestment,
     isInitialBalance,
-    isRealIncome: kind === 'ingreso' && !isInternal && !isInitialBalance,
-    isRealExpense: kind === 'egreso' && !isInternal && !isInitialBalance,
+    isDebtSettlement,
+    isRealIncome: kind === 'ingreso' && !isInternal && !isInvestment && !isInitialBalance,
+    isRealExpense: kind === 'egreso' && !isInternal && !isInvestment && !isDebtSettlement && !isInitialBalance,
     isInternalIncome: kind === 'ingreso' && isInternal && !isInitialBalance,
     isInternalExpense: kind === 'egreso' && isInternal && !isInitialBalance,
     isInvestmentIncome: kind === 'ingreso' && isInvestment && !isInitialBalance,
-    isInvestmentExpense: kind === 'egreso' && isInvestment && !isInitialBalance
+    isInvestmentExpense: kind === 'egreso' && isInvestment && !isInitialBalance,
+    isDebtSettlementExpense: kind === 'egreso' && isDebtSettlement && !isInitialBalance
   };
 };
 
@@ -562,6 +565,7 @@ export default function Dashboard() {
       let movimientoInternoEgreso = 0;
       let rescateInversion = 0;
       let aporteInversion = 0;
+      let pagoDeudaAnterior = 0;
       
       const catsPrincipal: Record<string, number> = {};
       const catsSecundaria: Record<string, number> = {};
@@ -586,6 +590,8 @@ export default function Dashboard() {
           rescateInversion += report.amount;
         } else if (report.isInvestmentExpense) {
           aporteInversion += report.amount;
+        } else if (report.isDebtSettlementExpense) {
+          pagoDeudaAnterior += report.amount;
         } else if (report.isInternalIncome) {
           aportePropio += report.amount;
           ingresos += report.amount;
@@ -687,6 +693,7 @@ export default function Dashboard() {
         movimientoInternoEgreso,
         rescateInversion,
         aporteInversion,
+        pagoDeudaAnterior,
         topCatsPrincipal,
         topCatsSecundaria,
         topCatsDetalle,
@@ -1332,7 +1339,7 @@ export default function Dashboard() {
       <>
         <aside style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '1rem', padding: '0.75rem 1rem', border: '2px solid #94a3b8', borderRadius: '10px', backgroundColor: '#f8fafc', color: '#334155', fontSize: '0.82rem', fontWeight: 700, lineHeight: 1.4 }}>
           <Info size={18} strokeWidth={2.5} style={{ flexShrink: 0 }} aria-hidden="true" />
-          <span><strong>Criterio del resumen:</strong> las transferencias propias se muestran aparte. Constituir o rescatar un DAP no cuenta como ingreso ni como gasto; solo su rentabilidad explícita cuenta como ingreso.</span>
+          <span><strong>Criterio del resumen:</strong> muestra el consumo del periodo. Pagos de tarjeta por deuda anterior, transferencias propias y capital de inversiones se registran aparte para no duplicar ingresos o gastos.</span>
         </aside>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 350px), 1fr))', gap: '2rem', marginBottom: '3rem' }}>
         {/* Ingresos Card */}
@@ -1417,12 +1424,12 @@ export default function Dashboard() {
               </div>
               <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: '"Montserrat", sans-serif', display: 'flex', alignItems: 'center' }}>
                 Egresos
-                <InfoTooltip content="Total de gastos reales. Las transferencias a tus propias cuentas o depósitos de inversión se contabilizan por separado." />
+                <InfoTooltip content="Gastos originados en el periodo. Los pagos de tarjeta se muestran aparte porque liquidan consumos de periodos anteriores." />
               </h3>
             </div>
             {renderTrendBadge(totalSalidas, p.gastosTotales, true)}
           </div>
-          <p className="dashboard-kpi-amount" style={{ margin: c.movimientoInternoEgreso > 0 || c.aporteInversion > 0 ? '0 0 0.25rem 0' : '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '0' }}>
+          <p className="dashboard-kpi-amount" style={{ margin: c.movimientoInternoEgreso > 0 || c.aporteInversion > 0 || c.pagoDeudaAnterior > 0 ? '0 0 0.25rem 0' : '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '0' }}>
             ${totalSalidas.toLocaleString('es-CL')}
           </p>
           {c.movimientoInternoEgreso > 0 && (
@@ -1433,6 +1440,11 @@ export default function Dashboard() {
           {c.aporteInversion > 0 && (
             <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 700, marginBottom: '1.5rem', position: 'relative', zIndex: 10 }}>
               *Además invertiste ${c.aporteInversion.toLocaleString('es-CL')}; no se contabiliza como gasto
+            </div>
+          )}
+          {c.pagoDeudaAnterior > 0 && (
+            <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 700, marginBottom: '1.5rem', position: 'relative', zIndex: 10 }}>
+              *Además pagaste ${c.pagoDeudaAnterior.toLocaleString('es-CL')} de tarjeta por deuda anterior; no se duplica como gasto del mes
             </div>
           )}
           

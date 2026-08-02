@@ -2,7 +2,7 @@ import type { FixedExpense } from '../contexts/settingsContextValue.ts';
 import { evaluateAccountMatch } from './fixedExpenseMatching.ts';
 import { parseLocalDateInput } from './localDate.ts';
 import { getOpeningBalanceSnapshot } from './balanceSnapshot.ts';
-import { isInvestmentMovement, isOwnTransferMovement } from './transactionSemantics.ts';
+import { isCreditCardSettlement, isInvestmentMovement, isOwnTransferMovement } from './transactionSemantics.ts';
 
 export interface LightTransaction {
   id: string;
@@ -91,18 +91,20 @@ export const buildMonthlyLightSummary = (
     return date >= range.start && date <= range.end;
   });
   const reportable = monthTransactions.filter(transaction => !isInitialBalance(transaction));
-  const expenses = reportable.filter(transaction => getKind(transaction) === 'egreso' && !isOwnTransferMovement(transaction) && !isInvestmentMovement(transaction));
+  const expenses = reportable.filter(transaction => getKind(transaction) === 'egreso' && !isOwnTransferMovement(transaction) && !isInvestmentMovement(transaction) && !isCreditCardSettlement(transaction));
   const incomes = reportable.filter(transaction => getKind(transaction) === 'ingreso' && !isOwnTransferMovement(transaction) && !isInvestmentMovement(transaction));
   const receivedTransfers = reportable.filter(transaction => getKind(transaction) === 'ingreso' && isOwnTransferMovement(transaction));
   const sentTransfers = reportable.filter(transaction => getKind(transaction) === 'egreso' && isOwnTransferMovement(transaction));
   const investmentRedemptions = reportable.filter(transaction => getKind(transaction) === 'ingreso' && isInvestmentMovement(transaction));
   const investmentPlacements = reportable.filter(transaction => getKind(transaction) === 'egreso' && isInvestmentMovement(transaction));
+  const debtSettlements = reportable.filter(transaction => getKind(transaction) === 'egreso' && isCreditCardSettlement(transaction));
   const totalExpenses = expenses.reduce((total, transaction) => total + money(transaction), 0);
   const totalIncome = incomes.reduce((total, transaction) => total + money(transaction), 0);
   const receivedTransferAmount = receivedTransfers.reduce((total, transaction) => total + money(transaction), 0);
   const sentTransferAmount = sentTransfers.reduce((total, transaction) => total + money(transaction), 0);
   const investmentRedemptionAmount = investmentRedemptions.reduce((total, transaction) => total + money(transaction), 0);
   const investmentPlacementAmount = investmentPlacements.reduce((total, transaction) => total + money(transaction), 0);
+  const debtSettlementAmount = debtSettlements.reduce((total, transaction) => total + money(transaction), 0);
   const totalAvailable = totalIncome + receivedTransferAmount;
 
   const categoryMap = new Map<string, number>();
@@ -142,6 +144,7 @@ export const buildMonthlyLightSummary = (
     sentTransferAmount,
     investmentRedemptionAmount,
     investmentPlacementAmount,
+    debtSettlementAmount,
     totalAvailable,
     totalExpenses,
     balance: totalAvailable - totalExpenses,

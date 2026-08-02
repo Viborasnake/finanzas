@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { isInvestmentMovement, isOwnTransferMovement } from '../src/utils/transactionSemantics.ts';
+import { isCreditCardSettlement, isInvestmentMovement, isOwnTransferMovement } from '../src/utils/transactionSemantics.ts';
 
 test('detecta la liquidación de un DAP aunque esté clasificada como ingreso', () => {
   assert.equal(isInvestmentMovement({
@@ -24,5 +24,14 @@ test('mantiene las transferencias propias separadas de las inversiones', () => {
   assert.equal(isOwnTransferMovement({
     tipo_movimiento: 'Ingreso',
     categoria_secundaria: 'Transferencias Propias'
+  }), true);
+});
+
+test('detecta el pago de tarjeta como liquidación de deuda y no como consumo nuevo', () => {
+  assert.equal(isCreditCardSettlement({
+    description: 'PAGO POR SWEB DE CAT ADMINISTR',
+    tipo_movimiento: 'Egreso',
+    categoria_principal: 'Pago Tarjeta Crédito',
+    categoria_secundaria: 'Tarjeta Credito'
   }), true);
 });
