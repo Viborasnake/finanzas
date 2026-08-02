@@ -170,19 +170,21 @@ export default function LightDashboard() {
         </div>
       )}
 
-      <section className={`light-balance-card ${summary.balance < 0 ? 'is-negative' : ''}`} aria-labelledby="light-balance-title">
+      <section className={`light-balance-card ${summary.economicResult < 0 ? 'is-negative' : ''}`} aria-labelledby="light-balance-title">
         <div>
-          <span className="light-card-label" id="light-balance-title">Resultado de {summary.range.label}</span>
-          <strong>{formatMoney(summary.balance)}</strong>
+          <span className="light-card-label" id="light-balance-title">Resultado económico de {summary.range.label}</span>
+          <strong>{formatMoney(summary.economicResult)}</strong>
           <p>{summary.transactionCount === 0
             ? `No hay movimientos registrados en ${summary.range.label}.`
-            : summary.balance < 0
-              ? `Gastaste ${formatMoney(Math.abs(summary.balance))} más de lo que recibiste.`
-              : summary.balance > 0
-                ? `Recibiste ${formatMoney(summary.balance)} más de lo que gastaste.`
-                : 'Recibiste y gastaste el mismo monto.'}</p>
+            : summary.economicResult < 0
+              ? `Tu consumo superó tus ingresos en ${formatMoney(Math.abs(summary.economicResult))}.`
+              : summary.economicResult > 0
+                ? `Tus ingresos superaron tu consumo en ${formatMoney(summary.economicResult)}.`
+                : 'Tus ingresos y tu consumo fueron iguales.'}</p>
           {summary.transactionCount > 0 && (
-            <small className="light-opening-balance">Entradas: {formatMoney(summary.totalAvailable)} · Gastos: {formatMoney(summary.totalExpenses)}</small>
+            <small className="light-opening-balance">
+              Caja: entraron {formatMoney(summary.cashInflow)} · salieron {formatMoney(summary.cashOutflow)} · variación {formatMoney(summary.netCashFlow)}
+            </small>
           )}
         </div>
         <Gauge size={58} strokeWidth={1.8} aria-hidden="true" />
@@ -190,24 +192,26 @@ export default function LightDashboard() {
 
       <section className="light-kpis" aria-label="Resumen financiero del mes">
         <article className="light-kpi light-kpi-income">
-          <span><TrendingUp size={18} aria-hidden="true" /> Entradas disponibles</span>
-          <strong>{formatMoney(summary.totalAvailable)}</strong>
+          <span><TrendingUp size={18} aria-hidden="true" /> Ingresos reales</span>
+          <strong>{formatMoney(summary.economicIncome)}</strong>
           {summary.receivedTransferAmount > 0 && (
-            <small>{formatMoney(summary.totalIncome)} ingresos + {formatMoney(summary.receivedTransferAmount)} transferencias</small>
+            <small>Además recibiste {formatMoney(summary.receivedTransferAmount)} desde cuentas propias</small>
           )}
         </article>
         <article className="light-kpi light-kpi-expense">
-          <span><TrendingDown size={18} aria-hidden="true" /> Gastos</span>
-          <strong>{formatMoney(summary.totalExpenses)}</strong>
+          <span><TrendingDown size={18} aria-hidden="true" /> Gastos y consumo</span>
+          <strong>{formatMoney(summary.economicExpense)}</strong>
+          {summary.loanPrincipalAmount > 0 && <small>{formatMoney(summary.loanPrincipalAmount)} redujeron deudas</small>}
         </article>
         <article className="light-kpi">
-          <span><ReceiptText size={18} aria-hidden="true" /> Movimientos</span>
-          <strong>{summary.transactionCount}</strong>
+          <span><ReceiptText size={18} aria-hidden="true" /> Flujo de caja</span>
+          <strong>{formatMoney(summary.netCashFlow)}</strong>
+          <small>{summary.transactionCount} movimientos del mes</small>
         </article>
       </section>
 
       <p className="light-accounting-note">
-        El resultado muestra el consumo del mes. Pagos de tarjeta por deuda anterior, transferencias propias y capital de inversiones se registran aparte para no duplicar gastos.
+        El resultado económico compara ingresos con consumo. El flujo de caja incluye todo el dinero que entró o salió, también transferencias, inversiones y pagos de deuda.
         {summary.debtSettlementAmount > 0 && (
           <small>Pago de deuda anterior: {formatMoney(summary.debtSettlementAmount)}.</small>
         )}
@@ -217,6 +221,19 @@ export default function LightDashboard() {
           </small>
         )}
       </p>
+
+      {summary.semanticWarnings.length > 0 && (
+        <aside className="light-semantic-warnings" aria-label="Datos financieros pendientes de revisión">
+          <CircleAlert size={21} aria-hidden="true" />
+          <div>
+            <strong>Hay cifras que necesitan conciliación</strong>
+            {summary.semanticWarnings.map(warning => <p key={warning}>{warning}</p>)}
+            {summary.unallocatedLoanAmount > 0 && (
+              <Link to="/transactions">Dividir cuotas entre capital, interés y costos <ArrowRight size={15} /></Link>
+            )}
+          </div>
+        </aside>
+      )}
 
       <div className="light-main-grid">
         <section className="light-section light-commitments" aria-labelledby="light-payments-title">

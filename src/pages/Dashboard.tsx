@@ -21,7 +21,13 @@ import { useTaxonomy } from '../hooks/useTaxonomy';
 import { toast } from 'react-hot-toast';
 import { Dialog } from '../components/Dialog';
 import { getShiftedCalendarMonth, getSuggestedDashboardPeriod } from '../utils/dashboardPeriod';
-import { isCreditCardSettlement, isInvestmentMovement, isOwnTransferMovement } from '../utils/transactionSemantics';
+import {
+  analyzeFinancialPeriod,
+  classifyFinancialTreatment,
+  isCreditCardSettlement,
+  isInvestmentMovement,
+  isOwnTransferMovement
+} from '../utils/transactionSemantics';
 
 const MindMapChart = lazy(() => import('../components/MindMapChart'));
 const CascadingCategorySelector = lazy(() => import('./Transactions').then(module => ({
@@ -136,8 +142,9 @@ const isInitialBalanceTransaction = (tx: any) => {
 };
 
 const classifyTransactionForReport = (tx: any) => {
-  const kind = getTransactionKind(tx);
-  const amount = getTransactionAmount(tx);
+  const treatment = classifyFinancialTreatment(tx);
+  const kind = treatment.kind || getTransactionKind(tx);
+  const amount = treatment.amount || getTransactionAmount(tx);
   const isInvestment = isInvestmentMovement(tx);
   const isInternal = isOwnTransferMovement(tx);
   const isDebtSettlement = isCreditCardSettlement(tx);
@@ -150,13 +157,17 @@ const classifyTransactionForReport = (tx: any) => {
     isInvestment,
     isInitialBalance,
     isDebtSettlement,
-    isRealIncome: kind === 'ingreso' && !isInternal && !isInvestment && !isInitialBalance,
-    isRealExpense: kind === 'egreso' && !isInternal && !isInvestment && !isDebtSettlement && !isInitialBalance,
+    treatment,
+    isRealIncome: treatment.economicIncome > 0,
+    isRealExpense: treatment.economicExpense > 0,
     isInternalIncome: kind === 'ingreso' && isInternal && !isInitialBalance,
     isInternalExpense: kind === 'egreso' && isInternal && !isInitialBalance,
     isInvestmentIncome: kind === 'ingreso' && isInvestment && !isInitialBalance,
     isInvestmentExpense: kind === 'egreso' && isInvestment && !isInitialBalance,
-    isDebtSettlementExpense: kind === 'egreso' && isDebtSettlement && !isInitialBalance
+    isDebtSettlementExpense: treatment.eventType === 'credit_card_settlement',
+    isLoanPrincipalExpense: treatment.eventType === 'loan_principal',
+    isLoanFinanceCost: treatment.eventType === 'loan_finance_cost',
+    isUnallocatedLoanExpense: treatment.eventType === 'loan_installment_unallocated'
   };
 };
 
@@ -581,6 +592,7 @@ export default function Dashboard() {
         const d = parseLocalDate(t.date);
         return d >= start && d <= end && !isInitialBalanceTransaction(t);
       });
+      const periodAnalysis = analyzeFinancialPeriod(txs, transactions);
 
       txs.forEach(t => {
         const isUnclassified = !t.categoria_principal || t.categoria_principal === 'Sin Clasificar';
@@ -694,6 +706,17 @@ export default function Dashboard() {
         rescateInversion,
         aporteInversion,
         pagoDeudaAnterior,
+        cashInflow: periodAnalysis.totals.cashInflow,
+        cashOutflow: periodAnalysis.totals.cashOutflow,
+        netCashFlow: periodAnalysis.totals.netCashFlow,
+        economicIncome: periodAnalysis.totals.economicIncome,
+        economicExpense: periodAnalysis.totals.economicExpense,
+        economicResult: periodAnalysis.totals.economicResult,
+        loanPrincipalAmount: periodAnalysis.totals.loanPrincipalOutflow,
+        loanFinanceCost: periodAnalysis.totals.loanFinanceCost,
+        unallocatedLoanAmount: periodAnalysis.totals.unallocatedLoanOutflow,
+        cardCoverage: periodAnalysis.cardCoverage,
+        semanticWarnings: periodAnalysis.warnings,
         topCatsPrincipal,
         topCatsSecundaria,
         topCatsDetalle,
@@ -1228,8 +1251,9 @@ export default function Dashboard() {
 
   // BLOCK 2: INTELLIGENCE REPORT
   const renderIntelligenceReport = () => {
-    const { balance, maxIncomeDesc, maxIncomeAmount, maxRecurringDesc, maxRecurringTotal } = stats.current.insights;
-    const ingresosReales = stats.current.ingresos - stats.current.aportePropio;
+    const { maxIncomeDesc, maxIncomeAmount, maxRecurringDesc, maxRecurringTotal } = stats.current.insights;
+    const balance = stats.current.economicResult;
+    const ingresosReales = stats.current.economicIncome;
     
     const isDeficit = balance < 0;
     const flowPrefix = balance > 0 ? '+' : balance < 0 ? '−' : '';
@@ -1268,14 +1292,14 @@ export default function Dashboard() {
             <div className="dashboard-insight-card" style={{ backgroundColor: isDeficit ? '#fef2f2' : '#f0fdf4' }}>
               <Activity size={19} style={{ color: isDeficit ? 'var(--danger-text)' : 'var(--success-text)' }} />
               <div>
-                <span className="dashboard-insight-label">Resultado de {dateRange.label}</span>
+                <span className="dashboard-insight-label">Resultado económico de {dateRange.label}</span>
                 <strong>{flowPrefix}${Math.abs(balance).toLocaleString('es-CL')}</strong>
                 <small>{balance < 0
-                  ? `Gastaste $${Math.abs(balance).toLocaleString('es-CL')} más de lo que recibiste.`
+                  ? `El consumo superó tus ingresos en $${Math.abs(balance).toLocaleString('es-CL')}.`
                   : balance > 0
-                    ? `Recibiste $${balance.toLocaleString('es-CL')} más de lo que gastaste.`
-                    : 'Recibiste y gastaste el mismo monto.'}</small>
-                <small>Entradas: ${stats.current.ingresos.toLocaleString('es-CL')} · Gastos: ${stats.current.gastosTotales.toLocaleString('es-CL')}</small>
+                    ? `Tus ingresos superaron el consumo en $${balance.toLocaleString('es-CL')}.`
+                    : 'Ingresos y consumo fueron iguales.'}</small>
+                <small>Ingresos: ${stats.current.economicIncome.toLocaleString('es-CL')} · Consumo: ${stats.current.economicExpense.toLocaleString('es-CL')}</small>
               </div>
             </div>
 
@@ -1312,14 +1336,11 @@ export default function Dashboard() {
     const p = stats.prev;
 
     // Income Logic
-    const totalEntradas = c.ingresos;
+    const totalEntradas = c.economicIncome;
     const incomeData: { name: string; value: number; isGray?: boolean }[] = [
       { name: 'Sueldo', value: c.sueldo },
       { name: 'Honorarios', value: c.honorarios },
-      { name: 'Otros Ingresos', value: c.ingresosOtros },
-      ...(c.aportePropio > 0
-        ? [{ name: 'Transferencias propias recibidas', value: c.aportePropio, isGray: true }]
-        : [])
+      { name: 'Otros Ingresos', value: c.ingresosOtros }
     ];
 
     // Expense Logic
@@ -1328,7 +1349,7 @@ export default function Dashboard() {
     const others = sorted.slice(3).reduce((acc, curr) => acc + curr.amount, 0);
     const sinClasificarAmount = c.topCatsPrincipal.find(x => x.name === 'Sin Clasificar')?.amount || 0;
     const totalOtros = others + sinClasificarAmount;
-    const totalSalidas = c.gastosTotales;
+    const totalSalidas = c.economicExpense;
     
     const expenseData: { name: string; value: number; isGray?: boolean }[] = [
       ...top3.map(cat => ({ name: cat.name, value: cat.amount })),
@@ -1339,8 +1360,27 @@ export default function Dashboard() {
       <>
         <aside style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '1rem', padding: '0.75rem 1rem', border: '2px solid #94a3b8', borderRadius: '10px', backgroundColor: '#f8fafc', color: '#334155', fontSize: '0.82rem', fontWeight: 700, lineHeight: 1.4 }}>
           <Info size={18} strokeWidth={2.5} style={{ flexShrink: 0 }} aria-hidden="true" />
-          <span><strong>Criterio del resumen:</strong> muestra el consumo del periodo. Pagos de tarjeta por deuda anterior, transferencias propias y capital de inversiones se registran aparte para no duplicar ingresos o gastos.</span>
+          <span><strong>Dos lecturas:</strong> el resultado económico compara ingresos con consumo; el flujo de caja registra todo el dinero que entró o salió, incluidas transferencias, inversiones y pagos de deuda.</span>
         </aside>
+        <section className="dashboard-cash-strip" aria-label="Flujo de caja del periodo">
+          <div><span>Entradas de caja</span><strong>${c.cashInflow.toLocaleString('es-CL')}</strong></div>
+          <div><span>Salidas de caja</span><strong>${c.cashOutflow.toLocaleString('es-CL')}</strong></div>
+          <div className={c.netCashFlow < 0 ? 'is-negative' : 'is-positive'}>
+            <span>Variación de caja</span><strong>{c.netCashFlow < 0 ? '−' : '+'}${Math.abs(c.netCashFlow).toLocaleString('es-CL')}</strong>
+          </div>
+        </section>
+        {c.semanticWarnings.length > 0 && (
+          <aside className="dashboard-semantic-warning" aria-label="Cifras pendientes de conciliación">
+            <AlertTriangle size={20} aria-hidden="true" />
+            <div>
+              <strong>Revisión recomendada</strong>
+              {c.semanticWarnings.map((warning: string) => <p key={warning}>{warning}</p>)}
+              {c.unallocatedLoanAmount > 0 && (
+                <button type="button" onClick={() => navigate('/transactions')}>Revisar y dividir cuotas</button>
+              )}
+            </div>
+          </aside>
+        )}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 350px), 1fr))', gap: '2rem', marginBottom: '3rem' }}>
         {/* Ingresos Card */}
         <div style={{ ...neoCard, position: 'relative', overflow: 'hidden', paddingBottom: '7rem', marginBottom: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -1350,11 +1390,11 @@ export default function Dashboard() {
                 <Wallet size={24} strokeWidth={2.5} />
               </div>
               <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: '"Montserrat", sans-serif', display: 'flex', alignItems: 'center' }}>
-                Entradas disponibles
-                <InfoTooltip content="Fondos recibidos en el periodo. Suma los ingresos reales y, por separado, las transferencias propias o rescates usados para cubrir el mes." />
+                Ingresos reales
+                <InfoTooltip content="Ingresos económicos del período. Transferencias propias y rescates de capital se muestran en el flujo de caja, pero no crean ingreso nuevo." />
               </h3>
             </div>
-            {renderTrendBadge(totalEntradas, p.ingresos, false)}
+            {renderTrendBadge(totalEntradas, p.economicIncome, false)}
           </div>
           <p className="dashboard-kpi-amount" style={{ margin: c.rescateInversion > 0 ? '0 0 0.25rem 0' : '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '0' }}>
             ${totalEntradas.toLocaleString('es-CL')}
@@ -1362,6 +1402,11 @@ export default function Dashboard() {
           {c.rescateInversion > 0 && (
             <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 700, marginBottom: '1.5rem', position: 'relative', zIndex: 10 }}>
               *Además rescataste ${c.rescateInversion.toLocaleString('es-CL')} desde inversiones; no se contabiliza como ingreso
+            </div>
+          )}
+          {c.aportePropio > 0 && (
+            <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 700, marginBottom: '1rem', position: 'relative', zIndex: 10 }}>
+              *Además recibiste ${c.aportePropio.toLocaleString('es-CL')} desde cuentas propias; afecta caja, no ingresos
             </div>
           )}
           
@@ -1405,7 +1450,7 @@ export default function Dashboard() {
                 </tbody>
                 <tfoot>
                   <tr style={{ backgroundColor: '#bbf7d0', borderTop: '2px solid #000' }}>
-                    <td style={{ padding: '0.75rem', fontWeight: 900, borderRight: '2px solid #000' }}>Total recibido</td>
+                    <td style={{ padding: '0.75rem', fontWeight: 900, borderRight: '2px solid #000' }}>Total ingresos</td>
                     <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 900 }}>${totalEntradas.toLocaleString('es-CL')}</td>
                   </tr>
                 </tfoot>
@@ -1423,11 +1468,11 @@ export default function Dashboard() {
                 <CreditCard size={24} strokeWidth={2.5} />
               </div>
               <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: '"Montserrat", sans-serif', display: 'flex', alignItems: 'center' }}>
-                Egresos
-                <InfoTooltip content="Gastos originados en el periodo. Los pagos de tarjeta se muestran aparte porque liquidan consumos de periodos anteriores." />
+                Gastos y consumo
+                <InfoTooltip content="Consumo y costos originados en el período. Capital de deudas desglosado, pagos de tarjeta, inversiones y transferencias quedan visibles en el flujo de caja." />
               </h3>
             </div>
-            {renderTrendBadge(totalSalidas, p.gastosTotales, true)}
+            {renderTrendBadge(totalSalidas, p.economicExpense, true)}
           </div>
           <p className="dashboard-kpi-amount" style={{ margin: c.movimientoInternoEgreso > 0 || c.aporteInversion > 0 || c.pagoDeudaAnterior > 0 ? '0 0 0.25rem 0' : '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '0' }}>
             ${totalSalidas.toLocaleString('es-CL')}
@@ -1445,6 +1490,11 @@ export default function Dashboard() {
           {c.pagoDeudaAnterior > 0 && (
             <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 700, marginBottom: '1.5rem', position: 'relative', zIndex: 10 }}>
               *Además pagaste ${c.pagoDeudaAnterior.toLocaleString('es-CL')} de tarjeta por deuda anterior; no se duplica como gasto del mes
+            </div>
+          )}
+          {c.loanPrincipalAmount > 0 && (
+            <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 700, marginBottom: '1rem', position: 'relative', zIndex: 10 }}>
+              *${c.loanPrincipalAmount.toLocaleString('es-CL')} redujeron capital de créditos; salieron de caja, pero no son consumo nuevo
             </div>
           )}
           
@@ -1488,7 +1538,7 @@ export default function Dashboard() {
                 </tbody>
                 <tfoot>
                   <tr style={{ backgroundColor: '#fecaca', borderTop: '2px solid #000' }}>
-                    <td style={{ padding: '0.75rem', fontWeight: 900, borderRight: '2px solid #000' }}>Total Salidas</td>
+                    <td style={{ padding: '0.75rem', fontWeight: 900, borderRight: '2px solid #000' }}>Total gastos</td>
                     <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 900 }}>${totalSalidas.toLocaleString('es-CL')}</td>
                   </tr>
                 </tfoot>

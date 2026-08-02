@@ -72,6 +72,13 @@ test('la vista Light suma transferencias propias recibidas y excluye las enviada
   assert.equal(summary.investmentPlacementAmount, 10_000_000);
   assert.equal(summary.investmentRedemptionAmount, 10_100_000);
   assert.equal(summary.debtSettlementAmount, 400_000);
+  assert.equal(summary.cashInflow, 12_400_000);
+  assert.equal(summary.cashOutflow, 11_500_000);
+  assert.equal(summary.netCashFlow, 900_000);
+  assert.equal(summary.economicIncome, 2_000_000);
+  assert.equal(summary.economicExpense, 800_000);
+  assert.equal(summary.cardCoverage.status, 'absent');
+  assert.equal(summary.semanticWarnings.length, 2);
   assert.equal(summary.totalAvailable, 2_300_000);
   assert.equal(summary.totalExpenses, 800_000);
   assert.equal(summary.balance, 1_500_000);

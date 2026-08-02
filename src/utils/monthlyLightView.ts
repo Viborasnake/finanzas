@@ -2,7 +2,13 @@ import type { FixedExpense } from '../contexts/settingsContextValue.ts';
 import { evaluateAccountMatch } from './fixedExpenseMatching.ts';
 import { parseLocalDateInput } from './localDate.ts';
 import { getOpeningBalanceSnapshot } from './balanceSnapshot.ts';
-import { isCreditCardSettlement, isInvestmentMovement, isOwnTransferMovement } from './transactionSemantics.ts';
+import {
+  analyzeFinancialPeriod,
+  classifyFinancialTreatment,
+  isCreditCardSettlement,
+  isInvestmentMovement,
+  isOwnTransferMovement
+} from './transactionSemantics.ts';
 
 export interface LightTransaction {
   id: string;
@@ -17,6 +23,7 @@ export interface LightTransaction {
   categoria_principal?: string | null;
   categoria_secundaria?: string | null;
   raw_data?: Record<string, unknown> | null;
+  source_kind?: string | null;
 }
 
 export interface LightFixedExpenseStatus {
@@ -91,7 +98,8 @@ export const buildMonthlyLightSummary = (
     return date >= range.start && date <= range.end;
   });
   const reportable = monthTransactions.filter(transaction => !isInitialBalance(transaction));
-  const expenses = reportable.filter(transaction => getKind(transaction) === 'egreso' && !isOwnTransferMovement(transaction) && !isInvestmentMovement(transaction) && !isCreditCardSettlement(transaction));
+  const periodAnalysis = analyzeFinancialPeriod(reportable, transactions);
+  const expenses = reportable.filter(transaction => classifyFinancialTreatment(transaction).economicExpense > 0);
   const incomes = reportable.filter(transaction => getKind(transaction) === 'ingreso' && !isOwnTransferMovement(transaction) && !isInvestmentMovement(transaction));
   const receivedTransfers = reportable.filter(transaction => getKind(transaction) === 'ingreso' && isOwnTransferMovement(transaction));
   const sentTransfers = reportable.filter(transaction => getKind(transaction) === 'egreso' && isOwnTransferMovement(transaction));
@@ -145,6 +153,17 @@ export const buildMonthlyLightSummary = (
     investmentRedemptionAmount,
     investmentPlacementAmount,
     debtSettlementAmount,
+    cashInflow: periodAnalysis.totals.cashInflow,
+    cashOutflow: periodAnalysis.totals.cashOutflow,
+    netCashFlow: periodAnalysis.totals.netCashFlow,
+    economicIncome: periodAnalysis.totals.economicIncome,
+    economicExpense: periodAnalysis.totals.economicExpense,
+    economicResult: periodAnalysis.totals.economicResult,
+    loanPrincipalAmount: periodAnalysis.totals.loanPrincipalOutflow,
+    loanFinanceCost: periodAnalysis.totals.loanFinanceCost,
+    unallocatedLoanAmount: periodAnalysis.totals.unallocatedLoanOutflow,
+    cardCoverage: periodAnalysis.cardCoverage,
+    semanticWarnings: periodAnalysis.warnings,
     totalAvailable,
     totalExpenses,
     balance: totalAvailable - totalExpenses,

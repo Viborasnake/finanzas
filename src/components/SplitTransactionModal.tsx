@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Plus, Scissors, Save } from 'lucide-react';
 import { CascadingCategorySelector } from '../pages/Transactions';
 import { Dialog } from './Dialog';
+import { isLoanInstallment } from '../utils/transactionSemantics';
 
 interface SplitPart {
   id: string;
@@ -21,10 +22,28 @@ interface SplitTransactionModalProps {
 export default function SplitTransactionModal({ transaction, onClose, onSave }: SplitTransactionModalProps) {
   const [parts, setParts] = useState<SplitPart[]>([]);
   const totalAmount = Math.abs(transaction.amount);
+  const isDebtInstallment = isLoanInstallment(transaction);
   
   useEffect(() => {
     // Initialize with 2 parts by default
-    setParts([
+    setParts(isDebtInstallment ? [
+      {
+        id: crypto.randomUUID(),
+        amount: totalAmount,
+        date: transaction.date,
+        tipo_movimiento: 'Egreso',
+        categoria_principal: 'Servicio de Deuda',
+        categoria_secundaria: 'Capital de Crédito'
+      },
+      {
+        id: crypto.randomUUID(),
+        amount: 0,
+        date: transaction.date,
+        tipo_movimiento: 'Egreso',
+        categoria_principal: 'Servicio de Deuda',
+        categoria_secundaria: 'Intereses de Crédito'
+      }
+    ] : [
       {
         id: crypto.randomUUID(),
         amount: Math.round(totalAmount / 2),
@@ -42,7 +61,7 @@ export default function SplitTransactionModal({ transaction, onClose, onSave }: 
         categoria_secundaria: ''
       }
     ]);
-  }, [transaction, totalAmount]);
+  }, [transaction, totalAmount, isDebtInstallment]);
 
   const addPart = () => {
     const currentSum = parts.reduce((acc, p) => acc + p.amount, 0);
@@ -126,6 +145,14 @@ export default function SplitTransactionModal({ transaction, onClose, onSave }: 
               </div>
             </div>
           </div>
+
+          {isDebtInstallment && (
+            <div className="split-debt-guidance" role="note">
+              <strong>Desglosa esta cuota con la información del banco</strong>
+              <p>El capital reduce tu deuda y no cuenta como consumo. Los intereses, seguros y comisiones sí son gasto. No estimaremos estos montos automáticamente.</p>
+              <small>Si la cuota incluye seguros o comisiones, agrega una tercera división y usa “Servicio de Deuda → Seguros y Comisiones”.</small>
+            </div>
+          )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {parts.map((part, index) => (

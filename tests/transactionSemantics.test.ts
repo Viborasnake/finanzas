@@ -1,6 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { isCreditCardSettlement, isInvestmentMovement, isOwnTransferMovement } from '../src/utils/transactionSemantics.ts';
+import {
+  analyzeFinancialPeriod,
+  assessCardCoverage,
+  classifyFinancialTreatment,
+  isCreditCardSettlement,
+  isInvestmentMovement,
+  isLoanInstallment,
+  isLoanPrincipalRepayment,
+  isOwnTransferMovement
+} from '../src/utils/transactionSemantics.ts';
 
 test('detecta la liquidación de un DAP aunque esté clasificada como ingreso', () => {
   assert.equal(isInvestmentMovement({
@@ -34,4 +43,82 @@ test('detecta el pago de tarjeta como liquidación de deuda y no como consumo nu
     categoria_principal: 'Pago Tarjeta Crédito',
     categoria_secundaria: 'Tarjeta Credito'
   }), true);
+});
+
+test('separa salida de caja, gasto financiero y reducción de capital al dividir una cuota', () => {
+  const capital = {
+    id: 'capital', date: '2026-07-05', amount: -650_000, type: 'egreso',
+    tipo_movimiento: 'Egreso', categoria_principal: 'Servicio de Deuda', categoria_secundaria: 'Capital de Crédito'
+  };
+  const interest = {
+    id: 'interest', date: '2026-07-05', amount: -105_000, type: 'egreso',
+    tipo_movimiento: 'Egreso', categoria_principal: 'Servicio de Deuda', categoria_secundaria: 'Intereses de Crédito'
+  };
+  const fees = {
+    id: 'fees', date: '2026-07-05', amount: -29_587, type: 'egreso',
+    tipo_movimiento: 'Egreso', categoria_principal: 'Servicio de Deuda', categoria_secundaria: 'Seguros y Comisiones'
+  };
+
+  assert.equal(isLoanPrincipalRepayment(capital), true);
+  const analysis = analyzeFinancialPeriod([capital, interest, fees]);
+  assert.equal(analysis.totals.cashOutflow, 784_587);
+  assert.equal(analysis.totals.loanPrincipalOutflow, 650_000);
+  assert.equal(analysis.totals.loanFinanceCost, 134_587);
+  assert.equal(analysis.totals.economicExpense, 134_587);
+});
+
+test('mantiene una cuota no desglosada como gasto conservador y genera advertencia', () => {
+  const installment = {
+    id: 'mortgage', date: '2026-07-05', amount: -784_587, type: 'egreso',
+    tipo_movimiento: 'Egreso', categoria_principal: 'Créditos', categoria_secundaria: 'Crédito Hipotecario'
+  };
+
+  assert.equal(isLoanInstallment(installment), true);
+  const treatment = classifyFinancialTreatment(installment);
+  assert.equal(treatment.eventType, 'loan_installment_unallocated');
+  assert.equal(treatment.cashOutflow, 784_587);
+  assert.equal(treatment.economicExpense, 784_587);
+  assert.equal(treatment.confidence, 'unknown');
+  assert.equal(treatment.warnings.length, 1);
+});
+
+test('detecta cobertura completa cuando compras importadas concilian con el pago de tarjeta', () => {
+  const settlement = {
+    id: 'payment', date: '2026-07-05', amount: -500_000, type: 'egreso', bank: 'Scotiabank',
+    categoria_principal: 'Pago Tarjeta Crédito', categoria_secundaria: 'Tarjeta Credito'
+  };
+  const purchases = [
+    { id: 'one', date: '2026-06-10', amount: -300_000, type: 'egreso', bank: 'Scotiabank', source_kind: 'card_activity_screenshot' },
+    { id: 'two', date: '2026-06-18', amount: -200_000, type: 'egreso', bank: 'Scotiabank', raw_data: { _source: { kind: 'card_activity_screenshot' } } }
+  ];
+
+  const coverage = assessCardCoverage([settlement], [settlement, ...purchases]);
+  assert.equal(coverage.status, 'complete');
+  assert.equal(coverage.difference, 0);
+});
+
+test('advierte cuando se excluye un pago de tarjeta sin compras importadas', () => {
+  const settlement = {
+    id: 'payment', date: '2026-07-05', amount: -500_000, type: 'egreso', bank: 'Scotiabank',
+    categoria_principal: 'Pago Tarjeta Crédito', categoria_secundaria: 'Tarjeta Credito'
+  };
+  const analysis = analyzeFinancialPeriod([settlement]);
+
+  assert.equal(analysis.totals.cashOutflow, 500_000);
+  assert.equal(analysis.totals.economicExpense, 0);
+  assert.equal(analysis.totals.debtSettlementOutflow, 500_000);
+  assert.equal(analysis.cardCoverage.status, 'absent');
+  assert.equal(analysis.warnings.length, 1);
+});
+
+test('los servicios pagados se mantienen como consumo y salida de caja', () => {
+  const electricity = {
+    id: 'electricity', date: '2026-07-12', amount: -45_000, type: 'egreso',
+    tipo_movimiento: 'Egreso', categoria_principal: 'Cuentas Básicas', categoria_secundaria: 'Luz'
+  };
+  const treatment = classifyFinancialTreatment(electricity);
+
+  assert.equal(treatment.eventType, 'consumption');
+  assert.equal(treatment.cashOutflow, 45_000);
+  assert.equal(treatment.economicExpense, 45_000);
 });
