@@ -1286,19 +1286,22 @@ export default function Dashboard() {
 
     return (
       <>
-        <section className="dashboard-cash-equation" aria-label="Cálculo del saldo de cierre">
-          <div><span>Saldo al comenzar</span><strong>{c.openingBalance.detectedBankCount > 0 ? `$${c.openingBalance.total.toLocaleString('es-CL')}` : 'No disponible'}</strong></div>
-          <b aria-hidden="true">+</b>
-          <div><span>Entró</span><strong>${c.cashInflow.toLocaleString('es-CL')}</strong></div>
-          <b aria-hidden="true">−</b>
-          <div><span>Salió</span><strong>${c.cashOutflow.toLocaleString('es-CL')}</strong></div>
-          <b aria-hidden="true">=</b>
-          <div className={(c.estimatedClosingBalance ?? 0) < 0 ? 'is-negative' : 'is-positive'}>
+        <section className={`dashboard-cash-summary ${(c.estimatedClosingBalance ?? 0) < 0 ? 'is-negative' : 'is-positive'}`} aria-label="Resumen de caja del periodo">
+          <div className="dashboard-cash-summary-primary">
             <span>Saldo estimado al cierre</span>
             <strong>{c.estimatedClosingBalance !== null ? `${c.estimatedClosingBalance < 0 ? '−' : ''}$${Math.abs(c.estimatedClosingBalance).toLocaleString('es-CL')}` : 'Pendiente'}</strong>
+            <small>{c.estimatedClosingBalance === null
+              ? 'Falta un saldo bancario anterior para calcularlo.'
+              : `Disponible después de todos los movimientos de ${dateRange.label}.`}</small>
+          </div>
+          <div className="dashboard-cash-summary-breakdown">
+            <div><span>Saldo inicial</span><strong>{c.openingBalance.detectedBankCount > 0 ? `$${c.openingBalance.total.toLocaleString('es-CL')}` : 'No disponible'}</strong></div>
+            <div><span>Entradas</span><strong>+${c.cashInflow.toLocaleString('es-CL')}</strong></div>
+            <div><span>Salidas</span><strong>−${c.cashOutflow.toLocaleString('es-CL')}</strong></div>
+            <div className="dashboard-cash-net-change"><span>Cambio del mes</span><strong>{c.netCashFlow < 0 ? '−' : '+'}${Math.abs(c.netCashFlow).toLocaleString('es-CL')}</strong></div>
           </div>
           {!c.openingBalance.complete && c.openingBalance.detectedBankCount > 0 && (
-            <small>Calculado con {c.openingBalance.detectedBankCount} de {c.openingBalance.bankCount} bancos; faltan saldos de {c.openingBalance.missingBanks.join(', ')}.</small>
+            <small className="dashboard-cash-summary-note">Estimación parcial: incluye {c.openingBalance.detectedBankCount} de {c.openingBalance.bankCount} bancos. Falta {c.openingBalance.missingBanks.join(', ')}.</small>
           )}
         </section>
         {reviewCount > 0 && (
