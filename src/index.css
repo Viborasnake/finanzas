@@ -1535,15 +1535,65 @@ select.input {
   width: 100%;
 }
 
-.dashboard-date-control > button {
+.dashboard-month-navigation {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
   width: 100%;
   min-height: 44px;
-  justify-content: space-between;
+  overflow: hidden;
+  border: 2px solid #000;
+  border-radius: 2rem;
+  background: #fff;
+  box-shadow: 4px 4px 0 #000;
 }
 
 .dashboard-date-control button {
   color: var(--text-primary);
   -webkit-text-fill-color: currentColor;
+}
+
+.dashboard-month-arrow,
+.dashboard-period-trigger {
+  min-width: 0;
+  border: 0;
+  background: #fff;
+  cursor: pointer;
+}
+
+.dashboard-month-arrow {
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.dashboard-month-arrow:first-child {
+  border-right: 1.5px solid #cbd5e1;
+}
+
+.dashboard-month-arrow:last-child {
+  border-left: 1.5px solid #cbd5e1;
+}
+
+.dashboard-month-arrow:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.dashboard-month-arrow:not(:disabled):hover,
+.dashboard-period-trigger:hover {
+  background: #f1f5f9;
+}
+
+.dashboard-period-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 850;
+  text-transform: capitalize;
 }
 
 .dashboard-custom-date-fields {
@@ -2237,8 +2287,9 @@ select.input {
     width: auto;
   }
 
-  .dashboard-date-control > button {
+  .dashboard-month-navigation {
     width: auto;
+    min-width: 280px;
   }
 
   .dashboard-custom-date-fields {

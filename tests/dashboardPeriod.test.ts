@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getSuggestedDashboardPeriod } from '../src/utils/dashboardPeriod.ts';
+import { getShiftedCalendarMonth, getSuggestedDashboardPeriod } from '../src/utils/dashboardPeriod.ts';
 
 test('respeta cualquier periodo elegido explícitamente por la persona', () => {
   assert.equal(getSuggestedDashboardPeriod({
@@ -30,4 +30,14 @@ test('usa el mes anterior cuando el actual todavía no tiene información sufici
     previousCount: 10,
     minimumCurrentCount: 8
   }), 'prev_month');
+});
+
+test('avanza y retrocede un mes calendario completo', () => {
+  const previous = getShiftedCalendarMonth(new Date(2026, 6, 15), -1);
+  const next = getShiftedCalendarMonth(new Date(2026, 6, 15), 1);
+
+  assert.equal(previous.start.toISOString().slice(0, 10), '2026-06-01');
+  assert.equal(previous.end.getDate(), 30);
+  assert.equal(next.start.toISOString().slice(0, 10), '2026-08-01');
+  assert.equal(next.end.getDate(), 31);
 });

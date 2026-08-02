@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/authContextValue';
 import { AVAILABLE_BANKS, useBanks, type Bank } from '../contexts/bankContextValue';
 
 import { 
-  ChevronRight, TrendingUp, TrendingDown, 
+  ChevronLeft, ChevronRight, TrendingUp, TrendingDown, 
   Wallet, CreditCard, AlertTriangle, Sparkles, Activity, Search, X, Edit2,
   ArrowUpRight, ArrowDownRight, Scale, PiggyBank, Calendar, Landmark, FileSpreadsheet, Tags, CheckCircle2, Settings, ChevronDown, RefreshCw, Info
 } from 'lucide-react';
@@ -20,7 +20,7 @@ import LaikaPet from '../components/LaikaPet';
 import { useTaxonomy } from '../hooks/useTaxonomy';
 import { toast } from 'react-hot-toast';
 import { Dialog } from '../components/Dialog';
-import { getSuggestedDashboardPeriod } from '../utils/dashboardPeriod';
+import { getShiftedCalendarMonth, getSuggestedDashboardPeriod } from '../utils/dashboardPeriod';
 import { getOpeningBalanceSnapshot } from '../utils/balanceSnapshot';
 import { isInvestmentMovement, isOwnTransferMovement } from '../utils/transactionSemantics';
 
@@ -549,6 +549,10 @@ export default function Dashboard() {
     sessionStorage.setItem('finanzas_dash_preset', 'custom');
     sessionStorage.setItem('finanzas_dash_range', JSON.stringify(range));
     sessionStorage.setItem('finanzas_dash_period_chosen', 'true');
+  };
+
+  const shiftDisplayedMonth = (offset: number) => {
+    applyRangeObject(getShiftedCalendarMonth(dateRange.start, offset));
   };
 
   const stats = useMemo(() => {
@@ -1118,6 +1122,9 @@ export default function Dashboard() {
     const displayLabel = dateRange.label.length > 30
       ? `${fmt(dateRange.start)} — ${fmt(dateRange.end)}`
       : dateRange.label;
+    const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const selectedMonthStart = new Date(dateRange.start.getFullYear(), dateRange.start.getMonth(), 1);
+    const canAdvanceMonth = selectedMonthStart < currentMonthStart;
 
     return (
       <header className="dashboard-header">
@@ -1139,18 +1146,25 @@ export default function Dashboard() {
 
           {/* Date Range Picker Trigger */}
           <div ref={pickerRef} className="dashboard-date-control">
-            <button
-              type="button"
-              onClick={() => setPickerOpen(o => !o)}
-              aria-expanded={pickerOpen}
-              aria-haspopup="dialog"
-              aria-controls="dashboard-date-popover"
-              style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 1.25rem', backgroundColor: '#fff', border: '2px solid #000', borderRadius: '2rem', fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer', boxShadow: '4px 4px 0px #000', transition: 'all 0.1s' }}
-            >
-              <Calendar size={20} strokeWidth={2.5} />
-              <span style={{ textTransform: 'capitalize' }}>{displayLabel}</span>
-              <ChevronRight size={16} strokeWidth={3} style={{ transform: pickerOpen ? 'rotate(90deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
-            </button>
+            <div className="dashboard-month-navigation">
+              <button type="button" className="dashboard-month-arrow" onClick={() => shiftDisplayedMonth(-1)} aria-label="Mes anterior" title="Mes anterior">
+                <ChevronLeft size={19} strokeWidth={3} />
+              </button>
+              <button
+                type="button"
+                className="dashboard-period-trigger"
+                onClick={() => setPickerOpen(o => !o)}
+                aria-expanded={pickerOpen}
+                aria-haspopup="dialog"
+                aria-controls="dashboard-date-popover"
+              >
+                <Calendar size={20} strokeWidth={2.5} />
+                <span>{displayLabel}</span>
+              </button>
+              <button type="button" className="dashboard-month-arrow" onClick={() => shiftDisplayedMonth(1)} disabled={!canAdvanceMonth} aria-label="Mes siguiente" title="Mes siguiente">
+                <ChevronRight size={19} strokeWidth={3} />
+              </button>
+            </div>
 
             {/* Dropdown */}
             {pickerOpen && (
