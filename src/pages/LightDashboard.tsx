@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowRight, CalendarCheck, Check, CircleAlert, Gauge, Landmark, ReceiptText, Sparkles, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
+import { ArrowRight, CalendarCheck, Check, ChevronLeft, ChevronRight, CircleAlert, Gauge, Landmark, ReceiptText, Sparkles, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/authContextValue';
 import { AVAILABLE_BANKS, useBanks } from '../contexts/bankContextValue';
@@ -31,6 +31,13 @@ export default function LightDashboard() {
     () => monthOptions.find(option => option.key === selectedMonthKey) || monthOptions[0],
     [monthOptions, selectedMonthKey]
   );
+  const selectedMonthIndex = Math.max(0, monthOptions.findIndex(option => option.key === selectedMonthKey));
+  const shiftSelectedMonth = (offset: number) => {
+    const nextOption = monthOptions[selectedMonthIndex + offset];
+    if (!nextOption) return;
+    setSelectedMonthKey(nextOption.key);
+    setShowAllPayments(false);
+  };
   const monthRange = useMemo(() => getMonthRange(selectedMonth.date), [selectedMonth.date]);
   const isCurrentMonth = selectedMonthKey === monthOptions[0].key;
   const isConsolidated = dashboardScope === 'all' && connectedBanks.length > 1;
@@ -132,22 +139,30 @@ export default function LightDashboard() {
           <h1>Tu mes, sin ruido</h1>
           <p>Solo lo esencial de {summary.range.label}: pagos importantes y panorama general de gastos.</p>
         </div>
-        <label className="light-month-pill" htmlFor="light-month-selector">
-          <CalendarCheck size={18} aria-hidden="true" />
-          <span className="sr-only">Mes de la Vista Light</span>
-          <select
-            id="light-month-selector"
-            value={selectedMonthKey}
-            onChange={event => {
-              setSelectedMonthKey(event.target.value);
-              setShowAllPayments(false);
-            }}
-          >
-            {monthOptions.map(option => <option key={option.key} value={option.key}>{option.label}</option>)}
-          </select>
-          <span aria-hidden="true">·</span>
-          <span>{scopeLabel}</span>
-        </label>
+        <div className="dashboard-month-navigation light-month-navigation">
+          <button type="button" className="dashboard-month-arrow" onClick={() => shiftSelectedMonth(1)} disabled={selectedMonthIndex >= monthOptions.length - 1} aria-label="Mes anterior" title="Mes anterior">
+            <ChevronLeft size={19} strokeWidth={3} />
+          </button>
+          <label className="dashboard-period-trigger light-period-trigger" htmlFor="light-month-selector">
+            <CalendarCheck size={18} aria-hidden="true" />
+            <span className="sr-only">Mes de la Vista Light</span>
+            <select
+              id="light-month-selector"
+              value={selectedMonthKey}
+              onChange={event => {
+                setSelectedMonthKey(event.target.value);
+                setShowAllPayments(false);
+              }}
+            >
+              {monthOptions.map(option => <option key={option.key} value={option.key}>{option.label}</option>)}
+            </select>
+            <span aria-hidden="true">·</span>
+            <span className="light-period-scope">{scopeLabel}</span>
+          </label>
+          <button type="button" className="dashboard-month-arrow" onClick={() => shiftSelectedMonth(-1)} disabled={selectedMonthIndex === 0} aria-label="Mes siguiente" title="Mes siguiente">
+            <ChevronRight size={19} strokeWidth={3} />
+          </button>
+        </div>
       </header>
 
       {loadError && (

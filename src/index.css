@@ -558,6 +558,42 @@ select.input {
   border-radius: 3px;
 }
 
+.light-month-navigation {
+  width: auto;
+  min-width: min(100%, 390px);
+}
+
+.light-period-trigger {
+  gap: 0.45rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.light-period-trigger select {
+  min-width: 0;
+  max-width: 150px;
+  border: 0;
+  background: transparent;
+  color: #000;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 900;
+  text-transform: capitalize;
+}
+
+.light-period-trigger select:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid #6d28d9;
+  outline-offset: 2px;
+}
+
+.light-period-scope {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .light-balance-card {
   min-height: 180px;
   padding: clamp(1.4rem, 4vw, 2.2rem);
@@ -909,10 +945,28 @@ select.input {
     align-items: flex-start;
   }
 
-  .light-month-pill {
+  .light-month-pill,
+  .light-month-navigation {
     width: 100%;
+  }
+
+  .light-month-pill {
     justify-content: center;
     border-radius: 10px;
+  }
+
+  .light-month-navigation {
+    grid-template-columns: 42px minmax(0, 1fr) 42px;
+    min-width: 0;
+  }
+
+  .light-period-trigger {
+    gap: 0.3rem;
+    padding-inline: 0.4rem;
+  }
+
+  .light-period-trigger select {
+    max-width: 115px;
   }
 
   .light-balance-card {
