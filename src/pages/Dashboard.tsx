@@ -1290,7 +1290,7 @@ export default function Dashboard() {
               : `Disponible después de todos los movimientos de ${dateRange.label}.`}</small>
           </div>
           <div className="dashboard-cash-summary-breakdown">
-            <div><span>Saldo inicial</span><strong>{c.openingBalance.detectedBankCount > 0 ? `$${c.openingBalance.total.toLocaleString('es-CL')}` : 'No disponible'}</strong></div>
+            <div><span>Saldo de apertura</span><strong>{c.openingBalance.detectedBankCount > 0 ? `$${c.openingBalance.total.toLocaleString('es-CL')}` : 'No disponible'}</strong></div>
             <div><span>Entradas</span><strong>+${c.cashInflow.toLocaleString('es-CL')}</strong></div>
             <div><span>Salidas</span><strong>−${c.cashOutflow.toLocaleString('es-CL')}</strong></div>
             <div className="dashboard-cash-net-change"><span>Cambio del mes</span><strong>{c.netCashFlow < 0 ? '−' : '+'}${Math.abs(c.netCashFlow).toLocaleString('es-CL')}</strong></div>
