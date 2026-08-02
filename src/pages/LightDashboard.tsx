@@ -204,7 +204,12 @@ export default function LightDashboard() {
       </section>
 
       <p className="light-accounting-note">
-        Las transferencias recibidas aumentan tus entradas disponibles. Las transferencias propias enviadas se registran, pero no cuentan como gasto.
+        Las transferencias recibidas aumentan tus entradas disponibles. Las propias enviadas no cuentan como gasto. Constituir o rescatar un DAP es neutro: solo la rentabilidad explícita cuenta como ingreso.
+        {(summary.investmentRedemptionAmount > 0 || summary.investmentPlacementAmount > 0) && (
+          <small>
+            Inversiones del mes: {formatMoney(summary.investmentPlacementAmount)} colocados · {formatMoney(summary.investmentRedemptionAmount)} rescatados.
+          </small>
+        )}
       </p>
 
       <div className="light-main-grid">

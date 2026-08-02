@@ -22,6 +22,7 @@ import { toast } from 'react-hot-toast';
 import { Dialog } from '../components/Dialog';
 import { getSuggestedDashboardPeriod } from '../utils/dashboardPeriod';
 import { getOpeningBalanceSnapshot } from '../utils/balanceSnapshot';
+import { isInvestmentMovement, isOwnTransferMovement } from '../utils/transactionSemantics';
 
 const MindMapChart = lazy(() => import('../components/MindMapChart'));
 const CascadingCategorySelector = lazy(() => import('./Transactions').then(module => ({
@@ -138,13 +139,8 @@ const isInitialBalanceTransaction = (tx: any) => {
 const classifyTransactionForReport = (tx: any) => {
   const kind = getTransactionKind(tx);
   const amount = getTransactionAmount(tx);
-  const movementType = normalizeMovementLabel(tx.tipo_movimiento);
-  const secondary = normalizeMovementLabel(tx.categoria_secundaria);
-  const isInvestment = movementType === 'ahorro/inversion';
-  const isInternal = movementType === 'movimiento interno'
-    || secondary === 'transferencias propias'
-    || secondary === 'transferencia personal'
-    || isInvestment;
+  const isInvestment = isInvestmentMovement(tx);
+  const isInternal = isOwnTransferMovement(tx);
   const isInitialBalance = isInitialBalanceTransaction(tx);
 
   return {
@@ -156,7 +152,9 @@ const classifyTransactionForReport = (tx: any) => {
     isRealIncome: kind === 'ingreso' && !isInternal && !isInitialBalance,
     isRealExpense: kind === 'egreso' && !isInternal && !isInitialBalance,
     isInternalIncome: kind === 'ingreso' && isInternal && !isInitialBalance,
-    isInternalExpense: kind === 'egreso' && isInternal && !isInitialBalance
+    isInternalExpense: kind === 'egreso' && isInternal && !isInitialBalance,
+    isInvestmentIncome: kind === 'ingreso' && isInvestment && !isInitialBalance,
+    isInvestmentExpense: kind === 'egreso' && isInvestment && !isInitialBalance
   };
 };
 
@@ -451,7 +449,7 @@ export default function Dashboard() {
         const report = classifyTransactionForReport(t);
         const catP = t.categoria_principal?.toLowerCase() || '';
         
-        if (conceptName === 'Transferencias y rescates') return report.isInternalIncome;
+        if (conceptName === 'Transferencias propias recibidas') return report.isInternalIncome;
         if (!report.isRealIncome) return false;
         
         if (conceptName === 'Sueldo') return catP.includes('sueldo');
@@ -564,6 +562,8 @@ export default function Dashboard() {
       let gastos = 0; // Filtered gastos
       let gastosTotales = 0; // Absolute all gastos (for balance)
       let movimientoInternoEgreso = 0;
+      let rescateInversion = 0;
+      let aporteInversion = 0;
       
       const catsPrincipal: Record<string, number> = {};
       const catsSecundaria: Record<string, number> = {};
@@ -584,7 +584,11 @@ export default function Dashboard() {
         const isUnclassified = !t.categoria_principal || t.categoria_principal === 'Sin Clasificar';
         const report = classifyTransactionForReport(t);
 
-        if (report.isInternalIncome) {
+        if (report.isInvestmentIncome) {
+          rescateInversion += report.amount;
+        } else if (report.isInvestmentExpense) {
+          aporteInversion += report.amount;
+        } else if (report.isInternalIncome) {
           aportePropio += report.amount;
           ingresos += report.amount;
         } else if (report.isRealIncome) {
@@ -683,6 +687,8 @@ export default function Dashboard() {
         gastos, // Filtered
         gastosTotales, // Unfiltered
         movimientoInternoEgreso,
+        rescateInversion,
+        aporteInversion,
         topCatsPrincipal,
         topCatsSecundaria,
         topCatsDetalle,
@@ -740,7 +746,7 @@ export default function Dashboard() {
       const report = classifyTransactionForReport(t);
       if (report.isRealIncome || report.isInternalIncome) item.ingresos += report.amount;
       if (report.isRealExpense) item.egresos += report.amount;
-      if (report.isInternalIncome || report.isInternalExpense) item.internal += report.amount;
+      if (report.isInternalIncome || report.isInternalExpense || report.isInvestmentIncome || report.isInvestmentExpense) item.internal += report.amount;
       item.count += 1;
     });
 
@@ -1308,7 +1314,7 @@ export default function Dashboard() {
       { name: 'Honorarios', value: c.honorarios },
       { name: 'Otros Ingresos', value: c.ingresosOtros },
       ...(c.aportePropio > 0
-        ? [{ name: 'Transferencias y rescates', value: c.aportePropio, isGray: true }]
+        ? [{ name: 'Transferencias propias recibidas', value: c.aportePropio, isGray: true }]
         : [])
     ];
 
@@ -1329,7 +1335,7 @@ export default function Dashboard() {
       <>
         <aside style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '1rem', padding: '0.75rem 1rem', border: '2px solid #94a3b8', borderRadius: '10px', backgroundColor: '#f8fafc', color: '#334155', fontSize: '0.82rem', fontWeight: 700, lineHeight: 1.4 }}>
           <Info size={18} strokeWidth={2.5} style={{ flexShrink: 0 }} aria-hidden="true" />
-          <span><strong>Criterio del resumen:</strong> las transferencias recibidas aumentan tus entradas disponibles; las transferencias propias enviadas quedan registradas, pero no cuentan como gasto.</span>
+          <span><strong>Criterio del resumen:</strong> las transferencias propias se muestran aparte. Constituir o rescatar un DAP no cuenta como ingreso ni como gasto; solo su rentabilidad explícita cuenta como ingreso.</span>
         </aside>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 350px), 1fr))', gap: '2rem', marginBottom: '3rem' }}>
         {/* Ingresos Card */}
@@ -1346,9 +1352,14 @@ export default function Dashboard() {
             </div>
             {renderTrendBadge(totalEntradas, p.ingresos, false)}
           </div>
-          <p className="dashboard-kpi-amount" style={{ margin: '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '0' }}>
+          <p className="dashboard-kpi-amount" style={{ margin: c.rescateInversion > 0 ? '0 0 0.25rem 0' : '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '0' }}>
             ${totalEntradas.toLocaleString('es-CL')}
           </p>
+          {c.rescateInversion > 0 && (
+            <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 700, marginBottom: '1.5rem', position: 'relative', zIndex: 10 }}>
+              *Además rescataste ${c.rescateInversion.toLocaleString('es-CL')} desde inversiones; no se contabiliza como ingreso
+            </div>
+          )}
           
           {totalEntradas > 0 && (
             <div style={{ position: 'relative', zIndex: 10, flex: 1, paddingBottom: '1rem' }}>
@@ -1414,12 +1425,17 @@ export default function Dashboard() {
             </div>
             {renderTrendBadge(totalSalidas, p.gastosTotales, true)}
           </div>
-          <p className="dashboard-kpi-amount" style={{ margin: c.movimientoInternoEgreso > 0 ? '0 0 0.25rem 0' : '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '0' }}>
+          <p className="dashboard-kpi-amount" style={{ margin: c.movimientoInternoEgreso > 0 || c.aporteInversion > 0 ? '0 0 0.25rem 0' : '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '0' }}>
             ${totalSalidas.toLocaleString('es-CL')}
           </p>
           {c.movimientoInternoEgreso > 0 && (
             <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 700, marginBottom: '1.5rem', position: 'relative', zIndex: 10 }}>
               *Adicionalmente enviaste ${c.movimientoInternoEgreso.toLocaleString('es-CL')} a movimientos internos o inversiones
+            </div>
+          )}
+          {c.aporteInversion > 0 && (
+            <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 700, marginBottom: '1.5rem', position: 'relative', zIndex: 10 }}>
+              *Además invertiste ${c.aporteInversion.toLocaleString('es-CL')}; no se contabiliza como gasto
             </div>
           )}
           

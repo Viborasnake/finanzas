@@ -2,6 +2,7 @@ import type { FixedExpense } from '../contexts/settingsContextValue.ts';
 import { evaluateAccountMatch } from './fixedExpenseMatching.ts';
 import { parseLocalDateInput } from './localDate.ts';
 import { getOpeningBalanceSnapshot } from './balanceSnapshot.ts';
+import { isInvestmentMovement, isOwnTransferMovement } from './transactionSemantics.ts';
 
 export interface LightTransaction {
   id: string;
@@ -58,16 +59,6 @@ const isInitialBalance = (transaction: LightTransaction) => {
   return description.includes('saldo inicial');
 };
 
-const isInternalMovement = (transaction: LightTransaction) => {
-  const semanticType = normalize(transaction.tipo_movimiento);
-  const secondary = normalize(transaction.categoria_secundaria);
-
-  return semanticType === 'movimiento interno'
-    || semanticType === 'ahorro/inversion'
-    || secondary === 'transferencias propias'
-    || secondary === 'transferencia personal';
-};
-
 export const getMonthRange = (month = new Date()) => ({
   start: new Date(month.getFullYear(), month.getMonth(), 1, 0, 0, 0, 0),
   end: new Date(month.getFullYear(), month.getMonth() + 1, 0, 23, 59, 59, 999),
@@ -100,14 +91,18 @@ export const buildMonthlyLightSummary = (
     return date >= range.start && date <= range.end;
   });
   const reportable = monthTransactions.filter(transaction => !isInitialBalance(transaction));
-  const expenses = reportable.filter(transaction => getKind(transaction) === 'egreso' && !isInternalMovement(transaction));
-  const incomes = reportable.filter(transaction => getKind(transaction) === 'ingreso' && !isInternalMovement(transaction));
-  const receivedTransfers = reportable.filter(transaction => getKind(transaction) === 'ingreso' && isInternalMovement(transaction));
-  const sentTransfers = reportable.filter(transaction => getKind(transaction) === 'egreso' && isInternalMovement(transaction));
+  const expenses = reportable.filter(transaction => getKind(transaction) === 'egreso' && !isOwnTransferMovement(transaction) && !isInvestmentMovement(transaction));
+  const incomes = reportable.filter(transaction => getKind(transaction) === 'ingreso' && !isOwnTransferMovement(transaction) && !isInvestmentMovement(transaction));
+  const receivedTransfers = reportable.filter(transaction => getKind(transaction) === 'ingreso' && isOwnTransferMovement(transaction));
+  const sentTransfers = reportable.filter(transaction => getKind(transaction) === 'egreso' && isOwnTransferMovement(transaction));
+  const investmentRedemptions = reportable.filter(transaction => getKind(transaction) === 'ingreso' && isInvestmentMovement(transaction));
+  const investmentPlacements = reportable.filter(transaction => getKind(transaction) === 'egreso' && isInvestmentMovement(transaction));
   const totalExpenses = expenses.reduce((total, transaction) => total + money(transaction), 0);
   const totalIncome = incomes.reduce((total, transaction) => total + money(transaction), 0);
   const receivedTransferAmount = receivedTransfers.reduce((total, transaction) => total + money(transaction), 0);
   const sentTransferAmount = sentTransfers.reduce((total, transaction) => total + money(transaction), 0);
+  const investmentRedemptionAmount = investmentRedemptions.reduce((total, transaction) => total + money(transaction), 0);
+  const investmentPlacementAmount = investmentPlacements.reduce((total, transaction) => total + money(transaction), 0);
   const totalAvailable = totalIncome + receivedTransferAmount;
 
   const categoryMap = new Map<string, number>();
@@ -145,6 +140,8 @@ export const buildMonthlyLightSummary = (
     totalIncome,
     receivedTransferAmount,
     sentTransferAmount,
+    investmentRedemptionAmount,
+    investmentPlacementAmount,
     totalAvailable,
     totalExpenses,
     balance: totalAvailable - totalExpenses,

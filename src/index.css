@@ -650,6 +650,13 @@ select.input {
   line-height: 1.4;
 }
 
+.light-accounting-note small {
+  display: block;
+  margin-top: 0.3rem;
+  color: #64748b;
+  font-size: 0.72rem;
+}
+
 .light-main-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
