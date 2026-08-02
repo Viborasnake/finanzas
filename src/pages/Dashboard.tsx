@@ -5,7 +5,7 @@ import { AVAILABLE_BANKS, useBanks, type Bank } from '../contexts/bankContextVal
 
 import { 
   ChevronLeft, ChevronRight, TrendingUp, TrendingDown, 
-  Wallet, CreditCard, AlertTriangle, Sparkles, Activity, Search, X, Edit2,
+  Wallet, CreditCard, AlertTriangle, Sparkles, Search, X, Edit2,
   ArrowUpRight, ArrowDownRight, Scale, PiggyBank, Calendar, Landmark, FileSpreadsheet, Tags, CheckCircle2, Settings, ChevronDown, RefreshCw
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -220,10 +220,6 @@ export default function Dashboard() {
   const dashboardBankKey = dashboardBanks.join('|');
   const activeBankInfo = AVAILABLE_BANKS.find(b => b.id === activeBank);
   const dashboardBankLabel = isConsolidated ? 'Todos los bancos' : (activeBankInfo?.label || 'Sin banco');
-  const [reportCollapsed, setReportCollapsed] = useState(() => {
-    const savedState = localStorage.getItem('finanzas_report_collapsed');
-    return savedState === null ? true : savedState === 'true';
-  });
   const [advancedOpen, setAdvancedOpen] = useState(() => localStorage.getItem('finanzas_advanced_open') === 'true');
   const [periodWasChosen, setPeriodWasChosen] = useState(() => sessionStorage.getItem('finanzas_dash_period_chosen') === 'true');
 
@@ -1256,89 +1252,7 @@ export default function Dashboard() {
     );
   };
 
-  // BLOCK 2: INTELLIGENCE REPORT
-  const renderIntelligenceReport = () => {
-    const { maxIncomeDesc, maxIncomeAmount, maxRecurringDesc, maxRecurringTotal } = stats.current.insights;
-    const ingresosReales = stats.current.economicIncome;
-    const hasOpeningBalance = stats.current.openingBalance.detectedBankCount > 0;
-    const closingBalance = stats.current.estimatedClosingBalance ?? stats.current.netCashFlow;
-    const primaryAmount = hasOpeningBalance ? closingBalance : stats.current.netCashFlow;
-    const isDeficit = primaryAmount < 0;
-    const flowPrefix = primaryAmount > 0 ? '+' : primaryAmount < 0 ? '−' : '';
-    const incomePercent = ingresosReales > 0 ? Math.round((maxIncomeAmount / ingresosReales) * 100) : 0;
-    const insightCount = 1 + (maxIncomeAmount > 0 ? 1 : 0) + (maxRecurringTotal > 0 ? 1 : 0);
-
-    return (
-      <section className={`dashboard-intelligence-report ${reportCollapsed ? 'collapsed' : ''}`}>
-        <div className="dashboard-section-heading">
-          <h2 className="dashboard-section-title-heading">
-            <Sparkles fill="#fde047" color="#000" size={20} strokeWidth={2} />
-            <span className="dashboard-section-title">Hallazgos del mes</span>
-            <span className="dashboard-insight-count" aria-label={`${insightCount} hallazgos`}>{insightCount}</span>
-            <InfoTooltip content="Resumen automático del balance y de los movimientos que más influyen en el periodo." />
-          </h2>
-          <button
-            type="button"
-            className="dashboard-collapse-button"
-            aria-label={reportCollapsed ? 'Mostrar reporte de inteligencia' : 'Ocultar reporte de inteligencia'}
-            title={reportCollapsed ? 'Mostrar reporte de inteligencia' : 'Ocultar reporte de inteligencia'}
-            aria-expanded={!reportCollapsed}
-            aria-controls="dashboard-intelligence-content"
-            onClick={() => {
-            const newVal = !reportCollapsed;
-            setReportCollapsed(newVal);
-            localStorage.setItem('finanzas_report_collapsed', String(newVal));
-          }}
-          >
-            <span>{reportCollapsed ? 'Ver detalles' : 'Cerrar'}</span>
-            <ChevronDown size={20} strokeWidth={2.5} style={{ transform: reportCollapsed ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform 0.2s' }} />
-          </button>
-        </div>
-
-        {!reportCollapsed && (
-          <div id="dashboard-intelligence-content" className="dashboard-insight-grid">
-            <div className="dashboard-insight-card" style={{ backgroundColor: isDeficit ? '#fef2f2' : '#f0fdf4' }}>
-              <Activity size={19} style={{ color: isDeficit ? 'var(--danger-text)' : 'var(--success-text)' }} />
-              <div>
-                <span className="dashboard-insight-label">{hasOpeningBalance ? 'Saldo estimado al cierre' : 'Variación de caja'}</span>
-                <strong>{flowPrefix}${Math.abs(primaryAmount).toLocaleString('es-CL')}</strong>
-                <small>{hasOpeningBalance
-                  ? `Partiste con $${stats.current.openingBalance.total.toLocaleString('es-CL')} y el mes movió tu caja en ${stats.current.netCashFlow < 0 ? '−' : '+'}$${Math.abs(stats.current.netCashFlow).toLocaleString('es-CL')}.`
-                  : 'No encontramos un saldo anterior; mostramos solamente lo que cambió durante el mes.'}</small>
-                {!stats.current.openingBalance.complete && hasOpeningBalance && (
-                  <small>Estimación con {stats.current.openingBalance.detectedBankCount} de {stats.current.openingBalance.bankCount} bancos.</small>
-                )}
-              </div>
-            </div>
-
-            {maxIncomeAmount > 0 && (
-              <div className="dashboard-insight-card" style={{ backgroundColor: '#eff6ff' }}>
-                <Wallet size={19} style={{ color: '#3b82f6' }} />
-                <div>
-                  <span className="dashboard-insight-label">Principal ingreso</span>
-                  <strong>{incomePercent}% del total</strong>
-                  <small title={maxIncomeDesc}>{maxIncomeDesc}</small>
-                </div>
-              </div>
-            )}
-
-            {maxRecurringTotal > 0 && (
-              <div className="dashboard-insight-card" style={{ backgroundColor: '#fefce8' }}>
-                <Search size={19} style={{ color: '#ca8a04' }} />
-                <div>
-                  <span className="dashboard-insight-label">Movimiento recurrente</span>
-                  <strong>${maxRecurringTotal.toLocaleString('es-CL')} acumulado</strong>
-                  <small title={maxRecurringDesc}>{maxRecurringDesc}</small>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </section>
-    );
-  };
-
-  // BLOCK 3: MAIN NUMBERS
+  // BLOCK 2: MAIN NUMBERS
   const renderMainNumbers = () => {
     const c = stats.current;
     const p = stats.prev;
@@ -2070,7 +1984,6 @@ export default function Dashboard() {
             renderEmptyPeriodState()
           ) : (
             <>
-              {renderIntelligenceReport()}
               {renderUnclassifiedAlert()}
               {renderMainNumbers()}
               {renderBankBreakdown()}
