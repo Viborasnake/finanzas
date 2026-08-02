@@ -170,20 +170,20 @@ export default function LightDashboard() {
         </div>
       )}
 
-      <section className={`light-balance-card ${summary.economicResult < 0 ? 'is-negative' : ''}`} aria-labelledby="light-balance-title">
+      <section className={`light-balance-card ${(summary.estimatedClosingBalance ?? 0) < 0 ? 'is-negative' : ''}`} aria-labelledby="light-balance-title">
         <div>
-          <span className="light-card-label" id="light-balance-title">Resultado económico de {summary.range.label}</span>
-          <strong>{formatMoney(summary.economicResult)}</strong>
+          <span className="light-card-label" id="light-balance-title">Saldo estimado al cierre de {summary.range.label}</span>
+          <strong>{summary.estimatedClosingBalance !== null ? formatMoney(summary.estimatedClosingBalance) : 'Pendiente'}</strong>
           <p>{summary.transactionCount === 0
             ? `No hay movimientos registrados en ${summary.range.label}.`
-            : summary.economicResult < 0
-              ? `Tu consumo superó tus ingresos en ${formatMoney(Math.abs(summary.economicResult))}.`
-              : summary.economicResult > 0
-                ? `Tus ingresos superaron tu consumo en ${formatMoney(summary.economicResult)}.`
-                : 'Tus ingresos y tu consumo fueron iguales.'}</p>
+            : summary.openingBalance.detectedBankCount > 0
+              ? `Comenzaste con ${formatMoney(summary.openingBalance.total)} y tu caja varió ${formatMoney(summary.netCashFlow)}.`
+              : 'No encontramos un saldo anterior; falta la apertura para estimar el cierre.'}</p>
           {summary.transactionCount > 0 && (
             <small className="light-opening-balance">
-              Caja: entraron {formatMoney(summary.cashInflow)} · salieron {formatMoney(summary.cashOutflow)} · variación {formatMoney(summary.netCashFlow)}
+              {summary.openingBalance.detectedBankCount > 0
+                ? `${formatMoney(summary.openingBalance.total)} + ${formatMoney(summary.cashInflow)} − ${formatMoney(summary.cashOutflow)} = ${formatMoney(summary.estimatedClosingBalance ?? 0)}`
+                : `Entró ${formatMoney(summary.cashInflow)} · salió ${formatMoney(summary.cashOutflow)}`}
             </small>
           )}
         </div>
@@ -213,7 +213,7 @@ export default function LightDashboard() {
       <p className="light-accounting-note">
         El resultado económico compara ingresos con consumo. El flujo de caja incluye todo el dinero que entró o salió, también transferencias, inversiones y pagos de deuda.
         {summary.debtSettlementAmount > 0 && (
-          <small>Pago de deuda anterior: {formatMoney(summary.debtSettlementAmount)}.</small>
+          <small>Pago de tarjeta registrado este mes: {formatMoney(summary.debtSettlementAmount)}. Ya está incluido en las salidas de caja.</small>
         )}
         {(summary.investmentRedemptionAmount > 0 || summary.investmentPlacementAmount > 0) && (
           <small>
@@ -223,16 +223,15 @@ export default function LightDashboard() {
       </p>
 
       {summary.semanticWarnings.length > 0 && (
-        <aside className="light-semantic-warnings" aria-label="Datos financieros pendientes de revisión">
-          <CircleAlert size={21} aria-hidden="true" />
+        <details className="light-semantic-warnings">
+          <summary><CircleAlert size={18} aria-hidden="true" /> {summary.semanticWarnings.length} {summary.semanticWarnings.length === 1 ? 'cifra necesita' : 'cifras necesitan'} revisión</summary>
           <div>
-            <strong>Hay cifras que necesitan conciliación</strong>
             {summary.semanticWarnings.map(warning => <p key={warning}>{warning}</p>)}
             {summary.unallocatedLoanAmount > 0 && (
               <Link to="/transactions">Dividir cuotas entre capital, interés y costos <ArrowRight size={15} /></Link>
             )}
           </div>
-        </aside>
+        </details>
       )}
 
       <div className="light-main-grid">

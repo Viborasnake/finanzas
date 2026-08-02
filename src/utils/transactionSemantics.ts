@@ -95,7 +95,8 @@ const LOAN_PRINCIPAL_MARKERS = [
   'capital de credito',
   'amortizacion de capital',
   'reduccion de deuda',
-  'abono a capital'
+  'abono a capital',
+  'abono linea de credito'
 ];
 
 const LOAN_COST_MARKERS = [

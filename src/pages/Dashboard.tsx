@@ -6,7 +6,7 @@ import { AVAILABLE_BANKS, useBanks, type Bank } from '../contexts/bankContextVal
 import { 
   ChevronLeft, ChevronRight, TrendingUp, TrendingDown, 
   Wallet, CreditCard, AlertTriangle, Sparkles, Activity, Search, X, Edit2,
-  ArrowUpRight, ArrowDownRight, Scale, PiggyBank, Calendar, Landmark, FileSpreadsheet, Tags, CheckCircle2, Settings, ChevronDown, RefreshCw, Info
+  ArrowUpRight, ArrowDownRight, Scale, PiggyBank, Calendar, Landmark, FileSpreadsheet, Tags, CheckCircle2, Settings, ChevronDown, RefreshCw
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -21,6 +21,7 @@ import { useTaxonomy } from '../hooks/useTaxonomy';
 import { toast } from 'react-hot-toast';
 import { Dialog } from '../components/Dialog';
 import { getShiftedCalendarMonth, getSuggestedDashboardPeriod } from '../utils/dashboardPeriod';
+import { calculatePeriodCashPosition, getOpeningBalanceSnapshot } from '../utils/balanceSnapshot';
 import {
   analyzeFinancialPeriod,
   classifyFinancialTreatment,
@@ -593,6 +594,9 @@ export default function Dashboard() {
         return d >= start && d <= end && !isInitialBalanceTransaction(t);
       });
       const periodAnalysis = analyzeFinancialPeriod(txs, transactions);
+      const periodBankIds = dashboardBankKey.split('|').filter(Boolean);
+      const openingBalance = getOpeningBalanceSnapshot(transactions, start, periodBankIds);
+      const cashPosition = calculatePeriodCashPosition(openingBalance, periodAnalysis.totals.cashInflow, periodAnalysis.totals.cashOutflow);
 
       txs.forEach(t => {
         const isUnclassified = !t.categoria_principal || t.categoria_principal === 'Sin Clasificar';
@@ -717,6 +721,9 @@ export default function Dashboard() {
         unallocatedLoanAmount: periodAnalysis.totals.unallocatedLoanOutflow,
         cardCoverage: periodAnalysis.cardCoverage,
         semanticWarnings: periodAnalysis.warnings,
+        openingBalance,
+        cashPosition,
+        estimatedClosingBalance: cashPosition.closingBalance,
         topCatsPrincipal,
         topCatsSecundaria,
         topCatsDetalle,
@@ -737,7 +744,7 @@ export default function Dashboard() {
       current: calcForRange(currentRange.start, currentRange.end), 
       prev: calcForRange(prevRange.start, prevRange.end) 
     };
-  }, [transactions, currentRange, prevRange]);
+  }, [transactions, currentRange, prevRange, dashboardBankKey]);
 
   const bankBreakdown = useMemo(() => {
     const byBank = new Map<string, { bank: string; label: string; color: string; ingresos: number; egresos: number; internal: number; count: number }>();
@@ -1252,11 +1259,12 @@ export default function Dashboard() {
   // BLOCK 2: INTELLIGENCE REPORT
   const renderIntelligenceReport = () => {
     const { maxIncomeDesc, maxIncomeAmount, maxRecurringDesc, maxRecurringTotal } = stats.current.insights;
-    const balance = stats.current.economicResult;
     const ingresosReales = stats.current.economicIncome;
-    
-    const isDeficit = balance < 0;
-    const flowPrefix = balance > 0 ? '+' : balance < 0 ? '−' : '';
+    const hasOpeningBalance = stats.current.openingBalance.detectedBankCount > 0;
+    const closingBalance = stats.current.estimatedClosingBalance ?? stats.current.netCashFlow;
+    const primaryAmount = hasOpeningBalance ? closingBalance : stats.current.netCashFlow;
+    const isDeficit = primaryAmount < 0;
+    const flowPrefix = primaryAmount > 0 ? '+' : primaryAmount < 0 ? '−' : '';
     const incomePercent = ingresosReales > 0 ? Math.round((maxIncomeAmount / ingresosReales) * 100) : 0;
     const insightCount = 1 + (maxIncomeAmount > 0 ? 1 : 0) + (maxRecurringTotal > 0 ? 1 : 0);
 
@@ -1292,14 +1300,14 @@ export default function Dashboard() {
             <div className="dashboard-insight-card" style={{ backgroundColor: isDeficit ? '#fef2f2' : '#f0fdf4' }}>
               <Activity size={19} style={{ color: isDeficit ? 'var(--danger-text)' : 'var(--success-text)' }} />
               <div>
-                <span className="dashboard-insight-label">Resultado económico de {dateRange.label}</span>
-                <strong>{flowPrefix}${Math.abs(balance).toLocaleString('es-CL')}</strong>
-                <small>{balance < 0
-                  ? `El consumo superó tus ingresos en $${Math.abs(balance).toLocaleString('es-CL')}.`
-                  : balance > 0
-                    ? `Tus ingresos superaron el consumo en $${balance.toLocaleString('es-CL')}.`
-                    : 'Ingresos y consumo fueron iguales.'}</small>
-                <small>Ingresos: ${stats.current.economicIncome.toLocaleString('es-CL')} · Consumo: ${stats.current.economicExpense.toLocaleString('es-CL')}</small>
+                <span className="dashboard-insight-label">{hasOpeningBalance ? 'Saldo estimado al cierre' : 'Variación de caja'}</span>
+                <strong>{flowPrefix}${Math.abs(primaryAmount).toLocaleString('es-CL')}</strong>
+                <small>{hasOpeningBalance
+                  ? `Partiste con $${stats.current.openingBalance.total.toLocaleString('es-CL')} y el mes movió tu caja en ${stats.current.netCashFlow < 0 ? '−' : '+'}$${Math.abs(stats.current.netCashFlow).toLocaleString('es-CL')}.`
+                  : 'No encontramos un saldo anterior; mostramos solamente lo que cambió durante el mes.'}</small>
+                {!stats.current.openingBalance.complete && hasOpeningBalance && (
+                  <small>Estimación con {stats.current.openingBalance.detectedBankCount} de {stats.current.openingBalance.bankCount} bancos.</small>
+                )}
               </div>
             </div>
 
@@ -1358,28 +1366,31 @@ export default function Dashboard() {
 
     return (
       <>
-        <aside style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '1rem', padding: '0.75rem 1rem', border: '2px solid #94a3b8', borderRadius: '10px', backgroundColor: '#f8fafc', color: '#334155', fontSize: '0.82rem', fontWeight: 700, lineHeight: 1.4 }}>
-          <Info size={18} strokeWidth={2.5} style={{ flexShrink: 0 }} aria-hidden="true" />
-          <span><strong>Dos lecturas:</strong> el resultado económico compara ingresos con consumo; el flujo de caja registra todo el dinero que entró o salió, incluidas transferencias, inversiones y pagos de deuda.</span>
-        </aside>
-        <section className="dashboard-cash-strip" aria-label="Flujo de caja del periodo">
-          <div><span>Entradas de caja</span><strong>${c.cashInflow.toLocaleString('es-CL')}</strong></div>
-          <div><span>Salidas de caja</span><strong>${c.cashOutflow.toLocaleString('es-CL')}</strong></div>
-          <div className={c.netCashFlow < 0 ? 'is-negative' : 'is-positive'}>
-            <span>Variación de caja</span><strong>{c.netCashFlow < 0 ? '−' : '+'}${Math.abs(c.netCashFlow).toLocaleString('es-CL')}</strong>
+        <section className="dashboard-cash-equation" aria-label="Cálculo del saldo de cierre">
+          <div><span>Saldo al comenzar</span><strong>{c.openingBalance.detectedBankCount > 0 ? `$${c.openingBalance.total.toLocaleString('es-CL')}` : 'No disponible'}</strong></div>
+          <b aria-hidden="true">+</b>
+          <div><span>Entró</span><strong>${c.cashInflow.toLocaleString('es-CL')}</strong></div>
+          <b aria-hidden="true">−</b>
+          <div><span>Salió</span><strong>${c.cashOutflow.toLocaleString('es-CL')}</strong></div>
+          <b aria-hidden="true">=</b>
+          <div className={(c.estimatedClosingBalance ?? 0) < 0 ? 'is-negative' : 'is-positive'}>
+            <span>Saldo estimado al cierre</span>
+            <strong>{c.estimatedClosingBalance !== null ? `${c.estimatedClosingBalance < 0 ? '−' : ''}$${Math.abs(c.estimatedClosingBalance).toLocaleString('es-CL')}` : 'Pendiente'}</strong>
           </div>
+          {!c.openingBalance.complete && c.openingBalance.detectedBankCount > 0 && (
+            <small>Calculado con {c.openingBalance.detectedBankCount} de {c.openingBalance.bankCount} bancos; faltan saldos de {c.openingBalance.missingBanks.join(', ')}.</small>
+          )}
         </section>
         {c.semanticWarnings.length > 0 && (
-          <aside className="dashboard-semantic-warning" aria-label="Cifras pendientes de conciliación">
-            <AlertTriangle size={20} aria-hidden="true" />
+          <details className="dashboard-semantic-warning">
+            <summary><AlertTriangle size={18} aria-hidden="true" /> {c.semanticWarnings.length} {c.semanticWarnings.length === 1 ? 'cifra necesita' : 'cifras necesitan'} revisión</summary>
             <div>
-              <strong>Revisión recomendada</strong>
               {c.semanticWarnings.map((warning: string) => <p key={warning}>{warning}</p>)}
               {c.unallocatedLoanAmount > 0 && (
                 <button type="button" onClick={() => navigate('/transactions')}>Revisar y dividir cuotas</button>
               )}
             </div>
-          </aside>
+          </details>
         )}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 350px), 1fr))', gap: '2rem', marginBottom: '3rem' }}>
         {/* Ingresos Card */}
@@ -1489,7 +1500,7 @@ export default function Dashboard() {
           )}
           {c.pagoDeudaAnterior > 0 && (
             <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 700, marginBottom: '1.5rem', position: 'relative', zIndex: 10 }}>
-              *Además pagaste ${c.pagoDeudaAnterior.toLocaleString('es-CL')} de tarjeta por deuda anterior; no se duplica como gasto del mes
+              *Pago de tarjeta registrado en este periodo: ${c.pagoDeudaAnterior.toLocaleString('es-CL')}. Salió de caja y no se repite como consumo
             </div>
           )}
           {c.loanPrincipalAmount > 0 && (

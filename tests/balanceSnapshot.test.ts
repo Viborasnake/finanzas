@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { extractReportedBalance, getOpeningBalanceSnapshot } from '../src/utils/balanceSnapshot.ts';
+import { calculatePeriodCashPosition, extractReportedBalance, getOpeningBalanceSnapshot } from '../src/utils/balanceSnapshot.ts';
 
 test('extrae saldos informados por Scotiabank, Consorcio e Itaú', () => {
   assert.equal(extractReportedBalance({
@@ -25,4 +25,26 @@ test('consolida solo el último saldo previo y declara bancos sin información',
   assert.equal(snapshot.detectedBankCount, 2);
   assert.deepEqual(snapshot.missingBanks, ['Mach']);
   assert.equal(snapshot.complete, false);
+});
+
+test('arrastra el cierre anterior como apertura y calcula el cierre del mes recursivamente', () => {
+  const opening = getOpeningBalanceSnapshot([
+    { date: '2026-05-31', bank: 'Scotiabank', raw_data: { saldo: '2.000.000,00' } },
+    { date: '2026-05-31', bank: 'Consorcio', raw_data: { fullLine: '31/05/2026 CIERRE $ 0 $ 500.000' } }
+  ], new Date(2026, 5, 1), ['Scotiabank', 'Consorcio']);
+
+  const position = calculatePeriodCashPosition(opening, 1_000_000, 1_600_000);
+  assert.equal(position.openingBalance, 2_500_000);
+  assert.equal(position.netChange, -600_000);
+  assert.equal(position.closingBalance, 1_900_000);
+  assert.equal(position.complete, true);
+});
+
+test('no inventa un cierre cuando ninguna cartola informa saldo de apertura', () => {
+  const opening = getOpeningBalanceSnapshot([], new Date(2026, 5, 1), ['Mach']);
+  const position = calculatePeriodCashPosition(opening, 100_000, 80_000);
+
+  assert.equal(position.openingBalance, null);
+  assert.equal(position.closingBalance, null);
+  assert.equal(position.netChange, 20_000);
 });

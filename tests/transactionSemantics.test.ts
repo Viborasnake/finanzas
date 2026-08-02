@@ -67,6 +67,21 @@ test('separa salida de caja, gasto financiero y reducción de capital al dividir
   assert.equal(analysis.totals.economicExpense, 134_587);
 });
 
+test('un abono a línea de crédito reduce deuda sin convertirse en consumo nuevo', () => {
+  const repayment = {
+    id: 'credit-line-payment', date: '2026-06-30', amount: -119_252, type: 'egreso',
+    description: 'ABONO A L.CREDITO POR SGO',
+    tipo_movimiento: 'Egreso', categoria_principal: 'Servicio de Deuda', categoria_secundaria: 'Abono Línea de Crédito'
+  };
+
+  assert.equal(isLoanPrincipalRepayment(repayment), true);
+  const treatment = classifyFinancialTreatment(repayment);
+  assert.equal(treatment.eventType, 'loan_principal');
+  assert.equal(treatment.cashOutflow, 119_252);
+  assert.equal(treatment.economicExpense, 0);
+  assert.equal(treatment.liabilityImpact, -119_252);
+});
+
 test('mantiene una cuota no desglosada como gasto conservador y genera advertencia', () => {
   const installment = {
     id: 'mortgage', date: '2026-07-05', amount: -784_587, type: 'egreso',

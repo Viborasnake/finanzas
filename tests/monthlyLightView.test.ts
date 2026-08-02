@@ -84,6 +84,7 @@ test('la vista Light suma transferencias propias recibidas y excluye las enviada
   assert.equal(summary.balance, 1_500_000);
   assert.equal(summary.openingBalance.total, 450_000);
   assert.equal(summary.openingBalance.complete, true);
+  assert.equal(summary.estimatedClosingBalance, 1_350_000);
   assert.deepEqual(summary.categories.map(category => category.name), ['Vivienda', 'Alimentación']);
 });
 

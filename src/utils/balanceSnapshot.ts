@@ -7,6 +7,15 @@ export interface BalanceSnapshotTransaction {
   raw_data?: Record<string, unknown> | null;
 }
 
+export interface OpeningBalanceSnapshot {
+  values: Record<string, number>;
+  total: number;
+  detectedBankCount: number;
+  bankCount: number;
+  missingBanks: string[];
+  complete: boolean;
+}
+
 const normalizeBank = (value: unknown) => String(value || '').toLowerCase();
 
 const parseSignedClp = (value: unknown) => {
@@ -47,7 +56,7 @@ export const getOpeningBalanceSnapshot = (
   transactions: BalanceSnapshotTransaction[],
   periodStart: Date,
   bankIds: string[]
-) => {
+): OpeningBalanceSnapshot => {
   const uniqueBanks = Array.from(new Set(bankIds));
   const values: Record<string, number> = {};
 
@@ -76,5 +85,22 @@ export const getOpeningBalanceSnapshot = (
     bankCount: uniqueBanks.length,
     missingBanks,
     complete: uniqueBanks.length > 0 && missingBanks.length === 0
+  };
+};
+
+export const calculatePeriodCashPosition = (
+  openingBalance: OpeningBalanceSnapshot,
+  cashInflow: number,
+  cashOutflow: number
+) => {
+  const netChange = cashInflow - cashOutflow;
+  return {
+    openingBalance: openingBalance.detectedBankCount > 0 ? openingBalance.total : null,
+    cashInflow,
+    cashOutflow,
+    netChange,
+    closingBalance: openingBalance.detectedBankCount > 0 ? openingBalance.total + netChange : null,
+    complete: openingBalance.complete,
+    missingBanks: openingBalance.missingBanks
   };
 };

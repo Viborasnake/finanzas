@@ -1,7 +1,7 @@
 import type { FixedExpense } from '../contexts/settingsContextValue.ts';
 import { evaluateAccountMatch } from './fixedExpenseMatching.ts';
 import { parseLocalDateInput } from './localDate.ts';
-import { getOpeningBalanceSnapshot } from './balanceSnapshot.ts';
+import { calculatePeriodCashPosition, getOpeningBalanceSnapshot } from './balanceSnapshot.ts';
 import {
   analyzeFinancialPeriod,
   classifyFinancialTreatment,
@@ -114,6 +114,7 @@ export const buildMonthlyLightSummary = (
   const investmentPlacementAmount = investmentPlacements.reduce((total, transaction) => total + money(transaction), 0);
   const debtSettlementAmount = debtSettlements.reduce((total, transaction) => total + money(transaction), 0);
   const totalAvailable = totalIncome + receivedTransferAmount;
+  const cashPosition = calculatePeriodCashPosition(openingBalance, periodAnalysis.totals.cashInflow, periodAnalysis.totals.cashOutflow);
 
   const categoryMap = new Map<string, number>();
   expenses.forEach(transaction => {
@@ -146,6 +147,8 @@ export const buildMonthlyLightSummary = (
   return {
     range,
     openingBalance,
+    cashPosition,
+    estimatedClosingBalance: cashPosition.closingBalance,
     transactionCount: monthTransactions.length,
     totalIncome,
     receivedTransferAmount,
