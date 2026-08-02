@@ -21,7 +21,6 @@ import { useTaxonomy } from '../hooks/useTaxonomy';
 import { toast } from 'react-hot-toast';
 import { Dialog } from '../components/Dialog';
 import { getShiftedCalendarMonth, getSuggestedDashboardPeriod } from '../utils/dashboardPeriod';
-import { getOpeningBalanceSnapshot } from '../utils/balanceSnapshot';
 import { isInvestmentMovement, isOwnTransferMovement } from '../utils/transactionSemantics';
 
 const MindMapChart = lazy(() => import('../components/MindMapChart'));
@@ -495,11 +494,6 @@ export default function Dashboard() {
       prevRange: previous
     };
   }, [dateRange]);
-
-  const openingBalance = useMemo(
-    () => getOpeningBalanceSnapshot(transactions, currentRange.start, dashboardBankKey.split('|').filter(Boolean)),
-    [transactions, currentRange.start, dashboardBankKey]
-  );
 
   const filteredTransactions = useMemo(() => {
     const { start, end } = dateRange;
@@ -1232,9 +1226,6 @@ export default function Dashboard() {
     
     const isDeficit = balance < 0;
     const flowPrefix = balance > 0 ? '+' : balance < 0 ? '−' : '';
-    const missingBalanceBanks = openingBalance.missingBanks
-      .map(bankId => AVAILABLE_BANKS.find(bank => bank.id === bankId)?.label || bankId)
-      .join(', ');
     const incomePercent = ingresosReales > 0 ? Math.round((maxIncomeAmount / ingresosReales) * 100) : 0;
     const insightCount = 1 + (maxIncomeAmount > 0 ? 1 : 0) + (maxRecurringTotal > 0 ? 1 : 0);
 
@@ -1270,15 +1261,14 @@ export default function Dashboard() {
             <div className="dashboard-insight-card" style={{ backgroundColor: isDeficit ? '#fef2f2' : '#f0fdf4' }}>
               <Activity size={19} style={{ color: isDeficit ? 'var(--danger-text)' : 'var(--success-text)' }} />
               <div>
-                <span className="dashboard-insight-label">Flujo neto del periodo</span>
+                <span className="dashboard-insight-label">Resultado de {dateRange.label}</span>
                 <strong>{flowPrefix}${Math.abs(balance).toLocaleString('es-CL')}</strong>
-                <small>Entradas menos gastos registrados solo en {dateRange.label}. No incluye movimientos de otros periodos.</small>
-                {openingBalance.detectedBankCount > 0 && (
-                  <small>El saldo anterior detectado de ${openingBalance.total.toLocaleString('es-CL')} se muestra como contexto y no altera este flujo.</small>
-                )}
-                {openingBalance.missingBanks.length > 0 && (
-                  <small>{missingBalanceBanks} no informa saldo en la cartola y queda fuera de la estimación.</small>
-                )}
+                <small>{balance < 0
+                  ? `Gastaste $${Math.abs(balance).toLocaleString('es-CL')} más de lo que recibiste.`
+                  : balance > 0
+                    ? `Recibiste $${balance.toLocaleString('es-CL')} más de lo que gastaste.`
+                    : 'Recibiste y gastaste el mismo monto.'}</small>
+                <small>Entradas: ${stats.current.ingresos.toLocaleString('es-CL')} · Gastos: ${stats.current.gastosTotales.toLocaleString('es-CL')}</small>
               </div>
             </div>
 

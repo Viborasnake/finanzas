@@ -115,9 +115,6 @@ export default function LightDashboard() {
   const visibleCommitments = showAllPayments
     ? prioritizedCommitments
     : prioritizedCommitments.slice(0, 6);
-  const missingBalanceBanks = summary.openingBalance.missingBanks
-    .map(bankId => AVAILABLE_BANKS.find(bank => bank.id === bankId)?.label || bankId)
-    .join(', ');
 
   if (loading || (user && loadingSettings)) {
     return (
@@ -175,20 +172,17 @@ export default function LightDashboard() {
 
       <section className={`light-balance-card ${summary.balance < 0 ? 'is-negative' : ''}`} aria-labelledby="light-balance-title">
         <div>
-          <span className="light-card-label" id="light-balance-title">Flujo neto del mes</span>
+          <span className="light-card-label" id="light-balance-title">Resultado de {summary.range.label}</span>
           <strong>{formatMoney(summary.balance)}</strong>
           <p>{summary.transactionCount === 0
             ? `No hay movimientos registrados en ${summary.range.label}.`
-            : `Entradas menos gastos registrados solo en ${summary.range.label}. No incluye movimientos de otros meses.`}</p>
-          {summary.openingBalance.detectedBankCount > 0 && (
-            <small className="light-opening-balance">
-              El saldo anterior detectado de {formatMoney(summary.openingBalance.total)} se muestra como contexto y no altera este flujo.
-            </small>
-          )}
-          {summary.openingBalance.missingBanks.length > 0 && (
-            <small className="light-opening-balance">
-              {missingBalanceBanks} no informa saldo en la cartola y queda fuera de esta estimación automática.
-            </small>
+            : summary.balance < 0
+              ? `Gastaste ${formatMoney(Math.abs(summary.balance))} más de lo que recibiste.`
+              : summary.balance > 0
+                ? `Recibiste ${formatMoney(summary.balance)} más de lo que gastaste.`
+                : 'Recibiste y gastaste el mismo monto.'}</p>
+          {summary.transactionCount > 0 && (
+            <small className="light-opening-balance">Entradas: {formatMoney(summary.totalAvailable)} · Gastos: {formatMoney(summary.totalExpenses)}</small>
           )}
         </div>
         <Gauge size={58} strokeWidth={1.8} aria-hidden="true" />
