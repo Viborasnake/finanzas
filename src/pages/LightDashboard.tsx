@@ -108,6 +108,9 @@ export default function LightDashboard() {
   const visibleCommitments = showAllPayments
     ? prioritizedCommitments
     : prioritizedCommitments.slice(0, 6);
+  const missingBalanceBanks = summary.openingBalance.missingBanks
+    .map(bankId => AVAILABLE_BANKS.find(bank => bank.id === bankId)?.label || bankId)
+    .join(', ');
 
   if (loading || (user && loadingSettings)) {
     return (
@@ -174,7 +177,9 @@ export default function LightDashboard() {
             </small>
           )}
           {summary.openingBalance.missingBanks.length > 0 && (
-            <Link className="light-balance-link" to="/settings#ajuste">Completar saldo inicial pendiente</Link>
+            <small className="light-opening-balance">
+              {missingBalanceBanks} no informa saldo en la cartola y queda fuera de esta estimación automática.
+            </small>
           )}
         </div>
         <Gauge size={58} strokeWidth={1.8} aria-hidden="true" />

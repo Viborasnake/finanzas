@@ -596,16 +596,6 @@ select.input {
   font-weight: 800;
 }
 
-.light-balance-link {
-  display: inline-block;
-  margin-top: 0.55rem;
-  color: #000;
-  font-size: 0.76rem;
-  font-weight: 900;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
 .light-kpis {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1681,25 +1671,6 @@ select.input {
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.dashboard-insight-link {
-  width: fit-content;
-  margin-top: 0.1rem;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: #334155;
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.7rem;
-  font-weight: 900;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.dashboard-insight-link:hover {
-  color: #000;
 }
 
 @media (max-width: 520px) {

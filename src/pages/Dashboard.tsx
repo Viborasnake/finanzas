@@ -1213,6 +1213,9 @@ export default function Dashboard() {
     const isDeficit = balance < 0;
     const deficitAmount = Math.abs(balance);
     const coveredByOpeningBalance = isDeficit && openingBalance.total >= deficitAmount;
+    const missingBalanceBanks = openingBalance.missingBanks
+      .map(bankId => AVAILABLE_BANKS.find(bank => bank.id === bankId)?.label || bankId)
+      .join(', ');
     const incomePercent = ingresosReales > 0 ? Math.round((maxIncomeAmount / ingresosReales) * 100) : 0;
     const insightCount = 1 + (maxIncomeAmount > 0 ? 1 : 0) + (maxRecurringTotal > 0 ? 1 : 0);
 
@@ -1261,9 +1264,7 @@ export default function Dashboard() {
                   <small>Saldo inicial detectado en {openingBalance.detectedBankCount} de {openingBalance.bankCount} banco{openingBalance.bankCount === 1 ? '' : 's'}.</small>
                 )}
                 {openingBalance.missingBanks.length > 0 && (
-                  <button type="button" className="dashboard-insight-link" onClick={() => navigate('/settings#ajuste')}>
-                    Completar saldo inicial pendiente
-                  </button>
+                  <small>{missingBalanceBanks} no informa saldo en la cartola y queda fuera de la estimación.</small>
                 )}
               </div>
             </div>
