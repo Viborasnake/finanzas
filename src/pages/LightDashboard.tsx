@@ -160,20 +160,14 @@ export default function LightDashboard() {
 
       <section className={`light-balance-card ${summary.balance < 0 ? 'is-negative' : ''}`} aria-labelledby="light-balance-title">
         <div>
-          <span className="light-card-label" id="light-balance-title">{summary.balance < 0
-            ? summary.openingBalance.total >= Math.abs(summary.balance) ? 'Uso de saldo previo estimado' : 'Diferencia por cubrir'
-            : 'Disponible después de gastos'}</span>
-          <strong>{formatMoney(summary.balance < 0 ? Math.abs(summary.balance) : summary.balance)}</strong>
+          <span className="light-card-label" id="light-balance-title">Flujo neto del mes</span>
+          <strong>{formatMoney(summary.balance)}</strong>
           <p>{summary.transactionCount === 0
             ? `No hay movimientos registrados en ${summary.range.label}.`
-            : summary.balance >= 0
-              ? 'Ingresos y transferencias recibidas, menos gastos reales del mes.'
-              : summary.openingBalance.total >= Math.abs(summary.balance)
-                ? `Cubierto por el saldo inicial detectado de ${formatMoney(summary.openingBalance.total)}.`
-                : 'Los saldos iniciales detectados todavía no explican toda la diferencia.'}</p>
+            : `Entradas menos gastos registrados solo en ${summary.range.label}. No incluye movimientos de otros meses.`}</p>
           {summary.openingBalance.detectedBankCount > 0 && (
             <small className="light-opening-balance">
-              Saldo inicial detectado en {summary.openingBalance.detectedBankCount} de {summary.openingBalance.bankCount} banco{summary.openingBalance.bankCount === 1 ? '' : 's'}.
+              El saldo anterior detectado de {formatMoney(summary.openingBalance.total)} se muestra como contexto y no altera este flujo.
             </small>
           )}
           {summary.openingBalance.missingBanks.length > 0 && (

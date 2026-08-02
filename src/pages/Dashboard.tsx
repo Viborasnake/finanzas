@@ -1217,8 +1217,7 @@ export default function Dashboard() {
     const ingresosReales = stats.current.ingresos - stats.current.aportePropio;
     
     const isDeficit = balance < 0;
-    const deficitAmount = Math.abs(balance);
-    const coveredByOpeningBalance = isDeficit && openingBalance.total >= deficitAmount;
+    const flowPrefix = balance > 0 ? '+' : balance < 0 ? '−' : '';
     const missingBalanceBanks = openingBalance.missingBanks
       .map(bankId => AVAILABLE_BANKS.find(bank => bank.id === bankId)?.label || bankId)
       .join(', ');
@@ -1257,17 +1256,11 @@ export default function Dashboard() {
             <div className="dashboard-insight-card" style={{ backgroundColor: isDeficit ? '#fef2f2' : '#f0fdf4' }}>
               <Activity size={19} style={{ color: isDeficit ? 'var(--danger-text)' : 'var(--success-text)' }} />
               <div>
-                <span className="dashboard-insight-label">{isDeficit
-                  ? coveredByOpeningBalance ? 'Uso de saldo previo estimado' : 'Diferencia por cubrir'
-                  : 'Disponible después de gastos'}</span>
-                <strong>${Math.abs(balance).toLocaleString('es-CL')}</strong>
-                {coveredByOpeningBalance ? (
-                  <small>Cubierto por el saldo inicial detectado de ${openingBalance.total.toLocaleString('es-CL')}</small>
-                ) : stats.current.aportePropio > 0 ? (
-                  <small>${stats.current.aportePropio.toLocaleString('es-CL')} de fondos propios ayudaron a cubrir el periodo</small>
-                ) : null}
+                <span className="dashboard-insight-label">Flujo neto del periodo</span>
+                <strong>{flowPrefix}${Math.abs(balance).toLocaleString('es-CL')}</strong>
+                <small>Entradas menos gastos registrados solo en {dateRange.label}. No incluye movimientos de otros periodos.</small>
                 {openingBalance.detectedBankCount > 0 && (
-                  <small>Saldo inicial detectado en {openingBalance.detectedBankCount} de {openingBalance.bankCount} banco{openingBalance.bankCount === 1 ? '' : 's'}.</small>
+                  <small>El saldo anterior detectado de ${openingBalance.total.toLocaleString('es-CL')} se muestra como contexto y no altera este flujo.</small>
                 )}
                 {openingBalance.missingBanks.length > 0 && (
                   <small>{missingBalanceBanks} no informa saldo en la cartola y queda fuera de la estimación.</small>
