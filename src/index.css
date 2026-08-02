@@ -1402,10 +1402,45 @@ select.input {
   .dashboard-detail-table,
   .dashboard-detail-table tbody,
   .dashboard-detail-table tfoot,
-  .dashboard-detail-table tr,
   .dashboard-detail-table td {
     display: block;
     width: 100%;
+  }
+
+  .dashboard-detail-dialog {
+    width: 100% !important;
+    max-width: none !important;
+    max-height: 92dvh !important;
+  }
+
+  .dashboard-detail-dialog .dialog-header {
+    align-items: center;
+    padding: 0.8rem 0.9rem;
+  }
+
+  .dashboard-detail-dialog .dialog-header h2 {
+    font-size: 1.08rem !important;
+    line-height: 1.15;
+  }
+
+  .dashboard-detail-dialog .dialog-close {
+    width: 40px;
+    height: 40px;
+    flex-basis: 40px;
+  }
+
+  .dashboard-detail-body {
+    padding: 0.65rem !important;
+  }
+
+  .dashboard-detail-table {
+    border: 0 !important;
+    background: transparent;
+  }
+
+  .dashboard-detail-table tbody {
+    display: grid;
+    gap: 0.6rem;
   }
 
   .dashboard-detail-table thead {
@@ -1418,43 +1453,117 @@ select.input {
   }
 
   .dashboard-detail-table tbody tr {
-    padding: 0.7rem;
-    border-bottom: 2px solid #000 !important;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "date bank amount"
+      "description description amount"
+      "category category amount";
+    gap: 0.45rem 0.65rem;
+    padding: 0.75rem;
+    border: 2px solid #dbe3ee !important;
+    border-radius: 10px;
+    background: #fff !important;
   }
 
   .dashboard-detail-table tbody td[data-label] {
-    padding: 0.45rem 0 !important;
-    display: grid;
-    grid-template-columns: 88px minmax(0, 1fr);
-    gap: 0.6rem;
-    align-items: start;
+    min-width: 0;
+    padding: 0 !important;
+    display: block;
     text-align: left !important;
     white-space: normal !important;
   }
 
   .dashboard-detail-table tbody td[data-label]::before {
-    content: attr(data-label);
+    display: none;
+  }
+
+  .dashboard-detail-table tbody td[data-label="Fecha"] {
+    grid-area: date;
+    align-self: center;
     color: #64748b;
-    font-size: 0.7rem;
-    font-weight: 900;
-    text-transform: uppercase;
+    font-size: 0.72rem !important;
+    font-weight: 800 !important;
+  }
+
+  .dashboard-detail-table tbody td[data-label="Banco"] {
+    grid-area: bank;
+    align-self: center;
+  }
+
+  .dashboard-detail-table tbody td[data-label="Banco"] > span {
+    max-width: 100%;
+    padding: 0.18rem 0.45rem !important;
+    box-shadow: none !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dashboard-detail-table tbody td[data-label="Descripción"] {
+    grid-area: description;
+    padding-top: 0.2rem !important;
+    font-size: 0.84rem !important;
+    font-weight: 750 !important;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+
+  .dashboard-detail-table tbody td[data-label="Categoría"] {
+    grid-area: category;
+  }
+
+  .dashboard-detail-category > span {
+    max-width: 100%;
+    padding: 0.25rem 0.45rem;
+    font-size: 0.66rem;
+    border-width: 1.5px;
+  }
+
+  .dashboard-detail-table tbody td[data-label="Monto"] {
+    grid-area: amount;
+    align-self: stretch;
+    width: auto;
+    padding-left: 0.7rem !important;
+    border-left: 1px solid #dbe3ee;
   }
 
   .dashboard-detail-table tbody td[data-label="Monto"] > div {
-    justify-content: flex-start !important;
+    height: 100%;
+    flex-direction: column;
+    justify-content: center !important;
+    align-items: flex-end !important;
+    gap: 0.4rem !important;
+    white-space: nowrap;
+    font-size: 0.88rem;
+  }
+
+  .dashboard-detail-table tbody td[data-label="Monto"] .btn-icon {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
   }
 
   .dashboard-detail-edit-row td {
     display: block !important;
   }
 
+  .dashboard-detail-table tbody tr.dashboard-detail-edit-row {
+    display: block;
+  }
+
   .dashboard-detail-table tfoot tr {
     display: grid;
     grid-template-columns: 1fr auto;
+    margin-top: 0.65rem;
+    border: 2px solid #000 !important;
+    border-radius: 8px;
+    overflow: hidden;
   }
 
   .dashboard-detail-table tfoot td {
     width: auto;
+    padding: 0.7rem !important;
   }
 }
 

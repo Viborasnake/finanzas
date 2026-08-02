@@ -2003,6 +2003,7 @@ export default function Dashboard() {
           onClose={() => setDetailsModal(null)}
           labelledBy="dashboard-detail-dialog-title"
           describedBy="dashboard-detail-dialog-period"
+          panelClassName="dashboard-detail-dialog"
           panelStyle={{ width: 'min(94vw, 980px)', maxWidth: '980px', maxHeight: '80vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
         >
             <div className="dialog-header">
@@ -2016,7 +2017,7 @@ export default function Dashboard() {
                 <X size={24} strokeWidth={3} />
               </button>
             </div>
-            <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1, backgroundColor: '#fff', borderRadius: '0 0 9px 9px' }}>
+            <div className="dashboard-detail-body" style={{ padding: '1.5rem', overflowY: 'auto', flex: 1, backgroundColor: '#fff', borderRadius: '0 0 9px 9px' }}>
               {detailsModal.transactions.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '2rem 0' }}>
                   <p style={{ margin: 0, fontWeight: 700, fontSize: '1.1rem', color: '#64748b' }}>No hay movimientos para este concepto.</p>
@@ -2073,7 +2074,7 @@ export default function Dashboard() {
 
                       return (
                         <tr key={t.id} style={{ borderBottom: i === detailsModal.transactions.length - 1 ? 'none' : '1px solid #e2e8f0', backgroundColor: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
-                          <td data-label="Fecha" style={{ padding: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap', fontSize: '0.9rem' }}>{t.date}</td>
+                          <td data-label="Fecha" style={{ padding: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap', fontSize: '0.9rem' }}>{parseLocalDate(t.date).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                           {isConsolidated && (
                             <td data-label="Banco" style={{ padding: '0.75rem', whiteSpace: 'nowrap' }}>
                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.55rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#fff', boxShadow: '1px 1px 0 #000', fontSize: '0.72rem', fontWeight: 900 }}>
