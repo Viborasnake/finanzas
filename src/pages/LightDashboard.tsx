@@ -101,6 +101,12 @@ export default function LightDashboard() {
     () => buildMonthlyLightSummary(transactions, fixedExpenses, selectedMonth.date, scopedBankKey.split('|').filter(Boolean)),
     [fixedExpenses, scopedBankKey, selectedMonth.date, transactions]
   );
+  const hasLoanReview = summary.unallocatedLoanAmount > 0;
+  const hasCardReview = summary.cardCoverage.status === 'absent' || summary.cardCoverage.status === 'partial';
+  const otherSemanticWarnings = summary.semanticWarnings.filter(warning => (
+    !warning.startsWith('Esta cuota mezcla capital') && warning !== summary.cardCoverage.message
+  ));
+  const reviewCount = Number(hasLoanReview) + Number(hasCardReview) + otherSemanticWarnings.length;
   const commitmentTotal = summary.fixedExpenseStatuses.length;
   const commitmentProgress = commitmentTotal > 0
     ? Math.round((summary.paidCommitmentCount / commitmentTotal) * 100)
@@ -222,14 +228,27 @@ export default function LightDashboard() {
         )}
       </p>
 
-      {summary.semanticWarnings.length > 0 && (
+      {reviewCount > 0 && (
         <details className="light-semantic-warnings">
-          <summary><CircleAlert size={18} aria-hidden="true" /> {summary.semanticWarnings.length} {summary.semanticWarnings.length === 1 ? 'cifra necesita' : 'cifras necesitan'} revisión</summary>
-          <div>
-            {summary.semanticWarnings.map(warning => <p key={warning}>{warning}</p>)}
-            {summary.unallocatedLoanAmount > 0 && (
-              <Link to="/transactions">Dividir cuotas entre capital, interés y costos <ArrowRight size={15} /></Link>
+          <summary><CircleAlert size={18} aria-hidden="true" /> {reviewCount} {reviewCount === 1 ? 'comprobación opcional' : 'comprobaciones opcionales'}</summary>
+          <div className="financial-review-list">
+            {hasLoanReview && (
+              <article className="financial-review-item">
+                <strong>Cuota de crédito sin desglose</strong>
+                <p>Se cuentan {formatMoney(summary.unallocatedLoanAmount)} completos como gasto. Divídela solo si conoces capital, interés y comisión; si no, puedes dejarla así.</p>
+                <Link to="/transactions?search=Servicio%20de%20Deuda">Ver la cuota <ArrowRight size={15} /></Link>
+              </article>
             )}
+            {hasCardReview && (
+              <article className="financial-review-item">
+                <strong>Faltan compras de la tarjeta</strong>
+                <p>El pago fue de {formatMoney(summary.cardCoverage.settlementAmount)}, pero hay {formatMoney(summary.cardCoverage.importedPurchaseAmount)} en compras importadas. Carga las compras del ciclo para completar el consumo.</p>
+                <Link to="/import?source=capture">Importar compras de tarjeta <ArrowRight size={15} /></Link>
+              </article>
+            )}
+            {otherSemanticWarnings.map(warning => (
+              <article className="financial-review-item" key={warning}><strong>Movimiento por revisar</strong><p>{warning}</p></article>
+            ))}
           </div>
         </details>
       )}

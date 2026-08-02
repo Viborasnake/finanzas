@@ -1342,6 +1342,12 @@ export default function Dashboard() {
   const renderMainNumbers = () => {
     const c = stats.current;
     const p = stats.prev;
+    const hasLoanReview = c.unallocatedLoanAmount > 0;
+    const hasCardReview = c.cardCoverage.status === 'absent' || c.cardCoverage.status === 'partial';
+    const otherSemanticWarnings = c.semanticWarnings.filter((warning: string) => (
+      !warning.startsWith('Esta cuota mezcla capital') && warning !== c.cardCoverage.message
+    ));
+    const reviewCount = Number(hasLoanReview) + Number(hasCardReview) + otherSemanticWarnings.length;
 
     // Income Logic
     const totalEntradas = c.economicIncome;
@@ -1381,14 +1387,27 @@ export default function Dashboard() {
             <small>Calculado con {c.openingBalance.detectedBankCount} de {c.openingBalance.bankCount} bancos; faltan saldos de {c.openingBalance.missingBanks.join(', ')}.</small>
           )}
         </section>
-        {c.semanticWarnings.length > 0 && (
+        {reviewCount > 0 && (
           <details className="dashboard-semantic-warning">
-            <summary><AlertTriangle size={18} aria-hidden="true" /> {c.semanticWarnings.length} {c.semanticWarnings.length === 1 ? 'cifra necesita' : 'cifras necesitan'} revisión</summary>
-            <div>
-              {c.semanticWarnings.map((warning: string) => <p key={warning}>{warning}</p>)}
-              {c.unallocatedLoanAmount > 0 && (
-                <button type="button" onClick={() => navigate('/transactions')}>Revisar y dividir cuotas</button>
+            <summary><AlertTriangle size={18} aria-hidden="true" /> {reviewCount} {reviewCount === 1 ? 'comprobación opcional' : 'comprobaciones opcionales'}</summary>
+            <div className="financial-review-list">
+              {hasLoanReview && (
+                <article className="financial-review-item">
+                  <strong>Cuota de crédito sin desglose</strong>
+                  <p>Se están contando ${c.unallocatedLoanAmount.toLocaleString('es-CL')} completos como gasto. Si conoces cuánto corresponde a capital, interés y comisión, puedes dividirla. Si no tienes ese detalle, puedes dejarla así.</p>
+                  <button type="button" onClick={() => navigate('/transactions?search=Servicio%20de%20Deuda')}>Ver la cuota</button>
+                </article>
               )}
+              {hasCardReview && (
+                <article className="financial-review-item">
+                  <strong>Faltan compras de la tarjeta</strong>
+                  <p>Registramos un pago de ${c.cardCoverage.settlementAmount.toLocaleString('es-CL')}, pero solo ${c.cardCoverage.importedPurchaseAmount.toLocaleString('es-CL')} en compras. Importa las compras del ciclo para que el consumo no quede subestimado.</p>
+                  <button type="button" onClick={() => navigate('/import?source=capture')}>Importar compras de tarjeta</button>
+                </article>
+              )}
+              {otherSemanticWarnings.map((warning: string) => (
+                <article className="financial-review-item" key={warning}><strong>Movimiento por revisar</strong><p>{warning}</p></article>
+              ))}
             </div>
           </details>
         )}

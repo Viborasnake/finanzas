@@ -713,7 +713,7 @@ select.input {
 }
 
 .light-semantic-warnings summary::-webkit-details-marker { display: none; }
-.light-semantic-warnings > div { padding: 0 0.9rem 0.8rem 2.25rem; }
+.light-semantic-warnings > div { padding: 0 0.9rem 0.9rem; }
 .light-semantic-warnings p {
   display: block;
   margin: 0;
@@ -1930,7 +1930,7 @@ select.input {
 }
 
 .dashboard-semantic-warning summary::-webkit-details-marker { display: none; }
-.dashboard-semantic-warning > div { padding: 0 0.9rem 0.8rem 2.5rem; }
+.dashboard-semantic-warning > div { padding: 0 0.9rem 0.9rem; }
 .dashboard-semantic-warning p { margin: 0.2rem 0 0; font-size: 0.78rem; font-weight: 700; }
 .dashboard-semantic-warning button {
   margin-top: 0.5rem;
@@ -1943,6 +1943,41 @@ select.input {
   font-weight: 900;
   text-decoration: underline;
   cursor: pointer;
+}
+
+.financial-review-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.financial-review-item {
+  padding: 0.75rem 0.85rem;
+  border: 2px solid #000;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.financial-review-item strong {
+  display: block;
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.financial-review-item p {
+  margin: 0.25rem 0 0.55rem;
+  color: #713f12;
+  line-height: 1.4;
+}
+
+.financial-review-item a,
+.financial-review-item button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: #000;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-decoration: underline;
 }
 
 @media (max-width: 720px) {
