@@ -1043,22 +1043,22 @@ export default function Dashboard() {
           </div>
 
           <div className="dashboard-date-control">
-            <div className="dashboard-month-navigation">
+            <div className="dashboard-month-navigation light-month-navigation">
               <button type="button" className="dashboard-month-arrow" onClick={() => shiftDisplayedMonth(1)} disabled={selectedMonthIndex >= monthOptions.length - 1} aria-label="Mes anterior" title="Mes anterior">
                 <ChevronLeft size={19} strokeWidth={3} />
               </button>
-              <label className="dashboard-period-trigger" htmlFor="dashboard-month-selector" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', padding: '0.5rem 1rem', borderRadius: '999px', border: '2px solid #000', backgroundColor: '#fff', boxShadow: '2px 2px 0px #000', fontWeight: 900 }}>
-                <Calendar size={18} aria-hidden="true" />
+              <label className="dashboard-period-trigger light-period-trigger" htmlFor="dashboard-month-selector">
+                <CalendarCheck size={18} aria-hidden="true" />
                 <span className="sr-only">Mes del Dashboard</span>
                 <select
                   id="dashboard-month-selector"
                   value={selectedMonthKey}
-                  onChange={event => setSelectedMonthKey(event.target.value)}
-                  style={{ background: 'transparent', border: 'none', color: 'inherit', font: 'inherit', fontWeight: 900, cursor: 'pointer', outline: 'none', padding: 0, margin: 0, appearance: 'none', minWidth: '120px' }}
+                  onChange={e => setSelectedMonthKey(e.target.value)}
                 >
-                  {monthOptions.map(option => <option key={option.key} value={option.key}>{option.label}</option>)}
+                  {monthOptions.map(option => (
+                    <option key={option.key} value={option.key}>{option.label}</option>
+                  ))}
                 </select>
-                <ChevronDown size={14} style={{ opacity: 0.5 }} />
               </label>
               <button type="button" className="dashboard-month-arrow" onClick={() => shiftDisplayedMonth(-1)} disabled={selectedMonthIndex === 0} aria-label="Mes siguiente" title="Mes siguiente">
                 <ChevronRight size={19} strokeWidth={3} />
