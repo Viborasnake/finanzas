@@ -20,13 +20,12 @@ const formatShortDate = (value: string | null) => value
 export default function LightDashboard() {
   const { user } = useAuth();
   const { fixedExpenses, loadingSettings } = useSettings();
-  const { activeBank, connectedBanks, dashboardScope } = useBanks();
+  const { activeBank, connectedBanks, dashboardScope, selectedMonthKey, setSelectedMonthKey } = useBanks();
   const [transactions, setTransactions] = useState<LightTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showAllPayments, setShowAllPayments] = useState(false);
-  const monthOptions = useMemo(() => getRecentMonthOptions(new Date(), 6), []);
-  const [selectedMonthKey, setSelectedMonthKey] = useState(() => getRecentMonthOptions(new Date(), 6)[0].key);
+  const monthOptions = useMemo(() => getRecentMonthOptions(new Date()), []);
   const selectedMonth = useMemo(
     () => monthOptions.find(option => option.key === selectedMonthKey) || monthOptions[0],
     [monthOptions, selectedMonthKey]
@@ -47,6 +46,29 @@ export default function LightDashboard() {
     ? 'Todos los bancos'
     : AVAILABLE_BANKS.find(bank => bank.id === activeBank)?.label || 'Sin banco';
 
+  const fetchAllForBank = useCallback(async (bankId: string) => {
+    if (!user) return [];
+    let allData: any[] = [];
+    let from = 0;
+    const step = 1000;
+    while (true) {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('id,date,created_at,description,amount,type,bank,tipo_movimiento,categoria_principal,categoria_secundaria,raw_data')
+        .eq('user_id', user.id)
+        .eq('bank', bankId)
+        .order('date', { ascending: false })
+        .range(from, from + step - 1);
+      
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      allData = [...allData, ...data];
+      if (data.length < step) break;
+      from += step;
+    }
+    return allData as LightTransaction[];
+  }, [user]);
+
   const fetchTransactions = useCallback(async () => {
     const bankIds = scopedBankKey.split('|').filter(Boolean);
     if (!user || bankIds.length === 0) {
@@ -58,31 +80,7 @@ export default function LightDashboard() {
     setLoading(true);
     setLoadError(null);
     try {
-      const results = await Promise.all(bankIds.map(async bank => {
-        const [monthResult, priorResult] = await Promise.all([
-          supabase
-            .from('transactions')
-            .select('id,date,created_at,description,amount,type,bank,tipo_movimiento,categoria_principal,categoria_secundaria,raw_data')
-            .eq('user_id', user.id)
-            .eq('bank', bank)
-            .gte('date', monthRange.startInput)
-            .lte('date', monthRange.endInput)
-            .order('date', { ascending: false }),
-          supabase
-            .from('transactions')
-            .select('id,date,created_at,description,amount,type,bank,tipo_movimiento,categoria_principal,categoria_secundaria,raw_data')
-            .eq('user_id', user.id)
-            .eq('bank', bank)
-            .lt('date', monthRange.startInput)
-            .not('raw_data', 'is', null)
-            .order('date', { ascending: false })
-            .order('created_at', { ascending: false })
-            .limit(100)
-        ]);
-        if (monthResult.error) throw monthResult.error;
-        if (priorResult.error) throw priorResult.error;
-        return [...(monthResult.data || []), ...(priorResult.data || [])] as LightTransaction[];
-      }));
+      const results = await Promise.all(bankIds.map(bank => fetchAllForBank(bank)));
       setTransactions(results.flat());
     } catch (error) {
       console.error('Error loading Light view:', error);
@@ -133,7 +131,7 @@ export default function LightDashboard() {
       <header className="light-header">
         <div>
           <span className="light-eyebrow"><Sparkles size={16} aria-hidden="true" /> Vista Light</span>
-          <h1>Tu mes, sin ruido</h1>
+          <h1 className="app-page-title">Tu mes, sin ruido</h1>
           <p>Solo lo esencial de {summary.range.label}: pagos importantes y panorama general de gastos.</p>
         </div>
         <div className="dashboard-month-navigation light-month-navigation">
@@ -199,7 +197,7 @@ export default function LightDashboard() {
         <article className="light-kpi light-kpi-expense">
           <span><TrendingDown size={18} aria-hidden="true" /> Gastos y consumo</span>
           <strong>{formatMoney(summary.economicExpense)}</strong>
-          {summary.loanPrincipalAmount > 0 && <small>{formatMoney(summary.loanPrincipalAmount)} redujeron deudas</small>}
+          {summary.loanPrincipalAmount > 0 && <small>{formatMoney(summary.loanPrincipalAmount)} redujeron capital de créditos (salieron de caja, pero no son consumo nuevo)</small>}
         </article>
         <article className="light-kpi">
           <span><ReceiptText size={18} aria-hidden="true" /> Flujo de caja</span>
@@ -211,7 +209,12 @@ export default function LightDashboard() {
       <p className="light-accounting-note">
         El resultado económico compara ingresos con consumo. El flujo de caja incluye todo el dinero que entró o salió, también transferencias, inversiones y pagos de deuda.
         {summary.debtSettlementAmount > 0 && (
-          <small>Pago de tarjeta registrado este mes: {formatMoney(summary.debtSettlementAmount)}. Ya está incluido en las salidas de caja.</small>
+          <small>
+            Pago de tarjeta de {formatMoney(summary.debtSettlementAmount)}.{' '}
+            {summary.cardCoverage?.status === 'absent'
+              ? 'Considerado como gasto directo al no haber compras importadas.'
+              : 'Ya está incluido en las salidas de caja.'}
+          </small>
         )}
         {(summary.investmentRedemptionAmount > 0 || summary.investmentPlacementAmount > 0) && (
           <small>

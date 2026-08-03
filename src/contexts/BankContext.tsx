@@ -11,6 +11,11 @@ export const BankProvider = ({ children }: { children: React.ReactNode }) => {
   const [mainBank, setMainBankState] = useState<Bank | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [selectedMonthKey, setSelectedMonthKey] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
+
   const loadBanks = useCallback(async () => {
     if (!user) return;
     try {
@@ -42,6 +47,11 @@ export const BankProvider = ({ children }: { children: React.ReactNode }) => {
         setDashboardScopeState(savedDashboardScope);
       } else {
         setDashboardScopeState(banks.length > 1 ? 'all' : (main || banks[0] || 'all'));
+      }
+
+      const savedMonthKey = localStorage.getItem(`finanzas_selected_month_${user.id}`);
+      if (savedMonthKey) {
+        setSelectedMonthKey(savedMonthKey);
       }
     } catch (e) {
       console.error('Error loading banks:', e);
@@ -146,8 +156,20 @@ export const BankProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const handleSetSelectedMonthKey = (key: string) => {
+    setSelectedMonthKey(key);
+    if (user) {
+      localStorage.setItem(`finanzas_selected_month_${user.id}`, key);
+    }
+  };
+
   return (
-    <BankContext.Provider value={{ connectedBanks, activeBank, dashboardScope, mainBank, setActiveBank, setDashboardScope, addBank, removeBank, setMainBankAndSave, saveBankSetup, loading }}>
+    <BankContext.Provider value={{ 
+      connectedBanks, activeBank, dashboardScope, mainBank, 
+      setActiveBank, setDashboardScope, addBank, removeBank, 
+      setMainBankAndSave, saveBankSetup, loading,
+      selectedMonthKey, setSelectedMonthKey: handleSetSelectedMonthKey
+    }}>
       {children}
     </BankContext.Provider>
   );

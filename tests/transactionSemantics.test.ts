@@ -119,7 +119,7 @@ test('detecta cobertura completa cuando compras importadas concilian con el pago
   assert.equal(coverage.difference, 0);
 });
 
-test('advierte cuando se excluye un pago de tarjeta sin compras importadas', () => {
+test('un pago de tarjeta sin compras importadas se cuenta como consumo directo sin advertir', () => {
   const settlement = {
     id: 'payment', date: '2026-07-05', amount: -500_000, type: 'egreso', bank: 'Scotiabank',
     categoria_principal: 'Pago Tarjeta Crédito', categoria_secundaria: 'Tarjeta Credito'
@@ -127,10 +127,10 @@ test('advierte cuando se excluye un pago de tarjeta sin compras importadas', () 
   const analysis = analyzeFinancialPeriod([settlement]);
 
   assert.equal(analysis.totals.cashOutflow, 500_000);
-  assert.equal(analysis.totals.economicExpense, 0);
+  assert.equal(analysis.totals.economicExpense, 500_000);
   assert.equal(analysis.totals.debtSettlementOutflow, 500_000);
   assert.equal(analysis.cardCoverage.status, 'absent');
-  assert.equal(analysis.warnings.length, 1);
+  assert.equal(analysis.warnings.length, 0);
 });
 
 test('los servicios pagados se mantienen como consumo y salida de caja', () => {

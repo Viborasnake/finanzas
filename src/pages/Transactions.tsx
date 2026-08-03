@@ -1122,7 +1122,7 @@ export default function Transactions() {
     return (
       <div className="transactions-loading" role="status" aria-live="polite" aria-busy="true">
         <span className="sr-only">Cargando transacciones</span>
-        <h1>Clasificador de transacciones</h1>
+        <h1 className="app-page-title">Clasificador de transacciones</h1>
         <div className="transactions-loading-grid" aria-hidden="true">
           <div className="skeleton" style={{ height: '100px' }}></div>
           <div className="skeleton" style={{ height: '100px' }}></div>
@@ -1141,7 +1141,7 @@ export default function Transactions() {
       <div className="header-container transactions-header">
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1.5rem', flexWrap: 'wrap' }}>
           <div>
-            <h1 style={{ margin: '0 0 0.75rem 0', fontSize: '2.5rem' }}>Transacciones</h1>
+            <h1 className="app-page-title">Transacciones</h1>
             {uncatCount > 0 && (
               <div style={{ display: 'inline-block', backgroundColor: '#fef08a', color: '#854d0e', padding: '0.5rem 1rem', borderRadius: '2rem', border: '2px solid black', fontWeight: 800, fontSize: '0.875rem' }}>
                 Faltan {uncatCount} transacciones por clasificar

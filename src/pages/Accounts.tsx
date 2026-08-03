@@ -385,7 +385,7 @@ export default function Accounts() {
       
       <div className="header-container" style={{ marginBottom: '2rem' }}>
         <div>
-          <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.45rem' }}>
+          <h1 className="app-page-title" style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
             <CalendarCheck size={34} strokeWidth={2.7} />
             Cuentas
           </h1>

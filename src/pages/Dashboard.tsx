@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState, useMemo, useRef } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState, useMemo } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/authContextValue';
 import { AVAILABLE_BANKS, useBanks, type Bank } from '../contexts/bankContextValue';
@@ -14,13 +14,12 @@ import {
   Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line, CartesianGrid, ComposedChart
 } from 'recharts';
-import NeoDatePicker from '../components/NeoDatePicker';
 import InfoTooltip from '../components/InfoTooltip';
 import LaikaPet from '../components/LaikaPet';
 import { useTaxonomy } from '../hooks/useTaxonomy';
 import { toast } from 'react-hot-toast';
 import { Dialog } from '../components/Dialog';
-import { getShiftedCalendarMonth, getSuggestedDashboardPeriod } from '../utils/dashboardPeriod';
+import { getRecentMonthOptions, getMonthRange } from '../utils/monthlyLightView';
 import { calculatePeriodCashPosition, getOpeningBalanceSnapshot } from '../utils/balanceSnapshot';
 import {
   analyzeFinancialPeriod,
@@ -36,45 +35,6 @@ const CascadingCategorySelector = lazy(() => import('./Transactions').then(modul
 })));
 
 type CategoryLevel = 'principal' | 'secundaria' | 'detalle';
-
-type DateRange = { start: Date; end: Date; label: string };
-
-const today = new Date();
-const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
-const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
-
-const PRESETS: { id: string; label: string; range: () => DateRange }[] = [
-  { id: 'today', label: 'Hoy', range: () => ({ start: startOfToday, end: endOfToday, label: 'Hoy' }) },
-  { id: 'week', label: 'Esta semana', range: () => {
-    const d = new Date(); const day = d.getDay();
-    const mon = new Date(d); mon.setDate(d.getDate() - (day === 0 ? 6 : day - 1)); mon.setHours(0,0,0,0);
-    const sun = new Date(mon); sun.setDate(mon.getDate() + 6); sun.setHours(23,59,59,999);
-    return { start: mon, end: sun, label: 'Esta semana' };
-  }},
-  { id: 'month', label: 'Este mes', range: () => {
-    const d = new Date();
-    return { start: new Date(d.getFullYear(), d.getMonth(), 1), end: new Date(d.getFullYear(), d.getMonth()+1, 0, 23, 59, 59), label: d.toLocaleString('es-CL', { month: 'long', year: 'numeric' }) };
-  }},
-  { id: 'prev_month', label: 'Mes pasado', range: () => {
-    const d = new Date(); d.setMonth(d.getMonth()-1);
-    return { start: new Date(d.getFullYear(), d.getMonth(), 1), end: new Date(d.getFullYear(), d.getMonth()+1, 0, 23, 59, 59), label: d.toLocaleString('es-CL', { month: 'long', year: 'numeric' }) };
-  }},
-  { id: 'year', label: 'Este año', range: () => {
-    const y = new Date().getFullYear();
-    return { start: new Date(y, 0, 1), end: new Date(), label: y.toString() };
-  }},
-  { id: 'prev_year', label: 'Año pasado', range: () => {
-    const y = new Date().getFullYear() - 1;
-    return { start: new Date(y, 0, 1), end: new Date(y, 11, 31, 23, 59, 59), label: y.toString() };
-  }},
-  { id: 'all', label: 'Todo', range: () => ({ start: new Date(2000, 0, 1), end: new Date(2100, 11, 31, 23, 59, 59), label: 'Todo el tiempo' }) },
-];
-
-const MIN_CURRENT_MONTH_TRANSACTIONS = 8;
-
-function toInputDate(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
 
 const parseLocalDate = (dateStr: string) => {
   if (!dateStr) return new Date();
@@ -142,8 +102,8 @@ const isInitialBalanceTransaction = (tx: any) => {
   return normalizeMovementLabel(text).includes('saldo inicial');
 };
 
-const classifyTransactionForReport = (tx: any) => {
-  const treatment = classifyFinancialTreatment(tx);
+const classifyTransactionForReport = (tx: any, hasCardCoverage = false) => {
+  const treatment = classifyFinancialTreatment(tx, hasCardCoverage);
   const kind = treatment.kind || getTransactionKind(tx);
   const amount = treatment.amount || getTransactionAmount(tx);
   const isInvestment = isInvestmentMovement(tx);
@@ -172,7 +132,11 @@ const classifyTransactionForReport = (tx: any) => {
   };
 };
 
-const isFullCalendarMonth = (range: DateRange) => {
+function toInputDate(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+const isFullCalendarMonth = (range: { start: Date; end: Date }) => {
   const lastDay = new Date(range.start.getFullYear(), range.start.getMonth() + 1, 0).getDate();
   return range.start.getDate() === 1
     && range.end.getFullYear() === range.start.getFullYear()
@@ -180,13 +144,13 @@ const isFullCalendarMonth = (range: DateRange) => {
     && range.end.getDate() === lastDay;
 };
 
-const isFullCalendarYear = (range: DateRange) => range.start.getMonth() === 0
+const isFullCalendarYear = (range: { start: Date; end: Date }) => range.start.getMonth() === 0
   && range.start.getDate() === 1
   && range.end.getFullYear() === range.start.getFullYear()
   && range.end.getMonth() === 11
   && range.end.getDate() === 31;
 
-const shiftComparableRange = (range: DateRange, offset: number) => {
+const shiftComparableRange = (range: { start: Date; end: Date }, offset: number) => {
   if (isFullCalendarMonth(range)) {
     const start = new Date(range.start.getFullYear(), range.start.getMonth() + offset, 1);
     return {
@@ -194,12 +158,10 @@ const shiftComparableRange = (range: DateRange, offset: number) => {
       end: new Date(start.getFullYear(), start.getMonth() + 1, 0, 23, 59, 59)
     };
   }
-
   if (isFullCalendarYear(range)) {
     const year = range.start.getFullYear() + offset;
     return { start: new Date(year, 0, 1), end: new Date(year, 11, 31, 23, 59, 59) };
   }
-
   const durationMs = range.end.getTime() - range.start.getTime() + 1;
   const start = new Date(range.start.getTime() + offset * durationMs);
   return { start, end: new Date(start.getTime() + durationMs - 1) };
@@ -212,7 +174,7 @@ export default function Dashboard() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [bankLoadErrors, setBankLoadErrors] = useState<string[]>([]);
   const { user } = useAuth();
-  const { activeBank, connectedBanks, dashboardScope, setActiveBank, setDashboardScope } = useBanks();
+  const { activeBank, connectedBanks, dashboardScope, setActiveBank, setDashboardScope, selectedMonthKey, setSelectedMonthKey } = useBanks();
 
   const { taxonomy } = useTaxonomy();
   const isConsolidated = dashboardScope === 'all' && connectedBanks.length > 1;
@@ -221,71 +183,21 @@ export default function Dashboard() {
   const activeBankInfo = AVAILABLE_BANKS.find(b => b.id === activeBank);
   const dashboardBankLabel = isConsolidated ? 'Todos los bancos' : (activeBankInfo?.label || 'Sin banco');
   const [advancedOpen, setAdvancedOpen] = useState(() => localStorage.getItem('finanzas_advanced_open') === 'true');
-  const [periodWasChosen, setPeriodWasChosen] = useState(() => sessionStorage.getItem('finanzas_dash_period_chosen') === 'true');
 
-  const [activePreset, setActivePreset] = useState<string>(() => {
-    return sessionStorage.getItem('finanzas_dash_preset') || 'month';
-  });
-
-  const [dateRange, setDateRange] = useState<DateRange>(() => {
-    const saved = sessionStorage.getItem('finanzas_dash_range');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        return { start: new Date(parsed.start), end: new Date(parsed.end), label: parsed.label };
-      } catch {}
-    }
-    const presetId = sessionStorage.getItem('finanzas_dash_preset') || 'month';
-    const preset = PRESETS.find(p => p.id === presetId) || PRESETS[2];
-    return preset.range();
-  });
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [customFrom, setCustomFrom] = useState<Date | null>(null);
-  const [customTo, setCustomTo] = useState<Date | null>(null);
-  const pickerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) setPickerOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  const setDashboardRange = (id: string, userChosen = false) => {
-    const preset = PRESETS.find(p => p.id === id);
-    if (!preset) return;
-    const r = preset.range();
-    setDateRange(r);
-    setActivePreset(id);
-    setPickerOpen(false);
-    sessionStorage.setItem('finanzas_dash_preset', id);
-    sessionStorage.setItem('finanzas_dash_range', JSON.stringify(r));
-    if (userChosen) {
-      setPeriodWasChosen(true);
-      sessionStorage.setItem('finanzas_dash_period_chosen', 'true');
-    }
+  const monthOptions = useMemo(() => getRecentMonthOptions(new Date()), []);
+  const selectedMonth = useMemo(
+    () => monthOptions.find(option => option.key === selectedMonthKey) || monthOptions[0],
+    [monthOptions, selectedMonthKey]
+  );
+  const selectedMonthIndex = Math.max(0, monthOptions.findIndex(option => option.key === selectedMonthKey));
+  
+  const shiftDisplayedMonth = (offset: number) => {
+    const nextOption = monthOptions[selectedMonthIndex + offset];
+    if (!nextOption) return;
+    setSelectedMonthKey(nextOption.key);
   };
-
-  const applyPreset = (id: string) => {
-    setDashboardRange(id, true);
-  };
-
-  const applyCustomRange = () => {
-    if (!customFrom || !customTo) return;
-    const start = customFrom;
-    const end = new Date(customTo.getFullYear(), customTo.getMonth(), customTo.getDate(), 23, 59, 59);
-    if (start > end) return;
-    const fmt = (d: Date) => d.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
-    const r = { start, end, label: `${fmt(start)} — ${fmt(end)}` };
-    setDateRange(r);
-    setActivePreset('custom');
-    setPickerOpen(false);
-    sessionStorage.setItem('finanzas_dash_preset', 'custom');
-    sessionStorage.setItem('finanzas_dash_range', JSON.stringify(r));
-    setPeriodWasChosen(true);
-    sessionStorage.setItem('finanzas_dash_period_chosen', 'true');
-  };
+  
+  const dateRange = useMemo(() => getMonthRange(selectedMonth.date), [selectedMonth.date]);
 
   const [categoryLevel, setCategoryLevel] = useState<CategoryLevel>('principal');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -323,40 +235,7 @@ export default function Dashboard() {
     );
   };
 
-  useEffect(() => {
-    setPeriodWasChosen(sessionStorage.getItem('finanzas_dash_period_chosen') === 'true');
-  }, [dashboardScope, activeBank]);
 
-  useEffect(() => {
-    if (loading || transactions.length === 0) return;
-    if (periodWasChosen) return;
-
-    const now = new Date();
-    const currentStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const currentEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-    const previous = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const previousStart = new Date(previous.getFullYear(), previous.getMonth(), 1);
-    const previousEnd = new Date(previous.getFullYear(), previous.getMonth() + 1, 0, 23, 59, 59);
-
-    const realTransactions = transactions.filter(t => !(t.description || '').toLowerCase().includes('saldo inicial'));
-    const currentCount = realTransactions.filter(t => {
-      const d = parseLocalDate(t.date);
-      return d >= currentStart && d <= currentEnd;
-    }).length;
-    const previousCount = realTransactions.filter(t => {
-      const d = parseLocalDate(t.date);
-      return d >= previousStart && d <= previousEnd;
-    }).length;
-
-    const suggestedPreset = getSuggestedDashboardPeriod({
-      periodWasChosen,
-      activePreset,
-      currentCount,
-      previousCount,
-      minimumCurrentCount: MIN_CURRENT_MONTH_TRANSACTIONS
-    });
-    if (suggestedPreset) setDashboardRange(suggestedPreset);
-  }, [loading, transactions, periodWasChosen, activePreset]);
 
   const fetchAllForBank = useCallback(async (bankId: string) => {
     if (!user) return [];
@@ -457,28 +336,35 @@ export default function Dashboard() {
     if (type === 'ingreso') {
       filtered = txs.filter(t => {
         const report = classifyTransactionForReport(t);
-        const catP = t.categoria_principal?.toLowerCase() || '';
+        const catP = t.categoria_principal || 'Sin Clasificar';
         
         if (conceptName === 'Transferencias propias recibidas') return report.isInternalIncome;
+        if (report.isInternalIncome) return false;
         if (!report.isRealIncome) return false;
         
-        if (conceptName === 'Sueldo') return catP.includes('sueldo');
-        if (conceptName === 'Honorarios') return catP.includes('honorarios') || catP.includes('profesionales');
-        if (conceptName === 'Otros Ingresos') return !catP.includes('sueldo') && !catP.includes('honorarios') && !catP.includes('profesionales');
-        return false;
+        if (conceptName === 'Otros Ingresos') {
+          const sortedCats = [...(stats.current.topCatsIncomePrincipal || [])].filter(x => x.name !== 'Sin Clasificar');
+          const topNames = sortedCats.slice(0, 8).map(c => c.name);
+          return !topNames.includes(catP);
+        }
+        
+        return catP === conceptName;
       });
     } else {
       filtered = txs.filter(t => {
         const report = classifyTransactionForReport(t);
         const catP = t.categoria_principal || 'Sin Clasificar';
         
-        if (conceptName === 'Egreso Propio') return report.isInternalExpense;
+        if (conceptName === 'Transferencias a cuentas propias') return report.isInternalExpense;
+        if (conceptName === 'Inversiones (Aportes)') return report.isInvestmentExpense;
+        if (conceptName === 'Abono a Créditos') return report.isLoanPrincipalExpense;
+        if (conceptName === 'Pago Tarjeta (Deuda Anterior)') return report.isDebtSettlementExpense && !report.isRealExpense;
         if (!report.isRealExpense) return false;
         
         if (conceptName === 'Otros Egresos') {
           const sortedCats = [...stats.current.topCatsPrincipal].filter(x => x.name !== 'Sin Clasificar');
-          const top3Names = sortedCats.slice(0, 3).map(c => c.name);
-          return !top3Names.includes(catP);
+          const topNames = sortedCats.slice(0, 8).map(c => c.name);
+          return !topNames.includes(catP);
         }
         
         return catP === conceptName;
@@ -496,13 +382,12 @@ export default function Dashboard() {
 
 
   // --- Computations ---
-  // Current range comes from dateRange state.
-  // Previous range = same duration, shifted backwards.
   const { currentRange, prevRange } = useMemo(() => {
-    const previous = shiftComparableRange(dateRange, -1);
+    const prevStart = new Date(dateRange.start.getFullYear(), dateRange.start.getMonth() - 1, 1);
+    const prevEnd = new Date(prevStart.getFullYear(), prevStart.getMonth() + 1, 0, 23, 59, 59);
     return {
       currentRange: { start: dateRange.start, end: dateRange.end },
-      prevRange: previous
+      prevRange: { start: prevStart, end: prevEnd }
     };
   }, [dateRange]);
 
@@ -519,21 +404,17 @@ export default function Dashboard() {
   }, [filteredTransactions]);
 
   const availablePeriods = useMemo(() => {
-    const months = new Map<string, { start: Date; end: Date; label: string; count: number }>();
+    const months = new Map<string, { key: string; label: string; start: Date }>();
     transactions.forEach(t => {
-      if (isInitialBalanceTransaction(t)) return;
       const d = parseLocalDate(t.date);
-      if (Number.isNaN(d.getTime())) return;
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
       if (!months.has(key)) {
         months.set(key, {
-          start: new Date(d.getFullYear(), d.getMonth(), 1),
-          end: new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59),
+          key,
           label: d.toLocaleString('es-CL', { month: 'long', year: 'numeric' }),
-          count: 0
+          start: new Date(d.getFullYear(), d.getMonth(), 1)
         });
       }
-      months.get(key)!.count += 1;
     });
     return Array.from(months.values()).sort((a, b) => b.start.getTime() - a.start.getTime());
   }, [transactions]);
@@ -546,19 +427,6 @@ export default function Dashboard() {
     ))[0];
   }, [availablePeriods, dateRange.start]);
 
-  const applyRangeObject = (range: DateRange) => {
-    setDateRange(range);
-    setActivePreset('custom');
-    setPickerOpen(false);
-    setPeriodWasChosen(true);
-    sessionStorage.setItem('finanzas_dash_preset', 'custom');
-    sessionStorage.setItem('finanzas_dash_range', JSON.stringify(range));
-    sessionStorage.setItem('finanzas_dash_period_chosen', 'true');
-  };
-
-  const shiftDisplayedMonth = (offset: number) => {
-    applyRangeObject(getShiftedCalendarMonth(dateRange.start, offset));
-  };
 
   const stats = useMemo(() => {
     const calcForRange = (start: Date, end: Date) => {
@@ -576,6 +444,7 @@ export default function Dashboard() {
       let pagoDeudaAnterior = 0;
       
       const catsPrincipal: Record<string, number> = {};
+      const catsIncomePrincipal: Record<string, number> = {};
       const catsSecundaria: Record<string, number> = {};
       let unclassifiedCount = 0;
 
@@ -594,15 +463,17 @@ export default function Dashboard() {
       const openingBalance = getOpeningBalanceSnapshot(transactions, start, periodBankIds);
       const cashPosition = calculatePeriodCashPosition(openingBalance, periodAnalysis.totals.cashInflow, periodAnalysis.totals.cashOutflow);
 
+      const hasCardCoverage = periodAnalysis.cardCoverage.status !== 'absent' && periodAnalysis.cardCoverage.status !== 'not_applicable';
+
       txs.forEach(t => {
         const isUnclassified = !t.categoria_principal || t.categoria_principal === 'Sin Clasificar';
-        const report = classifyTransactionForReport(t);
+        const report = classifyTransactionForReport(t, hasCardCoverage);
 
         if (report.isInvestmentIncome) {
           rescateInversion += report.amount;
         } else if (report.isInvestmentExpense) {
           aporteInversion += report.amount;
-        } else if (report.isDebtSettlementExpense) {
+        } else if (report.isDebtSettlementExpense && !report.isRealExpense) {
           pagoDeudaAnterior += report.amount;
         } else if (report.isInternalIncome) {
           aportePropio += report.amount;
@@ -610,10 +481,13 @@ export default function Dashboard() {
         } else if (report.isRealIncome) {
             ingresos += report.amount;
             
-            const catP = t.categoria_principal?.toLowerCase() || '';
-            if (catP.includes('sueldo')) {
+            const catP = t.categoria_principal || 'Sin Clasificar';
+            catsIncomePrincipal[catP] = (catsIncomePrincipal[catP] || 0) + report.amount;
+
+            const catPLower = catP.toLowerCase();
+            if (catPLower.includes('sueldo')) {
               sueldo += report.amount;
-            } else if (catP.includes('honorarios') || catP.includes('profesionales')) {
+            } else if (catPLower.includes('honorarios') || catPLower.includes('profesionales')) {
               honorarios += report.amount;
             } else {
               ingresosOtros += report.amount;
@@ -651,6 +525,10 @@ export default function Dashboard() {
       });
 
       const topCatsPrincipal = Object.entries(catsPrincipal)
+        .map(([name, amount]) => ({ name, amount }))
+        .sort((a, b) => b.amount - a.amount);
+
+      const topCatsIncomePrincipal = Object.entries(catsIncomePrincipal)
         .map(([name, amount]) => ({ name, amount }))
         .sort((a, b) => b.amount - a.amount);
 
@@ -721,6 +599,7 @@ export default function Dashboard() {
         cashPosition,
         estimatedClosingBalance: cashPosition.closingBalance,
         topCatsPrincipal,
+        topCatsIncomePrincipal,
         topCatsSecundaria,
         topCatsDetalle,
         unclassifiedCount,
@@ -1089,7 +968,7 @@ export default function Dashboard() {
             <button
               type="button"
               className="btn btn-primary"
-              onClick={() => applyRangeObject({ start: nextPeriod.start, end: nextPeriod.end, label: nextPeriod.label })}
+              onClick={() => setSelectedMonthKey(nextPeriod.key)}
               style={{ justifyContent: 'center' }}
             >
               Ver {nextPeriod.label}
@@ -1145,19 +1024,11 @@ export default function Dashboard() {
 
   // BLOCK 1: DATE RANGE PICKER
   const renderHeader = () => {
-    const fmt = (d: Date) => d.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
-    const displayLabel = dateRange.label.length > 30
-      ? `${fmt(dateRange.start)} — ${fmt(dateRange.end)}`
-      : dateRange.label;
-    const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-    const selectedMonthStart = new Date(dateRange.start.getFullYear(), dateRange.start.getMonth(), 1);
-    const canAdvanceMonth = selectedMonthStart < currentMonthStart;
-
     return (
       <header className="dashboard-header">
         <div className="dashboard-header-main">
           <div className="dashboard-title-context">
-            <h1>Resumen financiero</h1>
+            <h1 className="app-page-title">Resumen financiero</h1>
             <div className="dashboard-context-line" aria-label={`Vista de ${dashboardBankLabel}`}>
               <span
                 className="dashboard-context-dot"
@@ -1171,81 +1042,28 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Date Range Picker Trigger */}
-          <div ref={pickerRef} className="dashboard-date-control">
+          <div className="dashboard-date-control">
             <div className="dashboard-month-navigation">
-              <button type="button" className="dashboard-month-arrow" onClick={() => shiftDisplayedMonth(-1)} aria-label="Mes anterior" title="Mes anterior">
+              <button type="button" className="dashboard-month-arrow" onClick={() => shiftDisplayedMonth(1)} disabled={selectedMonthIndex >= monthOptions.length - 1} aria-label="Mes anterior" title="Mes anterior">
                 <ChevronLeft size={19} strokeWidth={3} />
               </button>
-              <button
-                type="button"
-                className="dashboard-period-trigger"
-                onClick={() => setPickerOpen(o => !o)}
-                aria-expanded={pickerOpen}
-                aria-haspopup="dialog"
-                aria-controls="dashboard-date-popover"
-              >
-                <Calendar size={20} strokeWidth={2.5} />
-                <span>{displayLabel}</span>
-              </button>
-              <button type="button" className="dashboard-month-arrow" onClick={() => shiftDisplayedMonth(1)} disabled={!canAdvanceMonth} aria-label="Mes siguiente" title="Mes siguiente">
+              <label className="dashboard-period-trigger" htmlFor="dashboard-month-selector" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', padding: '0.5rem 1rem', borderRadius: '999px', border: '2px solid #000', backgroundColor: '#fff', boxShadow: '2px 2px 0px #000', fontWeight: 900 }}>
+                <Calendar size={18} aria-hidden="true" />
+                <span className="sr-only">Mes del Dashboard</span>
+                <select
+                  id="dashboard-month-selector"
+                  value={selectedMonthKey}
+                  onChange={event => setSelectedMonthKey(event.target.value)}
+                  style={{ background: 'transparent', border: 'none', color: 'inherit', font: 'inherit', fontWeight: 900, cursor: 'pointer', outline: 'none', padding: 0, margin: 0, appearance: 'none', minWidth: '120px' }}
+                >
+                  {monthOptions.map(option => <option key={option.key} value={option.key}>{option.label}</option>)}
+                </select>
+                <ChevronDown size={14} style={{ opacity: 0.5 }} />
+              </label>
+              <button type="button" className="dashboard-month-arrow" onClick={() => shiftDisplayedMonth(-1)} disabled={selectedMonthIndex === 0} aria-label="Mes siguiente" title="Mes siguiente">
                 <ChevronRight size={19} strokeWidth={3} />
               </button>
             </div>
-
-            {/* Dropdown */}
-            {pickerOpen && (
-              <div id="dashboard-date-popover" role="dialog" aria-label="Seleccionar periodo" className="date-popover" style={{ position: 'absolute', top: 'calc(100% + 8px)', backgroundColor: '#fff', border: '2px solid #000', borderRadius: '16px', boxShadow: '4px 4px 0px #000', zIndex: 200, minWidth: '300px' }}>
-                {/* Preset pills */}
-                <div style={{ padding: '1rem', borderBottom: '2px solid #e2e8f0' }}>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#94a3b8', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>Accesos rápidos</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                    {PRESETS.map(p => (
-                      <button
-                        type="button"
-                        key={p.id}
-                        onClick={() => applyPreset(p.id)}
-                        aria-pressed={activePreset === p.id}
-                        style={{ padding: '0.35rem 0.85rem', border: '2px solid #000', borderRadius: '2rem', fontWeight: 800, fontSize: '0.78rem', cursor: 'pointer', backgroundColor: activePreset === p.id ? '#fde047' : '#f1f5f9', transition: 'all 0.1s' }}
-                      >
-                        {p.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Custom range */}
-                <div style={{ padding: '1rem' }}>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#94a3b8', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>Rango personalizado</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div className="dashboard-custom-date-fields">
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '0.65rem', fontWeight: 800, marginBottom: '0.5rem', color: '#64748b' }}>DESDE</div>
-                        <NeoDatePicker 
-                          value={customFrom || dateRange.start}
-                          onChange={(d) => setCustomFrom(d)}
-                        />
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '0.65rem', fontWeight: 800, marginBottom: '0.5rem', color: '#64748b' }}>HASTA</div>
-                        <NeoDatePicker 
-                          value={customTo || dateRange.end}
-                          onChange={(d) => setCustomTo(d)}
-                        />
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={applyCustomRange}
-                      disabled={!customFrom || !customTo}
-                      style={{ width: '100%', padding: '0.75rem', backgroundColor: customFrom && customTo ? '#000' : '#e2e8f0', color: customFrom && customTo ? '#fff' : '#94a3b8', border: '2px solid #000', borderRadius: '8px', fontWeight: 800, fontSize: '0.9rem', cursor: customFrom && customTo ? 'pointer' : 'not-allowed', transition: 'all 0.1s' }}
-                    >
-                      Aplicar
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </header>
@@ -1259,24 +1077,33 @@ export default function Dashboard() {
 
     // Income Logic
     const totalEntradas = c.economicIncome;
-    const incomeData: { name: string; value: number; isGray?: boolean }[] = [
-      { name: 'Sueldo', value: c.sueldo },
-      { name: 'Honorarios', value: c.honorarios },
-      { name: 'Otros Ingresos', value: c.ingresosOtros },
-      { name: 'Transferencias propias recibidas', value: c.aportePropio }
+    const sortedIncome = [...(c.topCatsIncomePrincipal || [])].filter(x => x.name !== 'Sin Clasificar');
+    const topIncomeItems = sortedIncome.slice(0, 8);
+    const othersIncome = sortedIncome.slice(8).reduce((acc, curr) => acc + curr.amount, 0);
+    const sinClasificarIncomeAmount = c.topCatsIncomePrincipal?.find(x => x.name === 'Sin Clasificar')?.amount || 0;
+    const totalOtrosIncome = othersIncome + sinClasificarIncomeAmount;
+
+    const incomeData: { name: string; value: number; isGray?: boolean; subtext?: string }[] = [
+      ...topIncomeItems.map(t => ({ name: t.name, value: t.amount })),
+      ...(totalOtrosIncome > 0 ? [{ name: 'Otros Ingresos', value: totalOtrosIncome }] : []),
+      ...(c.aportePropio > 0 ? [{ name: 'Transferencias propias recibidas', value: c.aportePropio, isGray: true, subtext: 'No suma como ingreso' }] : [])
     ];
 
     // Expense Logic
     const sorted = [...c.topCatsPrincipal].filter(x => x.name !== 'Sin Clasificar');
-    const top3 = sorted.slice(0, 3);
-    const others = sorted.slice(3).reduce((acc, curr) => acc + curr.amount, 0);
+    const topItems = sorted.slice(0, 8);
+    const others = sorted.slice(8).reduce((acc, curr) => acc + curr.amount, 0);
     const sinClasificarAmount = c.topCatsPrincipal.find(x => x.name === 'Sin Clasificar')?.amount || 0;
     const totalOtros = others + sinClasificarAmount;
     const totalSalidas = c.economicExpense;
     
-    const expenseData: { name: string; value: number; isGray?: boolean }[] = [
-      ...top3.map(cat => ({ name: cat.name, value: cat.amount })),
-      ...(totalOtros > 0 ? [{ name: 'Otros Egresos', value: totalOtros }] : [])
+    const expenseData: { name: string; value: number; isGray?: boolean; subtext?: string }[] = [
+      ...topItems.map(t => ({ name: t.name, value: t.amount })),
+      ...(totalOtros > 0 ? [{ name: 'Otros Egresos', value: totalOtros }] : []),
+      ...(c.pagoDeudaAnterior > 0 ? [{ name: 'Pago Tarjeta (Deuda Anterior)', value: c.pagoDeudaAnterior, isGray: true, subtext: 'No suma como nuevo gasto' }] : []),
+      ...(c.loanPrincipalAmount > 0 ? [{ name: 'Abono a Créditos', value: c.loanPrincipalAmount, isGray: true, subtext: 'No suma como nuevo gasto' }] : []),
+      ...(c.movimientoInternoEgreso > 0 ? [{ name: 'Transferencias a cuentas propias', value: c.movimientoInternoEgreso, isGray: true, subtext: 'No suma como gasto' }] : []),
+      ...(c.aporteInversion > 0 ? [{ name: 'Inversiones (Aportes)', value: c.aporteInversion, isGray: true, subtext: 'No suma como gasto' }] : [])
     ];
 
     return (
@@ -1287,7 +1114,7 @@ export default function Dashboard() {
             <strong>{c.estimatedClosingBalance !== null ? `${c.estimatedClosingBalance < 0 ? '−' : ''}$${Math.abs(c.estimatedClosingBalance).toLocaleString('es-CL')}` : 'Pendiente'}</strong>
             <small>{c.estimatedClosingBalance === null
               ? 'Falta un saldo bancario anterior para calcularlo.'
-              : `Disponible después de todos los movimientos de ${dateRange.label}.`}</small>
+              : `Lo que te debería quedar en la cuenta al terminar ${dateRange.label}.`}</small>
           </div>
           <div className="dashboard-cash-summary-breakdown">
             <div><span>Saldo de apertura</span><strong>{c.openingBalance.detectedBankCount > 0 ? `$${c.openingBalance.total.toLocaleString('es-CL')}` : 'No disponible'}</strong></div>
@@ -1299,7 +1126,7 @@ export default function Dashboard() {
             <small className="dashboard-cash-summary-note">Estimación parcial: incluye {c.openingBalance.detectedBankCount} de {c.openingBalance.bankCount} bancos. Falta {c.openingBalance.missingBanks.join(', ')}.</small>
           )}
         </section>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 350px), 1fr))', gap: '2rem', marginBottom: '3rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 350px), 1fr))', gap: '2rem', marginBottom: '3rem', alignItems: 'start' }}>
         {/* Ingresos Card */}
         <div style={{ ...neoCard, position: 'relative', overflow: 'hidden', paddingBottom: '7rem', marginBottom: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', position: 'relative', zIndex: 10 }}>
@@ -1340,7 +1167,10 @@ export default function Dashboard() {
                       onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f1f5f9')}
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = row.isGray ? '#f8fafc' : '#fff')}
                     >
-                      <td style={{ padding: '0.75rem', fontWeight: 700, borderRight: '2px solid #000', color: row.isGray ? '#64748b' : '#000' }}>{row.name}</td>
+                      <td style={{ padding: '0.75rem', fontWeight: 700, borderRight: '2px solid #000', color: row.isGray ? '#64748b' : '#000' }}>
+                        <div>{row.name}</div>
+                        {row.subtext && <div style={{ fontSize: '0.75rem', fontWeight: 600, marginTop: '0.15rem', opacity: 0.9 }}>{row.subtext}</div>}
+                      </td>
                       <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: row.isGray ? '#64748b' : '#000' }}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
                           ${row.value.toLocaleString('es-CL')}
@@ -1386,29 +1216,9 @@ export default function Dashboard() {
             </div>
             {renderTrendBadge(totalSalidas, p.economicExpense, true)}
           </div>
-          <p className="dashboard-kpi-amount" style={{ margin: c.movimientoInternoEgreso > 0 || c.aporteInversion > 0 || c.pagoDeudaAnterior > 0 ? '0 0 0.25rem 0' : '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '0' }}>
+          <p className="dashboard-kpi-amount" style={{ margin: '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '0' }}>
             ${totalSalidas.toLocaleString('es-CL')}
           </p>
-          {c.movimientoInternoEgreso > 0 && (
-            <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 700, marginBottom: '1.5rem', position: 'relative', zIndex: 10 }}>
-              *Adicionalmente enviaste ${c.movimientoInternoEgreso.toLocaleString('es-CL')} a movimientos internos o inversiones
-            </div>
-          )}
-          {c.aporteInversion > 0 && (
-            <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 700, marginBottom: '1.5rem', position: 'relative', zIndex: 10 }}>
-              *Además invertiste ${c.aporteInversion.toLocaleString('es-CL')}; no se contabiliza como gasto
-            </div>
-          )}
-          {c.pagoDeudaAnterior > 0 && (
-            <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 700, marginBottom: '1.5rem', position: 'relative', zIndex: 10 }}>
-              *Pago de tarjeta registrado en este periodo: ${c.pagoDeudaAnterior.toLocaleString('es-CL')}. Salió de caja y no se repite como consumo
-            </div>
-          )}
-          {c.loanPrincipalAmount > 0 && (
-            <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 700, marginBottom: '1rem', position: 'relative', zIndex: 10 }}>
-              *${c.loanPrincipalAmount.toLocaleString('es-CL')} redujeron capital de créditos; salieron de caja, pero no son consumo nuevo
-            </div>
-          )}
           
           {totalSalidas > 0 && (
             <div style={{ position: 'relative', zIndex: 10, flex: 1, paddingBottom: '1rem' }}>
@@ -1428,7 +1238,10 @@ export default function Dashboard() {
                       onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f1f5f9')}
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = row.isGray ? '#f8fafc' : '#fff')}
                     >
-                      <td style={{ padding: '0.75rem', fontWeight: 700, borderRight: '2px solid #000', color: row.isGray ? '#64748b' : '#000' }}>{row.name}</td>
+                      <td style={{ padding: '0.75rem', fontWeight: 700, borderRight: '2px solid #000', color: row.isGray ? '#64748b' : '#000' }}>
+                        <div>{row.name}</div>
+                        {row.subtext && <div style={{ fontSize: '0.75rem', fontWeight: 600, marginTop: '0.15rem', opacity: 0.9 }}>{row.subtext}</div>}
+                      </td>
                       <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: row.isGray ? '#64748b' : '#000' }}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
                           ${row.value.toLocaleString('es-CL')}

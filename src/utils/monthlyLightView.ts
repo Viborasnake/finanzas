@@ -74,15 +74,15 @@ export const getMonthRange = (month = new Date()) => ({
   label: month.toLocaleString('es-CL', { month: 'long', year: 'numeric' })
 });
 
-export const getRecentMonthOptions = (now = new Date(), previousMonths = 6) => (
-  Array.from({ length: previousMonths + 1 }, (_, index) => {
-    const date = new Date(now.getFullYear(), now.getMonth() - index, 1, 12, 0, 0);
+export const getRecentMonthOptions = (now = new Date()) => (
+  Array.from({ length: now.getMonth() + 1 }, (_, index) => {
+    const date = new Date(now.getFullYear(), index, 1, 12, 0, 0);
     return {
       key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
       label: date.toLocaleString('es-CL', { month: 'long', year: 'numeric' }),
       date
     };
-  })
+  }).reverse()
 );
 
 export const buildMonthlyLightSummary = (
@@ -99,7 +99,8 @@ export const buildMonthlyLightSummary = (
   });
   const reportable = monthTransactions.filter(transaction => !isInitialBalance(transaction));
   const periodAnalysis = analyzeFinancialPeriod(reportable, transactions);
-  const expenses = reportable.filter(transaction => classifyFinancialTreatment(transaction).economicExpense > 0);
+  const hasCardCoverage = periodAnalysis.cardCoverage.status !== 'absent' && periodAnalysis.cardCoverage.status !== 'not_applicable';
+  const expenses = reportable.filter(transaction => classifyFinancialTreatment(transaction, hasCardCoverage).economicExpense > 0);
   const incomes = reportable.filter(transaction => getKind(transaction) === 'ingreso' && !isInvestmentMovement(transaction));
   const receivedTransfers = reportable.filter(transaction => getKind(transaction) === 'ingreso' && isOwnTransferMovement(transaction));
   const sentTransfers = reportable.filter(transaction => getKind(transaction) === 'egreso' && isOwnTransferMovement(transaction));

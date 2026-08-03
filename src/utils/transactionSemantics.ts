@@ -200,7 +200,10 @@ export const isImportedCardPurchase = (transaction: SemanticTransaction) => {
   return normalizeSemanticText(transaction.source_kind || rawKind) === 'card_activity_screenshot';
 };
 
-export const classifyFinancialTreatment = (transaction: SemanticTransaction): FinancialTreatment => {
+export const classifyFinancialTreatment = (
+  transaction: SemanticTransaction,
+  hasCardCoverage = false
+): FinancialTreatment => {
   const kind = getSemanticTransactionKind(transaction);
   const amount = Math.abs(Number(transaction.amount || 0));
   const base = {
@@ -233,7 +236,7 @@ export const classifyFinancialTreatment = (transaction: SemanticTransaction): Fi
   }
 
   if (kind === 'egreso' && isCreditCardSettlement(transaction)) {
-    return { ...base, eventType: 'credit_card_settlement', liabilityImpact: -amount, confidence: 'unknown' };
+    return { ...base, eventType: 'credit_card_settlement', liabilityImpact: -amount, economicExpense: hasCardCoverage ? 0 : amount, confidence: 'unknown' };
   }
 
   if (kind === 'egreso' && isLoanPrincipalRepayment(transaction)) {
@@ -311,7 +314,7 @@ export const assessCardCoverage = (
   if (importedPurchaseAmount === 0) {
     return {
       status: 'absent', settlementAmount, importedPurchaseAmount, difference,
-      message: `Se excluyeron ${formatSemanticMoney(settlementAmount)} en pagos de tarjeta, pero no encontramos compras importadas para conciliarlos. El consumo puede estar subestimado.`
+      message: null
     };
   }
 
@@ -353,8 +356,11 @@ export const analyzeFinancialPeriod = (
   };
   const warnings = new Set<string>();
 
+  const cardCoverage = assessCardCoverage(periodTransactions, contextTransactions);
+  const hasCardCoverage = cardCoverage.status !== 'absent' && cardCoverage.status !== 'not_applicable';
+
   periodTransactions.forEach(transaction => {
-    const treatment = classifyFinancialTreatment(transaction);
+    const treatment = classifyFinancialTreatment(transaction, hasCardCoverage);
     treatments.set(transaction.id || transaction, treatment);
     totals.cashInflow += treatment.cashInflow;
     totals.cashOutflow += treatment.cashOutflow;
@@ -376,8 +382,7 @@ export const analyzeFinancialPeriod = (
 
   totals.netCashFlow = totals.cashInflow - totals.cashOutflow;
   totals.economicResult = totals.economicIncome - totals.economicExpense;
-  const cardCoverage = assessCardCoverage(periodTransactions, contextTransactions);
-  if (cardCoverage.status === 'absent' || cardCoverage.status === 'partial') warnings.add(cardCoverage.message!);
+  if (cardCoverage.status === 'partial') warnings.add(cardCoverage.message!);
 
   return { treatments, totals, cardCoverage, warnings: Array.from(warnings) };
 };

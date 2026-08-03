@@ -503,6 +503,7 @@ select.input {
   flex-wrap: wrap;
 }
 
+.app-page-title,
 .light-header h1 {
   margin: 0.3rem 0 0.35rem;
   font-size: clamp(2rem, 5vw, 3.35rem);
@@ -1678,9 +1679,10 @@ select.input {
 }
 
 .dashboard-title-context h1 {
-  margin: 0;
-  font-size: 2rem;
-  line-height: 1.1;
+  margin: 0.3rem 0 0.35rem;
+  font-size: clamp(2rem, 5vw, 3.35rem);
+  line-height: 0.98;
+  letter-spacing: -0.055em;
 }
 
 .dashboard-context-line {
@@ -2478,7 +2480,7 @@ select.input {
   }
 
   .dashboard-title-context h1 {
-    font-size: 2.5rem;
+    /* Styles handled by dynamic clamp now */
   }
 
   .dashboard-date-control {

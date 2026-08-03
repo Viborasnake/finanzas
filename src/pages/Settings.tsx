@@ -543,7 +543,7 @@ export default function Settings() {
       <div className="settings-hero">
         <div>
           <span className="settings-kicker">Centro de control</span>
-          <h1>Configuración</h1>
+          <h1 className="app-page-title">Configuración</h1>
           <p>Define cómo MisFinanzas reconoce bancos, personas, reglas y categorías para clasificar mejor tus movimientos.</p>
         </div>
       </div>

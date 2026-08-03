@@ -76,16 +76,16 @@ test('la vista Light suma transferencias propias recibidas y excluye las enviada
   assert.equal(summary.cashOutflow, 11_500_000);
   assert.equal(summary.netCashFlow, 900_000);
   assert.equal(summary.economicIncome, 2_300_000);
-  assert.equal(summary.economicExpense, 800_000);
+  assert.equal(summary.economicExpense, 1_200_000);
   assert.equal(summary.cardCoverage.status, 'absent');
-  assert.equal(summary.semanticWarnings.length, 2);
+  assert.equal(summary.semanticWarnings.length, 1);
   assert.equal(summary.totalAvailable, 2_300_000);
-  assert.equal(summary.totalExpenses, 800_000);
-  assert.equal(summary.balance, 1_500_000);
+  assert.equal(summary.totalExpenses, 1_200_000);
+  assert.equal(summary.balance, 1_100_000);
   assert.equal(summary.openingBalance.total, 450_000);
   assert.equal(summary.openingBalance.complete, true);
   assert.equal(summary.estimatedClosingBalance, 1_350_000);
-  assert.deepEqual(summary.categories.map(category => category.name), ['Vivienda', 'Alimentación']);
+  assert.deepEqual(summary.categories.map(category => category.name), ['Vivienda', 'Pago Tarjeta Crédito', 'Alimentación']);
 });
 
 test('la vista Light distingue pagos importantes registrados y pendientes', () => {

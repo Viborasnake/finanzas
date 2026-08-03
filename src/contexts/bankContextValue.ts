@@ -23,6 +23,8 @@ export interface BankContextType {
   setMainBankAndSave: (bank: Bank) => Promise<void>;
   saveBankSetup: (banks: Bank[], main: Bank) => Promise<void>;
   loading: boolean;
+  selectedMonthKey: string;
+  setSelectedMonthKey: (key: string) => void;
 }
 
 export const BankContext = createContext<BankContextType>({
@@ -37,6 +39,8 @@ export const BankContext = createContext<BankContextType>({
   setMainBankAndSave: async () => {},
   saveBankSetup: async () => {},
   loading: true,
+  selectedMonthKey: '',
+  setSelectedMonthKey: () => {},
 });
 
 export const useBanks = () => useContext(BankContext);
