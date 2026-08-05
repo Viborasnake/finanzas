@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Calendar, CalendarCheck, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleAlert, Link2, Pencil, Plus, Search, X } from 'lucide-react';
+import { Calendar, CalendarCheck, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleAlert, Link2, Pencil, Plus, Settings, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/authContextValue';
@@ -686,9 +686,6 @@ export default function Accounts() {
                     </div>
                   </form>
                 )}
-              </section>
-            )}
-
             {selectedStatus.configured && (
               <section className="account-history-section" aria-labelledby="account-history-title">
                 <button type="button" className="account-history-toggle" onClick={() => setShowHistory(value => !value)} aria-expanded={showHistory}>
