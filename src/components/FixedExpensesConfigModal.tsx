@@ -188,9 +188,9 @@ export function FixedExpensesConfigModal({ onClose }: Props) {
                 onSave={(t: any, p: any, s: any) => setNewFixedCategory({ tipo: t, principal: p, secundaria: s })}
               />
             </div>
-            <button type="submit" className="btn btn-primary">
-              <Plus size={20} />
-              Agregar
+            <button type="submit" className="btn" style={{ backgroundColor: 'var(--pastel-green)', color: 'black', border: '2px solid black', padding: '0.75rem 1.5rem', fontSize: '1rem', marginTop: '0.5rem', alignSelf: 'flex-start' }}>
+              <Plus size={18} strokeWidth={2.5} />
+              Agregar cuenta
             </button>
           </form>
 
@@ -199,7 +199,7 @@ export function FixedExpensesConfigModal({ onClose }: Props) {
               <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Aún no tienes cuentas configuradas.</p>
             ) : (
               fixedExpenses.map(item => (
-                <div key={item.id} className="settings-list-row">
+                <div key={item.id} className="settings-list-row" style={{ backgroundColor: '#fff', boxShadow: '4px 4px 0px black', marginBottom: '1rem' }}>
                   {editingFixedId === item.id ? (
                     <div className="settings-fixed-expense-edit">
                       <input
@@ -241,8 +241,8 @@ export function FixedExpensesConfigModal({ onClose }: Props) {
                         )}
                       </div>
                       <div className="settings-rule-actions">
-                        <button type="button" className="btn-icon" onClick={() => startEditFixedExpense(item)} aria-label={`Editar ${item.name}`} title="Editar"><Edit size={16} /></button>
-                        <button type="button" className="btn-icon danger" onClick={() => handleDeleteFixedExpense(item.id)} aria-label={`Eliminar ${item.name}`} title="Eliminar"><Trash2 size={16} /></button>
+                        <button type="button" className="btn-icon" style={{ backgroundColor: 'var(--pastel-yellow)', border: '2px solid black' }} onClick={() => startEditFixedExpense(item)} aria-label={`Editar ${item.name}`} title="Editar"><Edit size={16} /></button>
+                        <button type="button" className="btn-icon" style={{ backgroundColor: '#fca5a5', border: '2px solid black' }} onClick={() => handleDeleteFixedExpense(item.id)} aria-label={`Eliminar ${item.name}`} title="Eliminar"><Trash2 size={16} /></button>
                       </div>
                     </div>
                   )}
