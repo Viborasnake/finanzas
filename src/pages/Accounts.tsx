@@ -687,7 +687,7 @@ export default function Accounts() {
                   </div>
                 ) : (
                   <form onSubmit={handleManualPayment} className="account-manual-form" style={{ marginTop: '1.5rem', marginBottom: '2.5rem', padding: '1.5rem', backgroundColor: 'var(--pastel-yellow)', border: '3px solid black', borderRadius: 'var(--radius-lg)', boxShadow: '6px 6px 0px black' }}>
-                    <div style={{ marginBottom: '1.25rem' }}>
+                    <div className="account-section-heading" style={{ marginBottom: '1.25rem' }}>
                       <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900 }}>Registrar pago manual</h3>
                     </div>
                     <label>
@@ -711,8 +711,8 @@ export default function Accounts() {
                       {manualTouched.bank && manualErrors.bank && <small id="manual-payment-bank-error" className="field-error" role="alert">{manualErrors.bank}</small>}
                     </label>
                     <div className="account-manual-actions" style={{ marginTop: '1.5rem', display: 'flex', gap: '0.75rem' }}>
-                      <button type="submit" className="btn btn-primary" disabled={isSubmittingManual || !manualFormIsValid}>{isSubmittingManual ? 'Guardando...' : 'Guardar pago'}</button>
-                      <button type="button" className="btn btn-outline" onClick={() => { setShowManualForm(false); setManualTouched({ date: false, amount: false, bank: false }); }}>Cancelar</button>
+                      <button type="submit" className="btn" style={{ backgroundColor: 'var(--pastel-green)', color: 'black', border: '2px solid black', opacity: (isSubmittingManual || !manualFormIsValid) ? 0.6 : 1 }} disabled={isSubmittingManual || !manualFormIsValid}>{isSubmittingManual ? 'Guardando...' : 'Guardar pago'}</button>
+                      <button type="button" className="btn" style={{ backgroundColor: '#fff', color: 'black', border: '2px solid black' }} onClick={() => { setShowManualForm(false); setManualTouched({ date: false, amount: false, bank: false }); }}>Cancelar</button>
                     </div>
                   </form>
                 )}
