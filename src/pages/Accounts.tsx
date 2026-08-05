@@ -519,8 +519,14 @@ export default function Accounts() {
         >
           <div className="dialog-header">
             <div>
-              <h2 id="account-detail-dialog-title">{selectedStatus.item.name}</h2>
-              <p id="account-detail-dialog-description" className="account-detail-subtitle">
+              <h2 id="account-detail-dialog-title" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                {selectedStatus.item.name}
+                <button type="button" className="btn btn-outline" style={{ padding: '0.35rem 0.75rem', minHeight: 'auto', fontSize: '0.75rem' }} onClick={openAccountConfiguration}>
+                  <Pencil size={14} />
+                  {selectedStatus.configured ? 'Editar regla' : 'Vincular'}
+                </button>
+              </h2>
+              <p id="account-detail-dialog-description" className="account-detail-subtitle" style={{ marginTop: '0.25rem', color: 'var(--text-muted)' }}>
                 {range.label} · {selectedStatus.configured ? selectedStatus.categoryLabel : 'Sin categoría vinculada'}
               </p>
             </div>
@@ -530,53 +536,28 @@ export default function Accounts() {
           </div>
 
           <div className="account-detail-body">
-            <div className="account-detail-metrics">
-              <div className={`account-detail-metric state-${selectedStatus.statusKind}`}>
-                <span>Estado del periodo</span>
-                <strong>{selectedStatus.statusLabel}</strong>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', marginBottom: '2.5rem', padding: '1.25rem', backgroundColor: 'var(--surface-subtle)', borderRadius: 'var(--radius-md)', border: '2px solid var(--border-color)' }}>
+              <div style={{ flex: 1, minWidth: '120px' }}>
+                <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Estado</span>
+                <strong style={{ fontSize: '1.25rem', padding: '0.15rem 0.6rem', backgroundColor: selectedStatus.paid ? 'var(--pastel-green)' : 'var(--pastel-yellow)', border: '2px solid black', borderRadius: '4px' }}>
+                  {selectedStatus.statusLabel}
+                </strong>
               </div>
-              <div className="account-detail-metric">
-                <span>Pagos vinculados</span>
-                <strong>{selectedStatus.currentPayments.length}</strong>
+              <div style={{ flex: 1, minWidth: '120px' }}>
+                <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Monto del periodo</span>
+                <strong style={{ fontSize: '1.25rem' }}>${selectedStatus.paidAmount.toLocaleString('es-CL')}</strong>
               </div>
-              <div className="account-detail-metric">
-                <span>Monto del periodo</span>
-                <strong>${selectedStatus.paidAmount.toLocaleString('es-CL')}</strong>
-              </div>
-              <div className="account-detail-metric">
-                <span>Pago anterior</span>
-                <strong>{selectedStatus.previousDate ? `${fmtDate(selectedStatus.previousDate)} · $${selectedStatus.previousAmount.toLocaleString('es-CL')}` : 'Sin historial'}</strong>
+              <div style={{ flex: 1, minWidth: '120px' }}>
+                <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Pago anterior</span>
+                <strong style={{ fontSize: '1rem' }}>{selectedStatus.previousDate ? `${fmtDate(selectedStatus.previousDate)} · $${selectedStatus.previousAmount.toLocaleString('es-CL')}` : 'Sin historial'}</strong>
               </div>
             </div>
 
-            <section className="account-detection-rule" aria-labelledby="account-detection-title">
-              <div className="account-detection-icon"><Search size={20} aria-hidden="true" /></div>
-              <div>
-                <h3 id="account-detection-title">Cómo se detecta</h3>
-                {selectedStatus.configured ? (
-                  <>
-                    <p>Se marca pagada cuando encuentra un movimiento con la categoría exacta:</p>
-                    <strong>{selectedStatus.categoryLabel}</strong>
-                    {selectedStatus.item.keyword && <small>La palabra “{selectedStatus.item.keyword}” se usa para encontrar posibles pagos aún mal clasificados.</small>}
-                  </>
-                ) : (
-                  <p>Esta cuenta todavía no puede detectar pagos porque no tiene una categoría vinculada.</p>
-                )}
-              </div>
-              <button type="button" className="btn btn-outline" onClick={openAccountConfiguration}>
-                <Pencil size={16} />
-                {selectedStatus.configured ? 'Editar vínculo' : 'Vincular categoría'}
-              </button>
-            </section>
-
             {selectedStatus.configured && (
-              <section className="account-detail-section" aria-labelledby="current-account-payments-title">
-                <div className="account-section-heading">
-                  <div>
-                    <h3 id="current-account-payments-title">Pagos del periodo</h3>
-                    <p>Solo aparecen movimientos cuya categoría coincide exactamente.</p>
-                  </div>
-                  <span>{selectedStatus.currentPayments.length}</span>
+              <section className="account-detail-section" aria-labelledby="current-account-payments-title" style={{ marginBottom: '2.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingBottom: '0.5rem', borderBottom: '2px solid var(--border-color)', marginBottom: '1rem' }}>
+                  <h3 id="current-account-payments-title" style={{ margin: 0, fontSize: '1.2rem' }}>Pagos del periodo</h3>
+                  <span style={{ background: 'var(--primary-light)', border: '2px solid black', padding: '0.1rem 0.5rem', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 800 }}>{selectedStatus.currentPayments.length}</span>
                 </div>
 
                 {selectedStatus.currentPayments.length > 0 ? (
@@ -593,7 +574,7 @@ export default function Accounts() {
                         </div>
                         <button type="button" className="btn btn-outline account-correction-toggle" onClick={() => setEditingTransactionId(editingTransactionId === tx.id ? null : tx.id)} aria-expanded={editingTransactionId === tx.id}>
                           <Pencil size={16} />
-                          Cambiar categoría
+                          Cambiar
                         </button>
                         {editingTransactionId === tx.id && (
                           <div className="account-inline-correction">
@@ -610,101 +591,74 @@ export default function Accounts() {
                     ))}
                   </div>
                 ) : (
-                  <div className="account-empty-state">
-                    <Calendar size={24} aria-hidden="true" />
-                    <div>
-                      <strong>No hay pagos vinculados en {range.label}.</strong>
-                      <span>Revisa las posibles coincidencias antes de registrar un pago manual.</span>
-                    </div>
+                  <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)' }}>
+                    <CalendarCheck size={32} style={{ margin: '0 auto 0.75rem', opacity: 0.4 }} />
+                    <strong style={{ display: 'block', fontSize: '1.05rem', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>No hay pagos registrados</strong>
+                    <span style={{ fontSize: '0.9rem' }}>Aún no se ha detectado el pago para {range.label}.</span>
                   </div>
                 )}
               </section>
             )}
 
-            {selectedStatus.configured && !selectedStatus.paid && (
-              <section className="account-detail-section" aria-labelledby="candidate-payments-title">
-                <div className="account-section-heading">
-                  <div>
-                    <h3 id="candidate-payments-title">Posibles pagos sin vincular</h3>
-                    <p>Son sugerencias. No cambian el estado hasta que confirmes una.</p>
-                  </div>
-                  <span>{selectedStatus.candidates.length}</span>
+            {selectedStatus.configured && !selectedStatus.paid && selectedStatus.candidates.length > 0 && (
+              <section className="account-detail-section" aria-labelledby="candidate-payments-title" style={{ marginBottom: '2.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingBottom: '0.5rem', borderBottom: '2px solid var(--border-color)', marginBottom: '1rem' }}>
+                  <h3 id="candidate-payments-title" style={{ margin: 0, fontSize: '1.2rem' }}>Sugerencias</h3>
+                  <span style={{ background: 'var(--pastel-yellow)', border: '2px solid black', padding: '0.1rem 0.5rem', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 800 }}>{selectedStatus.candidates.length}</span>
                 </div>
 
-                {selectedStatus.candidates.length > 0 ? (
-                  <div className="account-candidate-list">
-                    {selectedStatus.candidates.map((candidate: any) => {
-                      const tx = candidate.tx;
-                      const currentCategory = getTransactionCategory(tx);
-                      const currentCategoryLabel = [currentCategory.tipo, currentCategory.principal, currentCategory.secundaria].filter(Boolean).join(' > ') || 'Sin clasificación';
-                      return (
-                        <article key={tx.id} className="account-candidate-row">
-                          <div className="account-transaction-main">
-                            <div>
-                              <strong>{tx.description || tx.original_description || 'Sin descripción'}</strong>
-                              <span>{tx.date} · {tx.bank || 'Sin banco'} · {currentCategoryLabel}</span>
-                              <small>{candidate.reason}</small>
-                            </div>
-                            <strong className="account-transaction-amount">${getTransactionAmount(tx).toLocaleString('es-CL')}</strong>
+                <div className="account-candidate-list">
+                  {selectedStatus.candidates.map((candidate: any) => {
+                    const tx = candidate.tx;
+                    const currentCategory = getTransactionCategory(tx);
+                    const currentCategoryLabel = [currentCategory.tipo, currentCategory.principal, currentCategory.secundaria].filter(Boolean).join(' > ') || 'Sin clasificación';
+                    return (
+                      <article key={tx.id} className="account-candidate-row">
+                        <div className="account-transaction-main">
+                          <div>
+                            <strong>{tx.description || tx.original_description || 'Sin descripción'}</strong>
+                            <span>{tx.date} · {tx.bank || 'Sin banco'} · {currentCategoryLabel}</span>
+                            <small>{candidate.reason}</small>
                           </div>
-                          <div className="account-candidate-actions">
-                            <button type="button" className="btn btn-primary" onClick={() => linkCandidateToSelectedAccount(tx)} disabled={linkingTransactionId === tx.id}>
-                              <Link2 size={16} />
-                              {linkingTransactionId === tx.id ? 'Vinculando...' : 'Usar como pago'}
-                            </button>
-                            <button type="button" className="btn btn-outline" onClick={() => setEditingTransactionId(editingTransactionId === tx.id ? null : tx.id)} aria-expanded={editingTransactionId === tx.id}>
-                              Otra categoría
-                            </button>
-                          </div>
-                          {editingTransactionId === tx.id && (
-                            <div className="account-inline-correction">
-                              <CascadingCategorySelector
-                                initialTipo={tx.tipo_movimiento}
-                                initialPrincipal={tx.categoria_principal}
-                                initialSecundaria={tx.categoria_secundaria}
-                                contextDescription={tx.description || tx.original_description}
-                                onSave={(tipo: any, principal: any, secundaria: any) => handleCategorizeTransaction(tx.id, tipo, principal, secundaria)}
-                              />
-                            </div>
-                          )}
-                        </article>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="account-empty-state compact">
-                    <CircleAlert size={22} aria-hidden="true" />
-                    <div>
-                      <strong>No encontré candidatos en este periodo.</strong>
-                      <span>Puedes ajustar la categoría o registrar el pago manualmente.</span>
-                    </div>
-                  </div>
-                )}
+                          <strong className="account-transaction-amount">${getTransactionAmount(tx).toLocaleString('es-CL')}</strong>
+                        </div>
+                        <div className="account-candidate-actions">
+                          <button type="button" className="btn btn-primary" onClick={() => linkCandidateToSelectedAccount(tx)} disabled={linkingTransactionId === tx.id}>
+                            <Link2 size={16} />
+                            {linkingTransactionId === tx.id ? 'Vinculando...' : 'Vincular'}
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
 
                 {!showManualForm ? (
-                  <button
-                    type="button"
-                    className="btn btn-outline account-manual-toggle"
-                    onClick={() => {
-                      const now = new Date();
-                      const defaultDate = now >= range.start && now <= range.end ? now : range.start;
-                      setManualDate(toDateInput(defaultDate));
-                      if (!manualBank || !connectedBanks.some(bank => bank === manualBank)) {
-                        setManualBank(activeBank || connectedBanks[0] || '');
-                      }
-                      setManualTouched({ date: false, amount: false, bank: false });
-                      setShowManualForm(true);
-                    }}
-                  >
-                    Registrar un pago manual
-                  </button>
+                  <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      style={{ borderStyle: 'dashed' }}
+                      onClick={() => {
+                        const now = new Date();
+                        const defaultDate = now >= range.start && now <= range.end ? now : range.start;
+                        setManualDate(toDateInput(defaultDate));
+                        if (!manualBank || !connectedBanks.some(bank => bank === manualBank)) {
+                          setManualBank(activeBank || connectedBanks[0] || '');
+                        }
+                        setManualTouched({ date: false, amount: false, bank: false });
+                        setShowManualForm(true);
+                      }}
+                    >
+                      <Plus size={16} /> Registrar un pago manual
+                    </button>
+                  </div>
                 ) : (
-                  <form onSubmit={handleManualPayment} className="account-manual-form">
-                    <div className="account-section-heading">
-                      <div>
-                        <h3>Registrar pago manual</h3>
-                        <p>Úsalo solo si el movimiento no existe en tus cartolas.</p>
-                      </div>
+                  <form onSubmit={handleManualPayment} className="account-manual-form" style={{ marginBottom: '2rem', padding: '1.25rem', border: '2px dashed var(--border-color)', borderRadius: 'var(--radius-md)' }}>
+                    <div style={{ marginBottom: '1rem' }}>
+                      <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Registrar pago manual</h3>
                     </div>
                     <label>
                       <span>Fecha</span>
@@ -726,7 +680,7 @@ export default function Accounts() {
                       </select>
                       {manualTouched.bank && manualErrors.bank && <small id="manual-payment-bank-error" className="field-error" role="alert">{manualErrors.bank}</small>}
                     </label>
-                    <div className="account-manual-actions">
+                    <div className="account-manual-actions" style={{ marginTop: '1.5rem', display: 'flex', gap: '0.75rem' }}>
                       <button type="submit" className="btn btn-primary" disabled={isSubmittingManual || !manualFormIsValid}>{isSubmittingManual ? 'Guardando...' : 'Guardar pago'}</button>
                       <button type="button" className="btn btn-outline" onClick={() => { setShowManualForm(false); setManualTouched({ date: false, amount: false, bank: false }); }}>Cancelar</button>
                     </div>
