@@ -199,7 +199,7 @@ export function FixedExpensesConfigModal({ onClose }: Props) {
               <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Aún no tienes cuentas configuradas.</p>
             ) : (
               fixedExpenses.map(item => (
-                <div key={item.id} className="settings-list-row" style={{ backgroundColor: '#fff', boxShadow: '4px 4px 0px black', marginBottom: '1rem' }}>
+                <div key={item.id} className="settings-list-row" style={{ backgroundColor: '#fff', boxShadow: '4px 4px 0px black', marginBottom: '0.75rem', padding: '0.6rem 1rem' }}>
                   {editingFixedId === item.id ? (
                     <div className="settings-fixed-expense-edit">
                       <input
@@ -230,18 +230,20 @@ export function FixedExpensesConfigModal({ onClose }: Props) {
                         <button type="button" className="btn btn-outline" onClick={cancelEditFixedExpense}>Cancelar</button>
                     </div>
                   ) : (
-                    <div className="settings-rule-view">
-                      <div className="settings-rule-info">
-                        <strong>{item.name}</strong>
-                        {item.keyword && <span>(Clave: "{item.keyword}")</span>}
+                    <div className="settings-rule-view" style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                      <div className="settings-rule-info" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                        <strong style={{ fontSize: '1.1rem' }}>{item.name}</strong>
                         {item.categoria_principal && (
-                          <div className="settings-rule-badge">
-                            {item.categoria_principal} {item.categoria_secundaria ? ` > ${item.categoria_secundaria}` : ''}
+                          <div style={{ padding: '0.1rem 0.5rem', backgroundColor: 'var(--surface-subtle)', borderRadius: '4px', border: '1px solid var(--border-color)', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                            {item.categoria_secundaria || item.categoria_principal}
                           </div>
                         )}
+                        {item.keyword && <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>(Clave: "{item.keyword}")</span>}
                       </div>
-                      <div className="settings-rule-actions">
-                        <button type="button" className="btn-icon" style={{ backgroundColor: 'var(--pastel-yellow)', border: '2px solid black' }} onClick={() => startEditFixedExpense(item)} aria-label={`Editar ${item.name}`} title="Editar"><Edit size={16} /></button>
+                      <div className="settings-rule-actions" style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button type="button" className="btn btn-outline" style={{ backgroundColor: '#fff', border: '2px solid black', padding: '0.35rem 0.75rem', fontSize: '0.85rem' }} onClick={() => startEditFixedExpense(item)} aria-label={`Editar ${item.name}`} title="Editar">
+                          <Edit size={14} /> Editar
+                        </button>
                         <button type="button" className="btn-icon" style={{ backgroundColor: '#fca5a5', border: '2px solid black' }} onClick={() => handleDeleteFixedExpense(item.id)} aria-label={`Eliminar ${item.name}`} title="Eliminar"><Trash2 size={16} /></button>
                       </div>
                     </div>
