@@ -559,7 +559,7 @@ export default function Accounts() {
           </div>
 
           <div className="account-detail-body">
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', marginBottom: '2.5rem', padding: '1.25rem', backgroundColor: 'var(--pastel-blue)', borderRadius: 'var(--radius-lg)', border: '3px solid var(--border-color)', boxShadow: '4px 4px 0px var(--border-color)' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', marginBottom: '2.5rem', padding: '1.25rem', backgroundColor: '#fff', borderRadius: 'var(--radius-lg)', border: '2px solid black', boxShadow: '4px 4px 0px black' }}>
               <div style={{ flex: 1, minWidth: '120px' }}>
                 <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Estado</span>
                 <strong style={{ fontSize: '1.25rem', padding: '0.15rem 0.6rem', backgroundColor: selectedStatus.paid ? 'var(--pastel-green)' : 'var(--pastel-yellow)', border: '2px solid black', borderRadius: '4px' }}>
@@ -578,9 +578,9 @@ export default function Accounts() {
 
             {selectedStatus.configured && (
               <section className="account-detail-section" aria-labelledby="current-account-payments-title" style={{ marginBottom: '2.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingBottom: '0.75rem', borderBottom: '3px solid var(--border-color)', marginBottom: '1.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingBottom: '0.75rem', borderBottom: '2px solid black', marginBottom: '1.25rem' }}>
                   <h3 id="current-account-payments-title" style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900 }}>Pagos del periodo</h3>
-                  <span style={{ background: 'var(--pastel-yellow)', border: '2px solid black', padding: '0.1rem 0.6rem', borderRadius: '999px', fontSize: '0.85rem', fontWeight: 900, boxShadow: '2px 2px 0px black' }}>{selectedStatus.currentPayments.length}</span>
+                  <span style={{ background: '#fff', border: '2px solid black', padding: '0.1rem 0.6rem', borderRadius: '999px', fontSize: '0.85rem', fontWeight: 900, boxShadow: '2px 2px 0px black' }}>{selectedStatus.currentPayments.length}</span>
                 </div>
 
                 {selectedStatus.currentPayments.length > 0 ? (
@@ -591,13 +591,13 @@ export default function Accounts() {
                           <div>
                             <strong>{tx.description || tx.original_description || 'Sin descripción'}</strong>
                             <span>{tx.date} · {tx.bank || 'Sin banco'}</span>
-                            <small>{selectedStatus.matchReasons.get(tx.id)}</small>
+                            <small style={{ color: 'var(--text-secondary)' }}>{selectedStatus.matchReasons.get(tx.id)}</small>
                           </div>
-                          <strong className="account-transaction-amount">${getTransactionAmount(tx).toLocaleString('es-CL')}</strong>
+                          <strong className="account-transaction-amount" style={{ color: 'var(--text-primary)' }}>${getTransactionAmount(tx).toLocaleString('es-CL')}</strong>
                         </div>
                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
                           {tx.raw_data?.is_manual && (
-                            <button type="button" className="btn btn-outline" style={{ borderColor: 'var(--danger)', color: 'var(--danger)', padding: '0.35rem 0.75rem', minHeight: 'auto', fontSize: '0.8rem' }} onClick={() => handleDeleteManualPayment(tx.id)}>
+                            <button type="button" className="btn btn-outline" style={{ backgroundColor: '#fff', borderColor: 'black', color: 'black', padding: '0.35rem 0.75rem', minHeight: 'auto', fontSize: '0.8rem' }} onClick={() => handleDeleteManualPayment(tx.id)}>
                               <Trash2 size={16} /> Eliminar
                             </button>
                           )}
@@ -621,7 +621,7 @@ export default function Accounts() {
                     ))}
                   </div>
                 ) : (
-                  <div style={{ textAlign: 'center', padding: '2.5rem 1.5rem', backgroundColor: 'var(--surface-color)', border: '3px solid black', borderRadius: 'var(--radius-lg)', boxShadow: '6px 6px 0px black' }}>
+                  <div style={{ textAlign: 'center', padding: '2.5rem 1.5rem', backgroundColor: '#f8fafc', border: '2px dashed #94a3b8', borderRadius: 'var(--radius-lg)' }}>
                     <CalendarCheck size={40} style={{ margin: '0 auto 1rem', opacity: 0.8, color: 'var(--text-secondary)' }} />
                     <strong style={{ display: 'block', fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No hay pagos registrados</strong>
                     <span style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>Aún no se ha detectado el pago para {range.label}.</span>
@@ -632,9 +632,9 @@ export default function Accounts() {
 
             {selectedStatus.configured && !selectedStatus.paid && selectedStatus.candidates.length > 0 && (
               <section className="account-detail-section" aria-labelledby="candidate-payments-title" style={{ marginBottom: '2.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingBottom: '0.5rem', borderBottom: '2px solid var(--border-color)', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingBottom: '0.5rem', borderBottom: '2px solid black', marginBottom: '1rem' }}>
                   <h3 id="candidate-payments-title" style={{ margin: 0, fontSize: '1.2rem' }}>Sugerencias</h3>
-                  <span style={{ background: 'var(--pastel-yellow)', border: '2px solid black', padding: '0.1rem 0.5rem', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 800 }}>{selectedStatus.candidates.length}</span>
+                  <span style={{ background: '#fff', border: '2px solid black', padding: '0.1rem 0.5rem', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 800 }}>{selectedStatus.candidates.length}</span>
                 </div>
 
                 <div className="account-candidate-list">
@@ -648,9 +648,9 @@ export default function Accounts() {
                           <div>
                             <strong>{tx.description || tx.original_description || 'Sin descripción'}</strong>
                             <span>{tx.date} · {tx.bank || 'Sin banco'} · {currentCategoryLabel}</span>
-                            <small>{candidate.reason}</small>
+                            <small style={{ color: 'var(--text-secondary)' }}>{candidate.reason}</small>
                           </div>
-                          <strong className="account-transaction-amount">${getTransactionAmount(tx).toLocaleString('es-CL')}</strong>
+                          <strong className="account-transaction-amount" style={{ color: 'var(--text-primary)' }}>${getTransactionAmount(tx).toLocaleString('es-CL')}</strong>
                         </div>
                         <div className="account-candidate-actions">
                           <button type="button" className="btn btn-primary" onClick={() => linkCandidateToSelectedAccount(tx)} disabled={linkingTransactionId === tx.id}>
@@ -670,7 +670,7 @@ export default function Accounts() {
                     <button
                       type="button"
                       className="btn"
-                      style={{ backgroundColor: 'var(--pastel-green)', color: 'black', border: '2px solid black', padding: '0.85rem 1.75rem', fontSize: '1rem' }}
+                      style={{ backgroundColor: '#fff', color: 'black', border: '2px solid black', padding: '0.85rem 1.75rem', fontSize: '1rem' }}
                       onClick={() => {
                         const now = new Date();
                         const defaultDate = now >= range.start && now <= range.end ? now : range.start;
