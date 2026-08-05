@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Calendar, CalendarCheck, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleAlert, Link2, Pencil, Plus, Settings, X, Trash2 } from 'lucide-react';
+import { CalendarCheck, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleAlert, Link2, Pencil, Plus, Settings, X, Trash2, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/authContextValue';
@@ -473,7 +473,7 @@ export default function Accounts() {
                   style={{ backgroundColor: visual.background }}
                 >
                   <span className="account-status-icon">
-                    {status.paid ? <CheckCircle2 size={22} fill="#22c55e" color="#000" /> : <Calendar size={20} strokeWidth={2.5} />}
+                    {status.paid ? <CheckCircle2 size={22} fill="#22c55e" color="#000" /> : <Loader2 size={20} className="animate-spin" style={{ animationDuration: '3s' }} />}
                   </span>
 
                   <div className="account-status-copy">
