@@ -584,48 +584,124 @@ export default function Accounts() {
                 </div>
 
                 {selectedStatus.currentPayments.length > 0 ? (
-                  <div className="account-transaction-list">
-                    {selectedStatus.currentPayments.map((tx: any) => (
-                      <article key={tx.id} className="account-transaction-row">
-                        <div className="account-transaction-main">
-                          <div>
-                            <strong>{tx.description || tx.original_description || 'Sin descripción'}</strong>
-                            <span>{tx.date} · {tx.bank || 'Sin banco'}</span>
-                            <small style={{ color: 'var(--text-secondary)' }}>{selectedStatus.matchReasons.get(tx.id)}</small>
+                  <>
+                    <div className="account-transaction-list">
+                      {selectedStatus.currentPayments.map((tx: any) => (
+                        <article key={tx.id} className="account-transaction-row">
+                          <div className="account-transaction-main">
+                            <div>
+                              <strong>{tx.description || tx.original_description || 'Sin descripción'}</strong>
+                              <span>{tx.date} · {tx.bank || 'Sin banco'}</span>
+                              <small style={{ color: 'var(--text-secondary)' }}>{selectedStatus.matchReasons.get(tx.id)}</small>
+                            </div>
+                            <strong className="account-transaction-amount" style={{ color: 'var(--text-primary)' }}>${getTransactionAmount(tx).toLocaleString('es-CL')}</strong>
                           </div>
-                          <strong className="account-transaction-amount" style={{ color: 'var(--text-primary)' }}>${getTransactionAmount(tx).toLocaleString('es-CL')}</strong>
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
-                          {tx.raw_data?.is_manual && (
-                            <button type="button" className="btn btn-outline" style={{ backgroundColor: '#fff', borderColor: 'var(--danger)', color: 'var(--danger)', padding: '0.35rem 0.75rem', minHeight: 'auto', fontSize: '0.8rem' }} onClick={() => handleDeleteManualPayment(tx.id)}>
-                              <Trash2 size={16} /> Eliminar
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+                            {tx.raw_data?.is_manual && (
+                              <button type="button" className="btn btn-outline" style={{ backgroundColor: '#fff', borderColor: 'var(--danger)', color: 'var(--danger)', padding: '0.35rem 0.75rem', minHeight: 'auto', fontSize: '0.8rem' }} onClick={() => handleDeleteManualPayment(tx.id)}>
+                                <Trash2 size={16} /> Eliminar
+                              </button>
+                            )}
+                            <button type="button" className="btn btn-outline account-correction-toggle" onClick={() => setEditingTransactionId(editingTransactionId === tx.id ? null : tx.id)} aria-expanded={editingTransactionId === tx.id}>
+                              <Pencil size={16} />
+                              Cambiar
                             </button>
-                          )}
-                          <button type="button" className="btn btn-outline account-correction-toggle" onClick={() => setEditingTransactionId(editingTransactionId === tx.id ? null : tx.id)} aria-expanded={editingTransactionId === tx.id}>
-                            <Pencil size={16} />
-                            Cambiar
-                          </button>
-                        </div>
-                        {editingTransactionId === tx.id && (
-                          <div className="account-inline-correction">
-                            <CascadingCategorySelector
-                              initialTipo={tx.tipo_movimiento}
-                              initialPrincipal={tx.categoria_principal}
-                              initialSecundaria={tx.categoria_secundaria}
-                              contextDescription={tx.description || tx.original_description}
-                              onSave={(tipo: any, principal: any, secundaria: any) => handleCategorizeTransaction(tx.id, tipo, principal, secundaria)}
-                            />
                           </div>
-                        )}
-                      </article>
-                    ))}
-                  </div>
+                          {editingTransactionId === tx.id && (
+                            <div className="account-inline-correction">
+                              <CascadingCategorySelector
+                                initialTipo={tx.tipo_movimiento}
+                                initialPrincipal={tx.categoria_principal}
+                                initialSecundaria={tx.categoria_secundaria}
+                                contextDescription={tx.description || tx.original_description}
+                                onSave={(tipo: any, principal: any, secundaria: any) => handleCategorizeTransaction(tx.id, tipo, principal, secundaria)}
+                              />
+                            </div>
+                          )}
+                        </article>
+                      ))}
+                    </div>
+                    {!showManualForm ? (
+                      <div style={{ textAlign: 'center', marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+                        <button
+                          type="button"
+                          className="btn"
+                          style={{ backgroundColor: '#fff', color: 'black', border: '2px solid black', padding: '0.85rem 1.75rem', fontSize: '1rem' }}
+                          onClick={() => {
+                            const now = new Date();
+                            const defaultDate = now >= range.start && now <= range.end ? now : range.start;
+                            setManualDate(toDateInput(defaultDate));
+                            if (!manualBank || !connectedBanks.some(bank => bank === manualBank)) {
+                              setManualBank(activeBank || connectedBanks[0] || '');
+                            }
+                            setManualTouched({ date: false, amount: false, bank: false });
+                            setShowManualForm(true);
+                          }}
+                        >
+                          <Plus size={18} /> Registrar otro pago manual
+                        </button>
+                      </div>
+                    ) : null}
+                  </>
                 ) : (
-                  <div style={{ textAlign: 'center', padding: '2.5rem 1.5rem', backgroundColor: '#f8fafc', border: '2px dashed #94a3b8', borderRadius: 'var(--radius-lg)' }}>
-                    <CalendarCheck size={40} style={{ margin: '0 auto 1rem', opacity: 0.8, color: 'var(--text-secondary)' }} />
-                    <strong style={{ display: 'block', fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No hay pagos registrados</strong>
-                    <span style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>Aún no se ha detectado el pago para {range.label}.</span>
-                  </div>
+                  <>
+                    {!showManualForm ? (
+                      <div style={{ textAlign: 'center', padding: '2.5rem 1.5rem', backgroundColor: '#f8fafc', border: '2px dashed #94a3b8', borderRadius: 'var(--radius-lg)' }}>
+                        <CalendarCheck size={40} style={{ margin: '0 auto 1rem', opacity: 0.8, color: 'var(--text-secondary)' }} />
+                        <strong style={{ display: 'block', fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No hay pagos registrados</strong>
+                        <span style={{ display: 'block', fontSize: '0.95rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>Aún no se ha detectado el pago para {range.label}.</span>
+                        <button
+                          type="button"
+                          className="btn"
+                          style={{ backgroundColor: '#fff', color: 'black', border: '2px solid black', padding: '0.85rem 1.75rem', fontSize: '1rem' }}
+                          onClick={() => {
+                            const now = new Date();
+                            const defaultDate = now >= range.start && now <= range.end ? now : range.start;
+                            setManualDate(toDateInput(defaultDate));
+                            if (!manualBank || !connectedBanks.some(bank => bank === manualBank)) {
+                              setManualBank(activeBank || connectedBanks[0] || '');
+                            }
+                            setManualTouched({ date: false, amount: false, bank: false });
+                            setShowManualForm(true);
+                          }}
+                        >
+                          <Plus size={18} /> Registrar un pago manual
+                        </button>
+                      </div>
+                    ) : null}
+                  </>
+                )}
+
+                {showManualForm && (
+                  <form onSubmit={handleManualPayment} className="account-manual-form" style={{ marginTop: '1.5rem', marginBottom: '1.5rem', padding: '1.5rem', backgroundColor: 'var(--pastel-yellow)', border: '3px solid black', borderRadius: 'var(--radius-lg)', boxShadow: '6px 6px 0px black' }}>
+                    <div className="account-section-heading" style={{ marginBottom: '1.25rem' }}>
+                      <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900 }}>Registrar pago manual</h3>
+                    </div>
+                    <label>
+                      <span>Fecha</span>
+                      <input ref={manualDateRef} type="date" className="input" value={manualDate} onChange={event => setManualDate(event.target.value)} onBlur={() => setManualTouched(current => ({ ...current, date: true }))} aria-invalid={manualTouched.date && Boolean(manualErrors.date)} aria-describedby={manualTouched.date && manualErrors.date ? 'manual-payment-date-error' : undefined} required min={toDateInput(range.start)} max={toDateInput(range.end)} />
+                      {manualTouched.date && manualErrors.date && <small id="manual-payment-date-error" className="field-error" role="alert">{manualErrors.date}</small>}
+                    </label>
+                    <label>
+                      <span>Monto</span>
+                      <input ref={manualAmountRef} type="number" className="input" value={manualAmount} onChange={event => setManualAmount(event.target.value)} onBlur={() => setManualTouched(current => ({ ...current, amount: true }))} aria-invalid={manualTouched.amount && Boolean(manualErrors.amount)} aria-describedby={manualTouched.amount && manualErrors.amount ? 'manual-payment-amount-error' : undefined} required min="1" step="1" inputMode="numeric" placeholder="Ej: 15000" />
+                      {manualTouched.amount && manualErrors.amount && <small id="manual-payment-amount-error" className="field-error" role="alert">{manualErrors.amount}</small>}
+                    </label>
+                    <label>
+                      <span>Banco</span>
+                      <select ref={manualBankRef} className="input" value={manualBank} onChange={event => setManualBank(event.target.value)} onBlur={() => setManualTouched(current => ({ ...current, bank: true }))} aria-invalid={manualTouched.bank && Boolean(manualErrors.bank)} aria-describedby={manualTouched.bank && manualErrors.bank ? 'manual-payment-bank-error' : undefined} required>
+                        <option value="">Selecciona un banco</option>
+                        {connectedBanks.map(bank => (
+                          <option key={bank} value={bank}>{AVAILABLE_BANKS.find(item => item.id === bank)?.label || bank}</option>
+                        ))}
+                      </select>
+                      {manualTouched.bank && manualErrors.bank && <small id="manual-payment-bank-error" className="field-error" role="alert">{manualErrors.bank}</small>}
+                    </label>
+                    <div className="account-manual-actions" style={{ marginTop: '1.5rem', display: 'flex', gap: '0.75rem' }}>
+                      <button type="submit" className="btn" style={{ backgroundColor: 'var(--pastel-green)', color: 'black', border: '2px solid black', opacity: (isSubmittingManual || !manualFormIsValid) ? 0.6 : 1 }} disabled={isSubmittingManual || !manualFormIsValid}>{isSubmittingManual ? 'Guardando...' : 'Guardar pago'}</button>
+                      <button type="button" className="btn" style={{ backgroundColor: '#fff', color: 'black', border: '2px solid black' }} onClick={() => { setShowManualForm(false); setManualTouched({ date: false, amount: false, bank: false }); }}>Cancelar</button>
+                    </div>
+                  </form>
                 )}
               </section>
             )}
@@ -665,57 +741,7 @@ export default function Accounts() {
               </section>
             )}
 
-                {!showManualForm ? (
-                  <div style={{ textAlign: 'center', marginTop: '1.5rem', marginBottom: '2.5rem' }}>
-                    <button
-                      type="button"
-                      className="btn"
-                      style={{ backgroundColor: '#fff', color: 'black', border: '2px solid black', padding: '0.85rem 1.75rem', fontSize: '1rem' }}
-                      onClick={() => {
-                        const now = new Date();
-                        const defaultDate = now >= range.start && now <= range.end ? now : range.start;
-                        setManualDate(toDateInput(defaultDate));
-                        if (!manualBank || !connectedBanks.some(bank => bank === manualBank)) {
-                          setManualBank(activeBank || connectedBanks[0] || '');
-                        }
-                        setManualTouched({ date: false, amount: false, bank: false });
-                        setShowManualForm(true);
-                      }}
-                    >
-                      <Plus size={18} /> Registrar un pago manual
-                    </button>
-                  </div>
-                ) : (
-                  <form onSubmit={handleManualPayment} className="account-manual-form" style={{ marginTop: '1.5rem', marginBottom: '2.5rem', padding: '1.5rem', backgroundColor: 'var(--pastel-yellow)', border: '3px solid black', borderRadius: 'var(--radius-lg)', boxShadow: '6px 6px 0px black' }}>
-                    <div className="account-section-heading" style={{ marginBottom: '1.25rem' }}>
-                      <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900 }}>Registrar pago manual</h3>
-                    </div>
-                    <label>
-                      <span>Fecha</span>
-                      <input ref={manualDateRef} type="date" className="input" value={manualDate} onChange={event => setManualDate(event.target.value)} onBlur={() => setManualTouched(current => ({ ...current, date: true }))} aria-invalid={manualTouched.date && Boolean(manualErrors.date)} aria-describedby={manualTouched.date && manualErrors.date ? 'manual-payment-date-error' : undefined} required min={toDateInput(range.start)} max={toDateInput(range.end)} />
-                      {manualTouched.date && manualErrors.date && <small id="manual-payment-date-error" className="field-error" role="alert">{manualErrors.date}</small>}
-                    </label>
-                    <label>
-                      <span>Monto</span>
-                      <input ref={manualAmountRef} type="number" className="input" value={manualAmount} onChange={event => setManualAmount(event.target.value)} onBlur={() => setManualTouched(current => ({ ...current, amount: true }))} aria-invalid={manualTouched.amount && Boolean(manualErrors.amount)} aria-describedby={manualTouched.amount && manualErrors.amount ? 'manual-payment-amount-error' : undefined} required min="1" step="1" inputMode="numeric" placeholder="Ej: 15000" />
-                      {manualTouched.amount && manualErrors.amount && <small id="manual-payment-amount-error" className="field-error" role="alert">{manualErrors.amount}</small>}
-                    </label>
-                    <label>
-                      <span>Banco</span>
-                      <select ref={manualBankRef} className="input" value={manualBank} onChange={event => setManualBank(event.target.value)} onBlur={() => setManualTouched(current => ({ ...current, bank: true }))} aria-invalid={manualTouched.bank && Boolean(manualErrors.bank)} aria-describedby={manualTouched.bank && manualErrors.bank ? 'manual-payment-bank-error' : undefined} required>
-                        <option value="">Selecciona un banco</option>
-                        {connectedBanks.map(bank => (
-                          <option key={bank} value={bank}>{AVAILABLE_BANKS.find(item => item.id === bank)?.label || bank}</option>
-                        ))}
-                      </select>
-                      {manualTouched.bank && manualErrors.bank && <small id="manual-payment-bank-error" className="field-error" role="alert">{manualErrors.bank}</small>}
-                    </label>
-                    <div className="account-manual-actions" style={{ marginTop: '1.5rem', display: 'flex', gap: '0.75rem' }}>
-                      <button type="submit" className="btn" style={{ backgroundColor: 'var(--pastel-green)', color: 'black', border: '2px solid black', opacity: (isSubmittingManual || !manualFormIsValid) ? 0.6 : 1 }} disabled={isSubmittingManual || !manualFormIsValid}>{isSubmittingManual ? 'Guardando...' : 'Guardar pago'}</button>
-                      <button type="button" className="btn" style={{ backgroundColor: '#fff', color: 'black', border: '2px solid black' }} onClick={() => { setShowManualForm(false); setManualTouched({ date: false, amount: false, bank: false }); }}>Cancelar</button>
-                    </div>
-                  </form>
-                )}
+
             {selectedStatus.configured && (
               <section className="account-history-section" aria-labelledby="account-history-title">
                 <button type="button" className="account-history-toggle" onClick={() => setShowHistory(value => !value)} aria-expanded={showHistory}>
