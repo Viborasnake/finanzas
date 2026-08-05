@@ -461,7 +461,6 @@ export default function Accounts() {
                 overdue: { background: '#fff1f2', badge: '#fca5a5' },
                 pending: { background: '#fff7ed', badge: '#fed7aa' }
               }[status.statusKind] || { background: '#fff', badge: '#e2e8f0' };
-              const datePrefix = status.paid ? 'Pagado el' : status.estimatedDate ? 'Fecha estimada' : 'Sin fecha estimada';
 
               return (
                 <button
@@ -478,26 +477,36 @@ export default function Accounts() {
                   </span>
 
                   <div className="account-status-copy">
-                    <strong>{status.item.name}</strong>
-                    <span>{status.configured ? status.categoryLabel : 'Falta vincular una categoría'}</span>
-                    <small>{datePrefix}{status.paid || status.estimatedDate ? `: ${fmtDate(status.paid ? status.paidDate : status.estimatedDate)}` : ''}</small>
-                    {!status.paid && status.previousDate && (
-                      <small>Pago anterior: {fmtDate(status.previousDate)} · ${status.previousAmount.toLocaleString('es-CL')}</small>
-                    )}
+                    <strong style={{ fontSize: '1.1rem' }}>{status.item.name}</strong>
+                    {!status.configured && <span style={{ color: 'var(--danger)' }}>Falta vincular</span>}
+                    {(status.paid || status.estimatedDate) ? (
+                      <small style={{ marginTop: '0.4rem', fontSize: '0.85rem' }}>
+                        {status.paid ? 'Pagado el ' : 'Estimado: '}
+                        {fmtDate(status.paid ? status.paidDate : status.estimatedDate)}
+                      </small>
+                    ) : null}
                   </div>
 
                   <div className="account-status-result">
-                    {status.paid && (
-                      <strong>
+                    {status.paid ? (
+                      <strong style={{ fontSize: '1.15rem', color: 'var(--text-primary)' }}>
                         ${status.paidAmount.toLocaleString('es-CL')}
                       </strong>
-                    )}
-                    {!status.paid && status.candidates.length > 0 && (
-                      <small>{status.candidates.length} posible{status.candidates.length === 1 ? '' : 's'}</small>
-                    )}
-                    <span style={{ backgroundColor: visual.badge }}>
+                    ) : status.previousAmount ? (
+                      <strong style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', opacity: 0.7 }}>
+                        ~${status.previousAmount.toLocaleString('es-CL')}
+                      </strong>
+                    ) : null}
+                    
+                    <span style={{ backgroundColor: visual.badge, padding: '0.15rem 0.6rem', border: '2px solid black', borderRadius: '4px', fontWeight: 900, boxShadow: '2px 2px 0px black' }}>
                       {status.statusLabel}
                     </span>
+
+                    {!status.paid && status.candidates.length > 0 && (
+                      <small style={{ fontWeight: 900, color: 'var(--primary)', marginTop: '0.2rem' }}>
+                        {status.candidates.length} sugerencia{status.candidates.length === 1 ? '' : 's'}
+                      </small>
+                    )}
                   </div>
                 </button>
               );
