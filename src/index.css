@@ -3266,7 +3266,7 @@ select.input {
 .account-status-card {
   width: 100%;
   min-height: 70px;
-  padding: 0.95rem 1.15rem;
+  padding: 1.25rem 1.45rem;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   grid-template-areas:

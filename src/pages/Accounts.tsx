@@ -454,14 +454,6 @@ export default function Accounts() {
         ) : (
           <div className="accounts-grid">
             {statuses.map(status => {
-              const visual = {
-                unconfigured: { background: 'var(--account-card-unconfigured)', badge: 'var(--account-card-unconfigured-badge)' },
-                paid: { background: 'var(--account-card-paid)', badge: 'var(--account-card-paid-badge)' },
-                missing: { background: 'var(--account-card-missing)', badge: 'var(--account-card-missing-badge)' },
-                overdue: { background: 'var(--account-card-overdue)', badge: 'var(--account-card-overdue-badge)' },
-                pending: { background: 'var(--account-card-pending)', badge: 'var(--account-card-pending-badge)' }
-              }[status.statusKind] || { background: 'var(--surface-color)', badge: '#e2e8f0' };
-
               return (
                 <button
                   type="button"
@@ -470,7 +462,7 @@ export default function Accounts() {
                   className="interactive-card account-status-card"
                   aria-label={`Ver detalle de ${status.item.name}: ${status.statusLabel}`}
                   title={`Ver detalle de ${status.item.name}`}
-                  style={{ backgroundColor: visual.background }}
+                  style={{ backgroundColor: 'var(--surface-color)' }}
                 >
                   <span className="account-status-icon">
                     {status.paid ? <CheckCircle2 size={22} fill="#22c55e" color="var(--border-color)" /> : <Loader2 size={20} className="animate-spin" style={{ animationDuration: '3s' }} />}
@@ -498,7 +490,7 @@ export default function Accounts() {
                       </strong>
                     ) : null}
                     
-                    <span style={{ backgroundColor: visual.badge, padding: '0.1rem 0.4rem', border: '2px solid var(--border-color)', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 900, boxShadow: '2px 2px 0px var(--border-color)' }}>
+                    <span style={{ backgroundColor: 'var(--surface-subtle)', color: 'var(--text-primary)', padding: '0.1rem 0.4rem', border: '2px solid var(--border-color)', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 900, boxShadow: '2px 2px 0px var(--border-color)' }}>
                       {status.statusLabel}
                     </span>
 
