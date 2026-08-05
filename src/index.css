@@ -94,13 +94,13 @@ html.dark {
   --warning-text: #fde047;
   
   --account-card-unconfigured: #713f12;
-  --account-card-unconfigured-badge: #854d0e;
+  --account-card-unconfigured-badge: var(--warning-text);
   --account-card-paid: #14532d;
-  --account-card-paid-badge: #166534;
+  --account-card-paid-badge: var(--success-text);
   --account-card-missing: #7f1d1d;
-  --account-card-missing-badge: #991b1b;
+  --account-card-missing-badge: var(--danger-text);
   --account-card-overdue: #7f1d1d;
-  --account-card-overdue-badge: #991b1b;
+  --account-card-overdue-badge: var(--danger-text);
   --account-card-pending: #7c2d12;
   --account-card-pending-badge: #9a3412;
   
@@ -706,8 +706,8 @@ select.input {
   box-shadow: 4px 4px 0 #000;
 }
 
-.light-kpi-income { background: #dcfce7; }
-.light-kpi-expense { background: #fee2e2; }
+.light-kpi-income { background: var(--pastel-green); }
+.light-kpi-expense { background: var(--danger-surface); }
 
 .light-kpi span {
   display: flex;
@@ -857,7 +857,7 @@ select.input {
 }
 
 .light-status-icon.is-paid { background: #bbf7d0; }
-.light-status-icon.is-pending { background: #fef08a; }
+.light-status-icon.is-pending { background: var(--pastel-yellow); }
 .light-status-icon.is-unconfigured { background: #e2e8f0; }
 
 .light-category-row > div:first-child {
@@ -956,7 +956,7 @@ select.input {
 }
 
 .light-error {
-  background: #fee2e2;
+  background: var(--danger-surface);
   font-weight: 750;
 }
 
@@ -1240,7 +1240,7 @@ select.input {
   gap: 1rem;
   padding: 1rem;
   border-bottom: 2px solid var(--border-color);
-  background: #fef08a;
+  background: var(--pastel-yellow);
 }
 
 .split-dialog-header h2 {
@@ -1945,8 +1945,8 @@ select.input {
   line-height: 1.35;
 }
 
-.dashboard-cash-summary.is-negative .dashboard-cash-summary-primary { background: #fee2e2; }
-.dashboard-cash-summary.is-positive .dashboard-cash-summary-primary { background: #dcfce7; }
+.dashboard-cash-summary.is-negative .dashboard-cash-summary-primary { background: var(--danger-surface); }
+.dashboard-cash-summary.is-positive .dashboard-cash-summary-primary { background: var(--pastel-green); }
 
 .dashboard-cash-summary-breakdown {
   display: grid;
@@ -2711,7 +2711,7 @@ select.input {
   justify-content: center;
   border: 1.5px solid var(--border-color);
   border-radius: 999px;
-  background: #fef08a;
+  background: var(--pastel-yellow);
   font-size: 0.72rem;
   font-weight: 900;
 }
@@ -3028,7 +3028,7 @@ select.input {
 }
 
 .category-suggestion-reason.source-rule {
-  color: #166534;
+  color: var(--success-text);
 }
 
 .category-suggestion-reason.source-pattern {
@@ -3139,7 +3139,7 @@ select.input {
 }
 
 .category-tree-options button.active {
-  background: #dcfce7;
+  background: var(--pastel-green);
 }
 
 .category-create-form {
@@ -3398,11 +3398,11 @@ select.input {
 }
 
 .account-detail-metric.state-paid {
-  background: #f0fdf4;
+  background: var(--account-card-paid);
 }
 
 .account-detail-metric.state-unconfigured {
-  background: #fefce8;
+  background: var(--account-card-unconfigured);
 }
 
 .account-detail-metric.state-pending {
@@ -3557,13 +3557,13 @@ select.input {
 
 .account-transaction-main > div > small {
   margin-top: 0.3rem;
-  color: #166534;
+  color: var(--success-text);
   font-size: 0.7rem;
   font-weight: 800;
 }
 
 .account-candidate-row .account-transaction-main > div > small {
-  color: #854d0e;
+  color: var(--warning-text);
 }
 
 .account-transaction-amount {
@@ -3689,7 +3689,7 @@ select.input {
 }
 
 .account-history-month.has-payments {
-  background: #f0fdf4;
+  background: var(--account-card-paid);
 }
 
 .account-history-month > button {
@@ -3837,7 +3837,7 @@ select.input {
   padding: 0.3rem 0.7rem;
   border: 2px solid var(--border-color);
   border-radius: 999px;
-  background: #fef08a;
+  background: var(--pastel-yellow);
   box-shadow: 2px 2px 0 #000;
   font-size: 0.75rem;
   font-weight: 900;
@@ -3912,7 +3912,7 @@ select.input {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  background: #dcfce7;
+  background: var(--pastel-green);
   border: 2px solid var(--border-color);
   border-radius: 10px;
   box-shadow: 3px 3px 0 #000;
@@ -3980,7 +3980,7 @@ select.input {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  color: #166534;
+  color: var(--success-text);
   font-size: 0.78rem;
   font-weight: 900;
 }
@@ -4143,7 +4143,7 @@ select.input {
 }
 
 .fact-egreso {
-  background: #fee2e2 !important;
+  background: var(--danger-surface) !important;
   color: #b91c1c !important;
   border-color: #fca5a5 !important;
 }
@@ -4177,7 +4177,7 @@ select.input {
   padding: 0.3rem 0.75rem;
   border: 2px solid var(--border-color);
   border-radius: 999px;
-  background: #fef08a;
+  background: var(--pastel-yellow);
   box-shadow: 2px 2px 0 #000;
   font-size: 0.75rem;
   font-weight: 900;
@@ -4461,7 +4461,7 @@ select.input {
   width: 44px;
   padding: 0;
   border: 2px solid var(--danger);
-  background: #fee2e2;
+  background: var(--danger-surface);
   color: var(--danger-text);
 }
 
