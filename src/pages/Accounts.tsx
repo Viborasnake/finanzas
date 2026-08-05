@@ -477,10 +477,10 @@ export default function Accounts() {
                   </span>
 
                   <div className="account-status-copy">
-                    <strong style={{ fontSize: '1.1rem' }}>{status.item.name}</strong>
-                    {!status.configured && <span style={{ color: 'var(--danger)' }}>Falta vincular</span>}
+                    <strong style={{ fontSize: '1rem' }}>{status.item.name}</strong>
+                    {!status.configured && <span style={{ color: 'var(--danger)', fontSize: '0.8rem' }}>Falta vincular</span>}
                     {(status.paid || status.estimatedDate) ? (
-                      <small style={{ marginTop: '0.4rem', fontSize: '0.85rem' }}>
+                      <small style={{ marginTop: '0.15rem', fontSize: '0.8rem' }}>
                         {status.paid ? 'Pagado el ' : 'Estimado: '}
                         {fmtDate(status.paid ? status.paidDate : status.estimatedDate)}
                       </small>
@@ -489,16 +489,16 @@ export default function Accounts() {
 
                   <div className="account-status-result">
                     {status.paid ? (
-                      <strong style={{ fontSize: '1.15rem', color: 'var(--text-primary)' }}>
+                      <strong style={{ fontSize: '1.05rem', color: 'var(--text-primary)' }}>
                         ${status.paidAmount.toLocaleString('es-CL')}
                       </strong>
                     ) : status.previousAmount ? (
-                      <strong style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', opacity: 0.7 }}>
+                      <strong style={{ fontSize: '1rem', color: 'var(--text-secondary)', opacity: 0.7 }}>
                         ~${status.previousAmount.toLocaleString('es-CL')}
                       </strong>
                     ) : null}
                     
-                    <span style={{ backgroundColor: visual.badge, padding: '0.15rem 0.6rem', border: '2px solid black', borderRadius: '4px', fontWeight: 900, boxShadow: '2px 2px 0px black' }}>
+                    <span style={{ backgroundColor: visual.badge, padding: '0.1rem 0.4rem', border: '2px solid black', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 900, boxShadow: '2px 2px 0px black' }}>
                       {status.statusLabel}
                     </span>
 
