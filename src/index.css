@@ -2,13 +2,13 @@
 
 :root {
   /* Neo-brutalist Theme */
-  --bg-color: #fdfdfc;
+  --bg-color: var(--bg-color);
   --surface-color: #ffffff;
   --text-primary: #000000;
   --text-secondary: #334155;
   --text-muted: #64748b;
   --border-color: #000000;
-  --surface-subtle: #f8fafc;
+  --surface-subtle: var(--surface-subtle);
   --surface-disabled: #e2e8f0;
   --focus-ring: #2563eb;
   
@@ -739,7 +739,7 @@ select.input {
   padding: 0.7rem 0.9rem;
   border: 2px solid #94a3b8;
   border-radius: 10px;
-  background: #f8fafc;
+  background: var(--surface-subtle);
   color: #334155;
   font-size: 0.78rem;
   font-weight: 700;
@@ -901,7 +901,7 @@ select.input {
   padding: 0.6rem;
   border: 2px solid var(--border-color);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--surface-subtle);
   color: #000;
   font: inherit;
   font-size: 0.78rem;
@@ -1269,7 +1269,7 @@ select.input {
   gap: 0.85rem;
   border: 2px solid var(--border-color);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--surface-subtle);
 }
 
 .split-dialog-summary > div:last-child {
@@ -1968,7 +1968,7 @@ select.input {
   white-space: nowrap;
 }
 
-.dashboard-cash-net-change { background: #f8fafc; }
+.dashboard-cash-net-change { background: var(--surface-subtle); }
 
 .dashboard-cash-summary-note {
   grid-column: 1 / -1;
@@ -2165,7 +2165,7 @@ select.input {
   grid-template-columns: 1fr;
   border: 2px solid var(--border-color);
   border-radius: var(--radius-md);
-  background: #f8fafc;
+  background: var(--surface-subtle);
   overflow: hidden;
   margin-bottom: 1rem;
 }
@@ -2329,7 +2329,7 @@ select.input {
 }
 
 .dashboard-ranking-row:hover {
-  background: #f8fafc;
+  background: var(--surface-subtle);
 }
 
 .dashboard-ranking-label {
@@ -2366,7 +2366,7 @@ select.input {
   padding: 0.85rem 1rem;
   border: 2px solid var(--border-color);
   border-radius: var(--radius-md);
-  background: #f8fafc;
+  background: var(--surface-subtle);
   box-shadow: var(--shadow-sm);
   text-align: left;
 }
@@ -2673,7 +2673,7 @@ select.input {
   padding: 0.35rem 0.7rem;
   border: 2px solid var(--border-color);
   border-radius: 999px;
-  background: #f8fafc;
+  background: var(--surface-subtle);
   box-shadow: 2px 2px 0 #000;
   font-size: 0.75rem;
   font-weight: 900;
@@ -2687,7 +2687,7 @@ select.input {
   padding: 0.75rem;
   border: 2px solid var(--border-color);
   border-radius: 10px;
-  background: #f8fafc;
+  background: var(--surface-subtle);
 }
 
 .transactions-filter-bar .input {
@@ -2777,7 +2777,7 @@ select.input {
 }
 
 .transactions-table tbody tr:hover {
-  background-color: #f8fafc !important;
+  background-color: var(--surface-subtle) !important;
 }
 
 .transactions-table td[data-label="Descripción"] input {
@@ -2841,7 +2841,7 @@ select.input {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
   min-height: 0;
-  background: #f8fafc;
+  background: var(--surface-subtle);
 }
 
 .category-picker-context {
@@ -2858,7 +2858,7 @@ select.input {
   padding: 0.65rem 0.75rem;
   border: 2px solid var(--border-color);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--surface-subtle);
 }
 
 .category-picker-context span,
@@ -3380,7 +3380,7 @@ select.input {
   padding: 0.75rem;
   border: 2px solid var(--border-color);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--surface-subtle);
 }
 
 .account-detail-metric span {
@@ -3596,7 +3596,7 @@ select.input {
   align-items: start;
   border: 2px dashed #94a3b8;
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--surface-subtle);
 }
 
 .account-empty-state.compact {
@@ -3632,7 +3632,7 @@ select.input {
   gap: 0.75rem;
   border: 2px solid var(--border-color);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--surface-subtle);
 }
 
 .account-manual-form > label {
@@ -4258,7 +4258,7 @@ select.input {
   height: 40px;
   border: 2px solid var(--border-color);
   border-radius: 10px;
-  background: #f8fafc;
+  background: var(--surface-subtle);
   box-shadow: 2px 2px 0 #000;
 }
 
@@ -4422,7 +4422,7 @@ select.input {
   padding: 0.9rem 1rem;
   border: 2px solid var(--border-color);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--surface-subtle);
 }
 
 .settings-rule-summary {
@@ -4567,7 +4567,7 @@ select.input {
   padding: 0.85rem;
   border: 2px solid var(--border-color);
   border-radius: 9px;
-  background: #f8fafc;
+  background: var(--surface-subtle);
 }
 
 .settings-list-row {
@@ -4596,7 +4596,7 @@ select.input {
   text-align: center;
   border: 2px dashed #cbd5e1;
   border-radius: 9px;
-  background: #f8fafc;
+  background: var(--surface-subtle);
 }
 
 .settings-danger {

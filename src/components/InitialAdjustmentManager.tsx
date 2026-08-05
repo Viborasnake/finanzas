@@ -250,7 +250,7 @@ export function InitialAdjustmentManager() {
 
             return (
               <div key={bank} style={{ border: '2px solid var(--border-color)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
-                <div style={{ backgroundColor: adj ? '#f8fafc' : '#fefce8', padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                <div style={{ backgroundColor: adj ? 'var(--surface-subtle)' : 'var(--account-card-unconfigured)', padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                   
                   <div>
                     <h3 style={{ margin: '0 0 0.5rem 0', fontWeight: 900, fontSize: '1.1rem' }}>{bankLabel}</h3>
@@ -292,7 +292,7 @@ export function InitialAdjustmentManager() {
                     <h4 style={{ margin: '0 0 1.25rem 0', fontWeight: 800 }}>{adj ? 'Editar Ajuste' : 'Nuevo Ajuste de Inicio'} para {bankLabel}</h4>
                     
                     {!adj && suggestions[bank] && (
-                      <div style={{ backgroundColor: '#f0fdf4', border: '2px dashed #166534', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
+                      <div style={{ backgroundColor: 'var(--account-card-paid)', border: '2px dashed #166534', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
                         <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: '#166534', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Lightbulb size={17} aria-hidden="true" /> Sugerencia del sistema</p>
                         <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: '#166534' }}>
                           Basado en tu primera transacción importada, tu saldo inicial debió ser de <strong>${suggestions[bank].amount.toLocaleString('es-CL')}</strong> ({suggestions[bank].type}).

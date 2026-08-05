@@ -198,7 +198,7 @@ export default function MindMapChart({ transactions, taxonomy }: MindMapChartPro
 
   return (
     <>
-      <div style={{ position: 'relative', width: '100%', height: '500px', border: '2px solid var(--border-color)', borderRadius: '8px', background: '#f8fafc', overflow: 'hidden' }}>
+      <div style={{ position: 'relative', width: '100%', height: '500px', border: '2px solid var(--border-color)', borderRadius: '8px', background: 'var(--surface-subtle)', overflow: 'hidden' }}>
         <Tree {...treeProps} />
         {controls}
       </div>
@@ -210,7 +210,7 @@ export default function MindMapChart({ transactions, taxonomy }: MindMapChartPro
           panelClassName="mindmap-dialog"
         >
           <h2 id="mindmap-dialog-title" className="sr-only">Mapa de categorías ampliado</h2>
-          <div style={{ position: 'relative', width: '100%', height: '100%', backgroundColor: '#f8fafc', overflow: 'hidden' }}>
+          <div style={{ position: 'relative', width: '100%', height: '100%', backgroundColor: 'var(--surface-subtle)', overflow: 'hidden' }}>
             <Tree {...treeProps} />
             {controls}
           </div>

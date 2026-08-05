@@ -88,7 +88,7 @@ export default function NeoDatePicker({ value, onChange }: NeoDatePickerProps) {
         }}
       >
         <CalendarIcon size={18} strokeWidth={2.5} />
-        <span style={{ fontSize: '0.9rem', color: '#000', flex: 1 }}>{formatDisplay(value)}</span>
+        <span style={{ fontSize: '0.9rem', color: 'var(--border-color)', flex: 1 }}>{formatDisplay(value)}</span>
       </button>
 
       {/* Popover Calendar */}
@@ -160,10 +160,10 @@ export default function NeoDatePicker({ value, onChange }: NeoDatePickerProps) {
                   aria-pressed={isSelected}
                   aria-current={isToday ? 'date' : undefined}
                   style={{
-                    backgroundColor: isSelected ? '#000' : isToday ? '#fef08a' : '#fff',
-                    color: isSelected ? '#fff' : '#000',
+                    backgroundColor: isSelected ? 'var(--border-color)' : isToday ? '#fef08a' : 'var(--surface-color)',
+                    color: isSelected ? 'var(--surface-color)' : 'var(--border-color)',
                     border: '2px solid',
-                    borderColor: isSelected || isToday ? '#000' : 'transparent',
+                    borderColor: isSelected || isToday ? 'var(--border-color)' : 'transparent',
                     borderRadius: '6px',
                     padding: '6px 0',
                     fontWeight: 800,
@@ -172,11 +172,11 @@ export default function NeoDatePicker({ value, onChange }: NeoDatePickerProps) {
                   }}
                   onMouseEnter={(e) => {
                     if (!isSelected) e.currentTarget.style.backgroundColor = '#f1f5f9';
-                    if (!isSelected) e.currentTarget.style.borderColor = '#000';
+                    if (!isSelected) e.currentTarget.style.borderColor = 'var(--border-color)';
                   }}
                   onMouseLeave={(e) => {
-                    if (!isSelected) e.currentTarget.style.backgroundColor = isToday ? '#fef08a' : '#fff';
-                    if (!isSelected) e.currentTarget.style.borderColor = isToday ? '#000' : 'transparent';
+                    if (!isSelected) e.currentTarget.style.backgroundColor = isToday ? '#fef08a' : 'var(--surface-color)';
+                    if (!isSelected) e.currentTarget.style.borderColor = isToday ? 'var(--border-color)' : 'transparent';
                   }}
                 >
                   {day}

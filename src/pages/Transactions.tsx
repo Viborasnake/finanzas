@@ -435,7 +435,7 @@ export function CascadingCategorySelector({ initialTipo, initialPrincipal, initi
                         setExpandedPrincipal(null);
                       }}
                       className={selectedTipo === tipo ? 'active' : ''}
-                      style={{ backgroundColor: selectedTipo === tipo ? '#000' : getBgColor(tipo) }}
+                      style={{ backgroundColor: selectedTipo === tipo ? 'var(--border-color)' : getBgColor(tipo) }}
                     >
                       {tipo}
                     </button>
@@ -459,7 +459,7 @@ export function CascadingCategorySelector({ initialTipo, initialPrincipal, initi
                         {isExpanded && (
                           <div className="category-tree-options">
                             {getAccountingHint(selectedTipo, principal) && (
-                              <p style={{ margin: 0, padding: '0.75rem', backgroundColor: '#f8fafc', borderBottom: '2px solid var(--border-color)', color: '#475569', fontSize: '0.78rem', fontWeight: 700, lineHeight: 1.4 }}>
+                              <p style={{ margin: 0, padding: '0.75rem', backgroundColor: 'var(--surface-subtle)', borderBottom: '2px solid var(--border-color)', color: '#475569', fontSize: '0.78rem', fontWeight: 700, lineHeight: 1.4 }}>
                                 {getAccountingHint(selectedTipo, principal)}
                               </p>
                             )}
@@ -1355,7 +1355,7 @@ export default function Transactions() {
             <div style={{ display: 'grid', gap: '1rem' }}>
               {duplicateGroups.map((group, groupIndex) => (
                 <section key={group.key} style={{ border: '2px solid var(--border-color)', borderRadius: 10, overflow: 'hidden', background: 'var(--surface-color)' }}>
-                  <div style={{ padding: '0.9rem 1rem', borderBottom: '2px solid var(--border-color)', background: group.containsSplit ? '#fef3c7' : '#f8fafc', display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div style={{ padding: '0.9rem 1rem', borderBottom: '2px solid var(--border-color)', background: group.containsSplit ? '#fef3c7' : 'var(--surface-subtle)', display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     <div>
                       <strong>Coincidencia {groupIndex + 1}</strong>
                       <div style={{ marginTop: '0.2rem', fontSize: '0.85rem', color: '#475569', fontWeight: 650 }}>{group.reason}</div>

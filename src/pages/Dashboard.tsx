@@ -791,7 +791,7 @@ export default function Dashboard() {
     const bgColor = isGood ? '#bbf7d0' : '#fecaca'; // pastel green / pastel red
     
     return (
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.75rem', backgroundColor: bgColor, border: '2px solid var(--border-color)', borderRadius: '2rem', fontWeight: 800, fontSize: '0.85rem', color: '#000', boxShadow: '2px 2px 0px var(--border-color)' }}>
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.75rem', backgroundColor: bgColor, border: '2px solid var(--border-color)', borderRadius: '2rem', fontWeight: 800, fontSize: '0.85rem', color: 'var(--border-color)', boxShadow: '2px 2px 0px var(--border-color)' }}>
         {isPositive ? <TrendingUp size={16} strokeWidth={3} /> : <TrendingDown size={16} strokeWidth={3} />}
         {Math.abs(pct).toFixed(1)}%
       </div>
@@ -860,7 +860,7 @@ export default function Dashboard() {
     return (
       <div style={{ backgroundColor: 'var(--surface-color)', border: '2px solid var(--border-color)', borderRadius: '12px', boxShadow: '4px 4px 0px var(--border-color)', overflow: 'hidden' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '0', borderBottom: '2px solid var(--border-color)' }}>
-          <div style={{ padding: '2rem', backgroundColor: '#f8fafc' }}>
+          <div style={{ padding: '2rem', backgroundColor: 'var(--surface-subtle)' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.75rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: '#fef08a', boxShadow: '2px 2px 0px var(--border-color)', fontSize: '0.75rem', fontWeight: 900, marginBottom: '1.25rem' }}>
               <Sparkles size={16} strokeWidth={3} />
               Primer inicio
@@ -1163,15 +1163,15 @@ export default function Dashboard() {
                     <tr 
                       key={row.name} 
                       onClick={() => openDetailsModal(row.name, 'ingreso')}
-                      style={{ borderBottom: i === incomeData.length - 1 ? 'none' : '2px solid var(--border-color)', backgroundColor: row.isGray ? '#f8fafc' : '#fff', cursor: 'pointer' }}
+                      style={{ borderBottom: i === incomeData.length - 1 ? 'none' : '2px solid var(--border-color)', backgroundColor: row.isGray ? 'var(--surface-subtle)' : 'var(--surface-color)', cursor: 'pointer' }}
                       onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f1f5f9')}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = row.isGray ? '#f8fafc' : '#fff')}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = row.isGray ? 'var(--surface-subtle)' : 'var(--surface-color)')}
                     >
-                      <td style={{ padding: '0.75rem', fontWeight: 700, borderRight: '2px solid var(--border-color)', color: row.isGray ? '#64748b' : '#000' }}>
+                      <td style={{ padding: '0.75rem', fontWeight: 700, borderRight: '2px solid var(--border-color)', color: row.isGray ? '#64748b' : 'var(--border-color)' }}>
                         <div>{row.name}</div>
                         {row.subtext && <div style={{ fontSize: '0.75rem', fontWeight: 600, marginTop: '0.15rem', opacity: 0.9 }}>{row.subtext}</div>}
                       </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: row.isGray ? '#64748b' : '#000' }}>
+                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: row.isGray ? '#64748b' : 'var(--border-color)' }}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
                           ${row.value.toLocaleString('es-CL')}
                           <button
@@ -1234,15 +1234,15 @@ export default function Dashboard() {
                     <tr 
                       key={row.name} 
                       onClick={() => openDetailsModal(row.name, 'egreso')}
-                      style={{ borderBottom: i === expenseData.length - 1 ? 'none' : '2px solid var(--border-color)', backgroundColor: row.isGray ? '#f8fafc' : '#fff', cursor: 'pointer' }}
+                      style={{ borderBottom: i === expenseData.length - 1 ? 'none' : '2px solid var(--border-color)', backgroundColor: row.isGray ? 'var(--surface-subtle)' : 'var(--surface-color)', cursor: 'pointer' }}
                       onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f1f5f9')}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = row.isGray ? '#f8fafc' : '#fff')}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = row.isGray ? 'var(--surface-subtle)' : 'var(--surface-color)')}
                     >
-                      <td style={{ padding: '0.75rem', fontWeight: 700, borderRight: '2px solid var(--border-color)', color: row.isGray ? '#64748b' : '#000' }}>
+                      <td style={{ padding: '0.75rem', fontWeight: 700, borderRight: '2px solid var(--border-color)', color: row.isGray ? '#64748b' : 'var(--border-color)' }}>
                         <div>{row.name}</div>
                         {row.subtext && <div style={{ fontSize: '0.75rem', fontWeight: 600, marginTop: '0.15rem', opacity: 0.9 }}>{row.subtext}</div>}
                       </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: row.isGray ? '#64748b' : '#000' }}>
+                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: row.isGray ? '#64748b' : 'var(--border-color)' }}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
                           ${row.value.toLocaleString('es-CL')}
                           <button
@@ -1410,7 +1410,7 @@ export default function Dashboard() {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={timelineData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fill: '#000', fontSize: 11, fontWeight: 700 }} axisLine={{ stroke: '#000', strokeWidth: 2 }} tickLine={false} dy={10} />
+                  <XAxis dataKey="label" tick={{ fill: 'var(--border-color)', fontSize: 11, fontWeight: 700 }} axisLine={{ stroke: 'var(--border-color)', strokeWidth: 2 }} tickLine={false} dy={10} />
                   <YAxis hide />
                   <Tooltip
                     contentStyle={{ borderRadius: '8px', border: '2px solid var(--border-color)', boxShadow: '4px 4px 0px var(--border-color)', fontWeight: 800 }}
@@ -1418,12 +1418,12 @@ export default function Dashboard() {
                   />
                   {selectedCategories.length === 0 ? (
                     <>
-                      <Line type="monotone" name="Ingresos" dataKey="Ingresos" stroke="#22c55e" strokeWidth={4} dot={{ r: 3, fill: '#bbf7d0', stroke: '#000', strokeWidth: 2 }} activeDot={{ r: 6, stroke: '#000', strokeWidth: 3 }} />
-                      <Line type="monotone" name="Egresos" dataKey="Egresos" stroke="#f43f5e" strokeWidth={4} dot={{ r: 3, fill: '#fecaca', stroke: '#000', strokeWidth: 2 }} activeDot={{ r: 6, stroke: '#000', strokeWidth: 3 }} />
+                      <Line type="monotone" name="Ingresos" dataKey="Ingresos" stroke="#22c55e" strokeWidth={4} dot={{ r: 3, fill: '#bbf7d0', stroke: 'var(--border-color)', strokeWidth: 2 }} activeDot={{ r: 6, stroke: 'var(--border-color)', strokeWidth: 3 }} />
+                      <Line type="monotone" name="Egresos" dataKey="Egresos" stroke="#f43f5e" strokeWidth={4} dot={{ r: 3, fill: '#fecaca', stroke: 'var(--border-color)', strokeWidth: 2 }} activeDot={{ r: 6, stroke: 'var(--border-color)', strokeWidth: 3 }} />
                     </>
                   ) : (
                     selectedCategories.map((cat, i) => (
-                      <Line key={cat} type="monotone" name={cat} dataKey={cat} stroke={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} strokeWidth={3} dot={{ r: 3, fill: '#fff', stroke: CATEGORY_COLORS[i % CATEGORY_COLORS.length], strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                      <Line key={cat} type="monotone" name={cat} dataKey={cat} stroke={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} strokeWidth={3} dot={{ r: 3, fill: 'var(--surface-color)', stroke: CATEGORY_COLORS[i % CATEGORY_COLORS.length], strokeWidth: 2 }} activeDot={{ r: 6 }} />
                     ))
                   )}
                 </LineChart>
@@ -1486,8 +1486,8 @@ export default function Dashboard() {
             <AlertTriangle color="var(--border-color)" size={24} strokeWidth={2.5} />
           </div>
           <div>
-            <h4 style={{ margin: '0 0 0.25rem 0', color: '#000', fontSize: '1.2rem', fontWeight: 900 }}>Tienes {count} {count === 1 ? 'movimiento' : 'movimientos'} sin clasificar</h4>
-            <p style={{ margin: 0, color: '#000', fontWeight: 600, fontSize: '0.9rem' }}>
+            <h4 style={{ margin: '0 0 0.25rem 0', color: 'var(--border-color)', fontSize: '1.2rem', fontWeight: 900 }}>Tienes {count} {count === 1 ? 'movimiento' : 'movimientos'} sin clasificar</h4>
+            <p style={{ margin: 0, color: 'var(--border-color)', fontWeight: 600, fontSize: '0.9rem' }}>
               Clasifícalos para mejorar la precisión del reporte.
             </p>
           </div>
@@ -1603,7 +1603,7 @@ export default function Dashboard() {
 
         {/* KPI Row */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
-          <div style={{ ...kpiStyle, backgroundColor: '#f0fdf4' }}>
+          <div style={{ ...kpiStyle, backgroundColor: 'var(--account-card-paid)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', color: '#16a34a', letterSpacing: '0.05em' }}>Entradas disponibles</span>
               <ArrowUpRight size={20} color="#16a34a" />
@@ -1656,8 +1656,8 @@ export default function Dashboard() {
               <CartesianGrid strokeDasharray="4 4" stroke="#e2e8f0" vertical={false} />
               <XAxis
                 dataKey="mes"
-                tick={{ fill: '#000', fontSize: 12, fontWeight: 800, fontFamily: 'Montserrat' }}
-                axisLine={{ stroke: '#000', strokeWidth: 2 }}
+                tick={{ fill: 'var(--border-color)', fontSize: 12, fontWeight: 800, fontFamily: 'Montserrat' }}
+                axisLine={{ stroke: 'var(--border-color)', strokeWidth: 2 }}
                 tickLine={false}
                 dy={10}
               />
@@ -1665,7 +1665,7 @@ export default function Dashboard() {
               <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.04)', radius: 8 }} />
               <Bar dataKey="Ingresos" fill="#4ade80" stroke="var(--border-color)" strokeWidth={2} radius={[6, 6, 0, 0]} maxBarSize={45} isAnimationActive={true} />
               <Bar dataKey="Egresos" fill="#fb7185" stroke="var(--border-color)" strokeWidth={2} radius={[6, 6, 0, 0]} maxBarSize={45} isAnimationActive={true} />
-              <Area type="monotone" dataKey="Balance" stroke="#2563eb" strokeWidth={4} fill="#60a5fa" fillOpacity={0.3} dot={{ r: 5, fill: '#fff', stroke: '#2563eb', strokeWidth: 3 }} activeDot={{ r: 8, fill: '#2563eb', stroke: '#fff', strokeWidth: 3 }} isAnimationActive={true} />
+              <Area type="monotone" dataKey="Balance" stroke="#2563eb" strokeWidth={4} fill="#60a5fa" fillOpacity={0.3} dot={{ r: 5, fill: 'var(--surface-color)', stroke: '#2563eb', strokeWidth: 3 }} activeDot={{ r: 8, fill: '#2563eb', stroke: 'var(--surface-color)', strokeWidth: 3 }} isAnimationActive={true} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
@@ -1803,7 +1803,7 @@ export default function Dashboard() {
               ) : (
                 <table className="dashboard-detail-table" style={{ width: '100%', borderCollapse: 'collapse', border: '2px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
                   <thead>
-                    <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                    <tr style={{ backgroundColor: 'var(--surface-subtle)', borderBottom: '2px solid #e2e8f0' }}>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 800, fontSize: '0.9rem', color: '#475569' }}>Fecha</th>
                       {isConsolidated && (
                         <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 800, fontSize: '0.9rem', color: '#475569' }}>Banco</th>
@@ -1826,7 +1826,7 @@ export default function Dashboard() {
 
                       if (editingTxId === t.id) {
                         return (
-                          <tr className="dashboard-detail-edit-row" key={t.id} style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid var(--border-color)' }}>
+                          <tr className="dashboard-detail-edit-row" key={t.id} style={{ backgroundColor: 'var(--surface-subtle)', borderBottom: '2px solid var(--border-color)' }}>
                             <td colSpan={isConsolidated ? 5 : 4} style={{ padding: '1rem' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                                 <span style={{ fontWeight: 800, fontSize: '0.95rem' }}>Clasificar "{t.description || t.original_description}"</span>
@@ -1851,7 +1851,7 @@ export default function Dashboard() {
                       }
 
                       return (
-                        <tr key={t.id} style={{ borderBottom: i === detailsModal.transactions.length - 1 ? 'none' : '1px solid #e2e8f0', backgroundColor: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                        <tr key={t.id} style={{ borderBottom: i === detailsModal.transactions.length - 1 ? 'none' : '1px solid #e2e8f0', backgroundColor: i % 2 === 0 ? 'var(--surface-color)' : 'var(--surface-subtle)' }}>
                           <td data-label="Fecha" style={{ padding: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap', fontSize: '0.9rem' }}>{parseLocalDate(t.date).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                           {isConsolidated && (
                             <td data-label="Banco" style={{ padding: '0.75rem', whiteSpace: 'nowrap' }}>
@@ -1867,7 +1867,7 @@ export default function Dashboard() {
                               {categoryPath || 'Sin clasificar'}
                             </span>
                           </td>
-                          <td data-label="Monto" style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: getTransactionKind(t) === 'ingreso' ? '#16a34a' : '#000' }}>
+                          <td data-label="Monto" style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: getTransactionKind(t) === 'ingreso' ? '#16a34a' : 'var(--border-color)' }}>
                             <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
                               ${Math.abs(t.amount).toLocaleString('es-CL')}
                               <button 
@@ -1891,8 +1891,8 @@ export default function Dashboard() {
                   </tbody>
                   <tfoot>
                     <tr style={{ backgroundColor: '#f1f5f9', borderTop: '2px solid var(--border-color)' }}>
-                      <td colSpan={isConsolidated ? 4 : 3} style={{ padding: '1rem 0.75rem', fontWeight: 900, fontSize: '1rem', color: '#000' }}>Total</td>
-                      <td style={{ padding: '1rem 0.75rem', textAlign: 'right', fontWeight: 900, fontSize: '1rem', color: '#000' }}>
+                      <td colSpan={isConsolidated ? 4 : 3} style={{ padding: '1rem 0.75rem', fontWeight: 900, fontSize: '1rem', color: 'var(--border-color)' }}>Total</td>
+                      <td style={{ padding: '1rem 0.75rem', textAlign: 'right', fontWeight: 900, fontSize: '1rem', color: 'var(--border-color)' }}>
                         ${(detailsModal.transactions.reduce((acc, t) => acc + Math.abs(t.amount), 0)).toLocaleString('es-CL')}
                       </td>
                     </tr>

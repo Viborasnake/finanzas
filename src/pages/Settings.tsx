@@ -237,7 +237,7 @@ export default function Settings() {
           onClick={toggleSetupCollapsed}
           aria-expanded={!setupCollapsed}
           aria-controls="settings-setup-details"
-          style={{ width: '100%', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '1rem', alignItems: 'center', textAlign: 'left', padding: '1rem 1.25rem', backgroundColor: '#f8fafc', border: 'none', borderBottom: setupCollapsed ? 'none' : '2px solid var(--border-color)', cursor: 'pointer' }}
+          style={{ width: '100%', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '1rem', alignItems: 'center', textAlign: 'left', padding: '1rem 1.25rem', backgroundColor: 'var(--surface-subtle)', border: 'none', borderBottom: setupCollapsed ? 'none' : '2px solid var(--border-color)', cursor: 'pointer' }}
         >
           <div style={{ minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.45rem' }}>
@@ -704,7 +704,7 @@ export default function Settings() {
               {customCategories.map((cat, i) => (
                 <div key={i} className="settings-list-item">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                    <span style={{ backgroundColor: '#000', color: '#fff', fontSize: '0.7rem', fontWeight: 800, padding: '0.25rem 0.5rem', borderRadius: '4px', textTransform: 'uppercase' }}>
+                    <span style={{ backgroundColor: 'var(--border-color)', color: 'var(--surface-color)', fontSize: '0.7rem', fontWeight: 800, padding: '0.25rem 0.5rem', borderRadius: '4px', textTransform: 'uppercase' }}>
                       {cat.tipo}
                     </span>
                     <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>{cat.principal}</h3>

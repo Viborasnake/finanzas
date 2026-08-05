@@ -146,7 +146,7 @@ export default function Login() {
   // --- Bank Setup Step ---
   if (step === 'bank_setup') {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', padding: '1rem', backgroundColor: '#fdfdfc' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', padding: '1rem', backgroundColor: 'var(--bg-color)' }}>
         <div className="card" style={{ width: '100%', maxWidth: '480px' }}>
           <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
@@ -179,9 +179,9 @@ export default function Login() {
                   style={{
                     display: 'flex', alignItems: 'center', gap: '1rem',
                     padding: '1rem 1.25rem',
-                    border: `2px solid ${isSelected ? '#000' : '#e2e8f0'}`,
+                    border: `2px solid ${isSelected ? 'var(--border-color)' : '#e2e8f0'}`,
                     borderRadius: '12px',
-                    backgroundColor: isSelected ? '#f8fafc' : '#fff',
+                    backgroundColor: isSelected ? 'var(--surface-subtle)' : 'var(--surface-color)',
                     cursor: 'pointer',
                     boxShadow: isSelected ? '4px 4px 0px var(--border-color)' : 'none',
                     transition: 'all 0.15s',
@@ -251,7 +251,7 @@ export default function Login() {
   // --- Verify Email Step ---
   if (step === 'verify_email') {
     return (
-      <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#fdfdfc', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+      <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-color)', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
         <div className="card" style={{ width: '100%', maxWidth: '420px', textAlign: 'center', padding: '3rem 2rem' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
             <LaikaPet pose="love" size={136} title="Laika celebra tu registro" />
@@ -276,7 +276,7 @@ export default function Login() {
 
   // --- Auth Step ---
   return (
-    <div className="auth-shell" style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#fdfdfc' }}>
+    <div className="auth-shell" style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-color)' }}>
       {/* Left Column (Marketing) */}
       <div 
         className="auth-left-col" 
@@ -292,7 +292,7 @@ export default function Login() {
         }}
       >
         <div style={{ fontWeight: 900, fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 'auto', position: 'relative', zIndex: 10 }}>
-          <div style={{ background: 'black', color: 'white', padding: '0.2rem', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'var(--border-color)', color: 'var(--bg-color)', padding: '0.2rem', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>✨</span>
           </div>
           MisFinanzas
@@ -302,7 +302,7 @@ export default function Login() {
           <h1 style={{ fontSize: '3.5rem', fontWeight: 900, lineHeight: 1.1, marginBottom: '1.5rem' }}>
             Tu dinero bajo<br />tu control.
           </h1>
-          <p style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '3rem', color: 'rgba(0,0,0,0.7)' }}>
+          <p style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '3rem', color: 'var(--text-secondary)' }}>
             Conectamos todas tus cartolas bancarias en un solo lugar con inteligencia artificial.
           </p>
           
@@ -328,7 +328,7 @@ export default function Login() {
           </ul>
         </div>
 
-        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(0,0,0,0.5)', position: 'relative', zIndex: 10 }}>
+        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', position: 'relative', zIndex: 10 }}>
           © 2026 MisFinanzas · Hecho en Chile
         </div>
       </div>
@@ -338,7 +338,7 @@ export default function Login() {
         className="auth-form-col"
         style={{ 
           flex: 1, 
-          backgroundColor: '#fdfdfc', 
+          backgroundColor: 'var(--bg-color)', 
           display: 'flex', 
           flexDirection: 'column',
           alignItems: 'center', 

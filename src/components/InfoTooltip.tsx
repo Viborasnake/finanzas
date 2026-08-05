@@ -88,7 +88,7 @@ export default function InfoTooltip({ content }: InfoTooltipProps) {
           zIndex: 99999,
           fontSize: '0.8rem',
           fontWeight: 600,
-          color: '#000',
+          color: 'var(--border-color)',
           lineHeight: '1.4',
           textAlign: 'center',
           pointerEvents: 'none'

@@ -495,7 +495,7 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
                   {current.transactions.map((t, idx) => {
                     if (editingTxId === t.id) {
                       return (
-                        <div key={idx} style={{ background: '#f8fafc', border: '2px solid var(--border-color)', borderRadius: 8, padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <div key={idx} style={{ background: 'var(--surface-subtle)', border: '2px solid var(--border-color)', borderRadius: 8, padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>Clasificar "{t.description}"</span>
                             <button type="button" className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }} onClick={() => setEditingTxId(null)}>Cancelar</button>

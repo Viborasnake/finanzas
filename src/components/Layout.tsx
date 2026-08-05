@@ -111,7 +111,7 @@ function BankIndicator() {
           {connectedBanks.length > 0 && (
             <div style={{ padding: '0.5rem' }}>
               {connectedBanks.length > 1 && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.5rem', borderRadius: '8px', backgroundColor: isConsolidated ? '#f8fafc' : 'transparent', marginBottom: '0.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.5rem', borderRadius: '8px', backgroundColor: isConsolidated ? 'var(--surface-subtle)' : 'transparent', marginBottom: '0.25rem' }}>
                   <button
                     type="button"
                     onClick={() => chooseScope('all')}
@@ -138,7 +138,7 @@ function BankIndicator() {
                 const isMain = bank.id === mainBank;
                 const isActive = dashboardScope === bank.id;
                 return (
-                  <div key={bank.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.5rem', borderRadius: '8px', backgroundColor: isActive ? '#f8fafc' : 'transparent' }}>
+                  <div key={bank.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.5rem', borderRadius: '8px', backgroundColor: isActive ? 'var(--surface-subtle)' : 'transparent' }}>
                     <button
                       type="button"
                       onClick={() => chooseScope(bank.id)}
