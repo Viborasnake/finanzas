@@ -597,7 +597,7 @@ export default function Accounts() {
                         </div>
                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
                           {tx.raw_data?.is_manual && (
-                            <button type="button" className="btn btn-outline" style={{ backgroundColor: '#fff', borderColor: 'black', color: 'black', padding: '0.35rem 0.75rem', minHeight: 'auto', fontSize: '0.8rem' }} onClick={() => handleDeleteManualPayment(tx.id)}>
+                            <button type="button" className="btn btn-outline" style={{ backgroundColor: '#fff', borderColor: 'var(--danger)', color: 'var(--danger)', padding: '0.35rem 0.75rem', minHeight: 'auto', fontSize: '0.8rem' }} onClick={() => handleDeleteManualPayment(tx.id)}>
                               <Trash2 size={16} /> Eliminar
                             </button>
                           )}
