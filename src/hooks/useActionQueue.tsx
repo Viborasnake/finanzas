@@ -24,7 +24,7 @@ export function useActionQueue() {
           padding: '1rem', 
           border: '2px solid var(--border-color)', 
           boxShadow: '4px 4px 0px var(--border-color)', 
-          background: 'white', 
+          background: 'var(--surface-color)', 
           display: 'flex', 
           alignItems: 'center', 
           gap: '1rem', 
@@ -43,8 +43,8 @@ export function useActionQueue() {
           }}
           style={{ 
             padding: '0.4rem 0.8rem', 
-            background: '#fecaca', 
-            color: '#991b1b', 
+            background: 'var(--danger-surface)', 
+            color: 'var(--danger-text)', 
             border: '2px solid var(--border-color)', 
             borderRadius: 'var(--radius-sm)', 
             fontWeight: 700, 
@@ -66,12 +66,12 @@ export function useActionQueue() {
             alignItems: 'center',
             justifyContent: 'center',
             padding: '0.25rem',
-            color: '#64748b',
+            color: 'var(--text-muted)',
             borderRadius: '50%',
             transition: 'all 0.1s'
           }}
-          onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#f1f5f9'; e.currentTarget.style.color = '#0f172a'; }}
-          onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#64748b'; }}
+          onMouseOver={(e) => { e.currentTarget.style.backgroundColor = 'var(--surface-subtle)'; e.currentTarget.style.color = '#0f172a'; }}
+          onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; }}
           title="Cerrar"
         >
           <X size={18} strokeWidth={2.5} />

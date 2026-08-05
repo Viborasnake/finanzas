@@ -32,7 +32,7 @@ const getBankMeta = (bankName: any) => {
   return {
     id: bankId,
     label: bankInfo?.label || bankId,
-    color: bankInfo?.color || '#94a3b8'
+    color: bankInfo?.color || 'var(--text-muted)'
   };
 };
 
@@ -201,11 +201,11 @@ export function CascadingCategorySelector({ initialTipo, initialPrincipal, initi
   const currentTree = taxonomy[selectedTipo] || {};
 
   const getBgColor = (tipo: string | undefined | null) => {
-    if (tipo === 'Ingreso') return '#dcfce7'; // pastel green
-    if (tipo === 'Egreso') return '#fee2e2'; // pastel red
-    if (tipo === 'Movimiento Interno') return '#f1f5f9'; // pastel slate
-    if (tipo === 'Ahorro/Inversión') return '#f3e8ff'; // pastel purple
-    return '#f3f4f6';
+    if (tipo === 'Ingreso') return 'var(--pastel-green)'; // pastel green
+    if (tipo === 'Egreso') return 'var(--danger-surface)'; // pastel red
+    if (tipo === 'Movimiento Interno') return 'var(--surface-subtle)'; // pastel slate
+    if (tipo === 'Ahorro/Inversión') return 'var(--pastel-purple)'; // pastel purple
+    return 'var(--surface-subtle)';
   };
 
   const getAccountingHint = (tipo: string, principal: string) => {
@@ -304,7 +304,7 @@ export function CascadingCategorySelector({ initialTipo, initialPrincipal, initi
         className="input category-selector-trigger"
         aria-label={inputValue ? `Cambiar clasificación: ${inputValue}` : 'Clasificar transacción'}
         style={{ 
-          backgroundColor: isComplete && selectedOption ? getBgColor(selectedOption.tipo) : 'white',
+          backgroundColor: isComplete && selectedOption ? getBgColor(selectedOption.tipo) : 'var(--surface-color)',
           borderColor: 'black'
         }}
       >
@@ -323,7 +323,7 @@ export function CascadingCategorySelector({ initialTipo, initialPrincipal, initi
             <div className="dialog-header">
               <div>
                 <h3 id="category-picker-title" style={{ margin: 0, fontSize: '1.15rem', fontWeight: 900 }}>Elegir clasificación</h3>
-                <p id="category-picker-description" style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: '#475569', fontWeight: 600 }}>Elige una sugerencia, explora las categorías o crea una nueva.</p>
+                <p id="category-picker-description" style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Elige una sugerencia, explora las categorías o crea una nueva.</p>
               </div>
               <button type="button" className="dialog-close" onClick={() => setIsOpen(false)} aria-label="Cerrar selector de clasificación" title="Cerrar">
                 <X size={18} />
@@ -459,7 +459,7 @@ export function CascadingCategorySelector({ initialTipo, initialPrincipal, initi
                         {isExpanded && (
                           <div className="category-tree-options">
                             {getAccountingHint(selectedTipo, principal) && (
-                              <p style={{ margin: 0, padding: '0.75rem', backgroundColor: 'var(--surface-subtle)', borderBottom: '2px solid var(--border-color)', color: '#475569', fontSize: '0.78rem', fontWeight: 700, lineHeight: 1.4 }}>
+                              <p style={{ margin: 0, padding: '0.75rem', backgroundColor: 'var(--surface-subtle)', borderBottom: '2px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: '0.78rem', fontWeight: 700, lineHeight: 1.4 }}>
                                 {getAccountingHint(selectedTipo, principal)}
                               </p>
                             )}
@@ -479,7 +479,7 @@ export function CascadingCategorySelector({ initialTipo, initialPrincipal, initi
                                   className={active ? 'active' : ''}
                                 >
                                   <span>{secundaria}</span>
-                                  {active && <CheckCircle2 size={17} color="#16a34a" />}
+                                  {active && <CheckCircle2 size={17} color="var(--success)" />}
                                 </button>
                               );
                             })}
@@ -538,7 +538,7 @@ export function CascadingCategorySelector({ initialTipo, initialPrincipal, initi
         </Dialog>
       )}
       {!isComplete && inputValue !== '' && !isOpen && (
-        <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Pendiente...</span>
+        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Pendiente...</span>
       )}
     </div>
   );
@@ -1143,12 +1143,12 @@ export default function Transactions() {
           <div>
             <h1 className="app-page-title">Transacciones</h1>
             {uncatCount > 0 && (
-              <div style={{ display: 'inline-block', backgroundColor: '#fef08a', color: '#854d0e', padding: '0.5rem 1rem', borderRadius: '2rem', border: '2px solid var(--border-color)', fontWeight: 800, fontSize: '0.875rem' }}>
+              <div style={{ display: 'inline-block', backgroundColor: 'var(--pastel-yellow)', color: 'var(--warning-text)', padding: '0.5rem 1rem', borderRadius: '2rem', border: '2px solid var(--border-color)', fontWeight: 800, fontSize: '0.875rem' }}>
                 Faltan {uncatCount} transacciones por clasificar
               </div>
             )}
             {searchParams.get('review') === 'recent' && (
-              <div role="status" style={{ marginTop: '0.75rem', maxWidth: 620, padding: '0.75rem 1rem', border: '2px solid var(--border-color)', borderRadius: 8, background: '#dcfce7', boxShadow: '2px 2px 0 #000', fontWeight: 750 }}>
+              <div role="status" style={{ marginTop: '0.75rem', maxWidth: 620, padding: '0.75rem 1rem', border: '2px solid var(--border-color)', borderRadius: 8, background: 'var(--pastel-green)', boxShadow: '2px 2px 0 var(--border-color)', fontWeight: 750 }}>
                 Importación completada. Tus movimientos ya están disponibles aquí; revisa las coincidencias si el sistema detectó posibles duplicados.
               </div>
             )}
@@ -1207,21 +1207,21 @@ export default function Transactions() {
 
           <div className="filter-bar" style={{ marginBottom: '1.5rem' }}>
             <div style={{ position: 'relative', flex: 1, width: '100%' }}>
-              <Search size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+              <Search size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input 
                 type="text" 
                 className="input" 
                 placeholder="Filtrar por descripción..." 
                 value={bulkSearchTerm}
                 onChange={(e) => setBulkSearchTerm(e.target.value)}
-                style={{ width: '100%', paddingLeft: '3rem', backgroundColor: 'white' }}
+                style={{ width: '100%', paddingLeft: '3rem', backgroundColor: 'var(--surface-color)' }}
               />
             </div>
             <select 
               value={bulkFilterMode} 
               onChange={e => setBulkFilterMode(e.target.value)}
               className="input" 
-              style={{ backgroundColor: 'white', width: '100%', flex: 1, fontWeight: 600 }}
+              style={{ backgroundColor: 'var(--surface-color)', width: '100%', flex: 1, fontWeight: 600 }}
             >
               <option value="unclassified">Solo Sin Clasificar</option>
               <option value="all">Todas las transacciones</option>
@@ -1254,8 +1254,8 @@ export default function Transactions() {
                       borderRadius: '1rem', 
                       fontSize: '0.75rem', 
                       fontWeight: 800,
-                      backgroundColor: group.type === 'ingreso' ? '#dcfce7' : '#fee2e2',
-                      color: group.type === 'ingreso' ? '#166534' : '#991b1b'
+                      backgroundColor: group.type === 'ingreso' ? 'var(--pastel-green)' : 'var(--danger-surface)',
+                      color: group.type === 'ingreso' ? 'var(--success-text)' : 'var(--danger-text)'
                     }}>
                       {group.type === 'ingreso' ? 'Ingreso' : 'Egreso'}
                     </span>
@@ -1265,7 +1265,7 @@ export default function Transactions() {
                     {group.type === 'ingreso' ? '+' : '-'}${group.total.toLocaleString('es-CL')}
                   </td>
                   <td data-label="Clasificar" style={{ padding: '1rem' }}>
-                    <div style={{ marginBottom: '0.5rem', fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>
+                    <div style={{ marginBottom: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
                       Actual: {group.currentCategory || 'Ninguna'}
                       {group.currentPrincipal && ` > ${group.currentPrincipal}`}
                       {group.currentSecundaria && ` > ${group.currentSecundaria}`}
@@ -1318,7 +1318,7 @@ export default function Transactions() {
               <h2 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                 <ShieldAlert size={24} aria-hidden="true" /> Revisión automatizada de duplicados
               </h2>
-              <p style={{ fontWeight: 600, color: '#475569', margin: 0, maxWidth: 760 }}>
+              <p style={{ fontWeight: 600, color: 'var(--text-secondary)', margin: 0, maxWidth: 760 }}>
                 El sistema agrupa coincidencias por banco, fecha original, monto, tipo y descripción. No elimina nada sin tu confirmación y trata una división completa como un solo movimiento lógico.
               </p>
             </div>
@@ -1331,7 +1331,7 @@ export default function Transactions() {
                 type="button"
                 className="btn"
                 disabled={batchDuplicateDeleteIds.length === 0}
-                style={{ background: '#fecaca', color: '#991b1b' }}
+                style={{ background: 'var(--danger-surface)', color: 'var(--danger-text)' }}
                 onClick={() => setPendingDeletion({
                   ids: batchDuplicateDeleteIds,
                   title: 'Resolver lote completo de duplicados',
@@ -1342,29 +1342,29 @@ export default function Transactions() {
                 <Trash2 size={17} aria-hidden="true" /> Resolver lote completo
               </button>
               {duplicateTransactionCount > 0 && (
-                <small style={{ color: '#475569', fontWeight: 750 }}>{duplicateTransactionCount} corrección{duplicateTransactionCount === 1 ? '' : 'es'} de reimportación con división</small>
+                <small style={{ color: 'var(--text-secondary)', fontWeight: 750 }}>{duplicateTransactionCount} corrección{duplicateTransactionCount === 1 ? '' : 'es'} de reimportación con división</small>
               )}
             </div>
           </div>
 
           {duplicateGroups.length === 0 ? (
-            <div style={{ padding: '2.5rem 1rem', textAlign: 'center', fontWeight: 750, color: '#475569' }}>
+            <div style={{ padding: '2.5rem 1rem', textAlign: 'center', fontWeight: 750, color: 'var(--text-secondary)' }}>
               No encontramos coincidencias que requieran revisión.
             </div>
           ) : (
             <div style={{ display: 'grid', gap: '1rem' }}>
               {duplicateGroups.map((group, groupIndex) => (
                 <section key={group.key} style={{ border: '2px solid var(--border-color)', borderRadius: 10, overflow: 'hidden', background: 'var(--surface-color)' }}>
-                  <div style={{ padding: '0.9rem 1rem', borderBottom: '2px solid var(--border-color)', background: group.containsSplit ? '#fef3c7' : 'var(--surface-subtle)', display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div style={{ padding: '0.9rem 1rem', borderBottom: '2px solid var(--border-color)', background: group.containsSplit ? 'var(--warning-surface)' : 'var(--surface-subtle)', display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     <div>
                       <strong>Coincidencia {groupIndex + 1}</strong>
-                      <div style={{ marginTop: '0.2rem', fontSize: '0.85rem', color: '#475569', fontWeight: 650 }}>{group.reason}</div>
+                      <div style={{ marginTop: '0.2rem', fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 650 }}>{group.reason}</div>
                     </div>
                     {group.recommendedDeleteIds.length > 0 && (
                       <button
                         type="button"
                         className="btn"
-                        style={{ background: '#fecaca', color: '#991b1b' }}
+                        style={{ background: 'var(--danger-surface)', color: 'var(--danger-text)' }}
                         onClick={() => setPendingDeletion({
                           ids: group.recommendedDeleteIds,
                           title: 'Eliminar original reimportada',
@@ -1383,8 +1383,8 @@ export default function Transactions() {
                           <div>
                             <strong>{entry.description}</strong>
                             <div style={{ marginTop: '0.35rem', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                              {keep && group.containsSplit && <span style={{ padding: '0.15rem 0.45rem', border: '1px solid #166534', borderRadius: 999, background: '#dcfce7', color: '#166534', fontSize: '0.72rem', fontWeight: 850 }}>Conservar división</span>}
-                              {entry.isSplit && <span style={{ padding: '0.15rem 0.45rem', border: '1px solid #a16207', borderRadius: 999, background: '#fef3c7', color: '#854d0e', fontSize: '0.72rem', fontWeight: 850 }}>Dividida · {entry.transactionIds.length} partes</span>}
+                              {keep && group.containsSplit && <span style={{ padding: '0.15rem 0.45rem', border: '1px solid var(--success-text)', borderRadius: 999, background: 'var(--pastel-green)', color: 'var(--success-text)', fontSize: '0.72rem', fontWeight: 850 }}>Conservar división</span>}
+                              {entry.isSplit && <span style={{ padding: '0.15rem 0.45rem', border: '1px solid #a16207', borderRadius: 999, background: 'var(--warning-surface)', color: 'var(--warning-text)', fontSize: '0.72rem', fontWeight: 850 }}>Dividida · {entry.transactionIds.length} partes</span>}
                             </div>
                           </div>
                           <span style={{ fontWeight: 700 }}>{entry.bank}</span>
@@ -1402,7 +1402,7 @@ export default function Transactions() {
                             })}
                             title="Eliminar este registro"
                             aria-label={`Eliminar ${entry.description} del ${entry.date}`}
-                            style={{ color: '#b91c1c' }}
+                            style={{ color: 'var(--danger-text)' }}
                           >
                             <Trash2 size={17} aria-hidden="true" />
                           </button>
@@ -1422,7 +1422,7 @@ export default function Transactions() {
           <div className="transactions-card-header">
             <div>
               <h2 style={{ marginTop: 0 }}>Lista de Transacciones</h2>
-              <p style={{ fontWeight: 600, color: '#475569', margin: 0 }}>
+              <p style={{ fontWeight: 600, color: 'var(--text-secondary)', margin: 0 }}>
                 Edita alias, filtra rápido y abre el selector visual para clasificar.
               </p>
             </div>
@@ -1435,7 +1435,7 @@ export default function Transactions() {
           {/* Header filtros */}
           <div className="filter-bar transactions-filter-bar" role="search" aria-label="Filtrar transacciones">
             <div className="transactions-search">
-              <Search size={20} aria-hidden="true" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+              <Search size={20} aria-hidden="true" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input 
                 type="text" 
                 className="input" 
@@ -1446,7 +1446,7 @@ export default function Transactions() {
                   setSearchTerm(e.target.value);
                   setSearchParams(e.target.value ? { search: e.target.value } : {});
                 }}
-                style={{ width: '100%', paddingLeft: '3rem', paddingRight: searchTerm ? '3rem' : undefined, backgroundColor: 'white' }}
+                style={{ width: '100%', paddingLeft: '3rem', paddingRight: searchTerm ? '3rem' : undefined, backgroundColor: 'var(--surface-color)' }}
               />
               {searchTerm && (
                 <button
@@ -1551,7 +1551,7 @@ export default function Transactions() {
                   const bank = getBankMeta(tx.bank);
 
                   return (
-                    <tr key={tx.id} style={{ backgroundColor: i % 2 === 0 ? 'white' : 'rgba(0,0,0,0.02)' }} className="table-row">
+                    <tr key={tx.id} style={{ backgroundColor: i % 2 === 0 ? 'var(--surface-color)' : 'var(--surface-subtle)' }} className="table-row">
                       <td data-label="Fecha" style={{ padding: '1rem', fontWeight: 600 }}>
                         <input
                           type="date"
@@ -1565,7 +1565,7 @@ export default function Transactions() {
                       </td>
                       {connectedBanks.length > 1 && (
                         <td data-label="Banco" style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.55rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: 'var(--surface-color)', boxShadow: '1px 1px 0 #000', fontSize: '0.72rem', fontWeight: 900 }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.55rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: 'var(--surface-color)', boxShadow: '1px 1px 0 var(--border-color)', fontSize: '0.72rem', fontWeight: 900 }}>
                             <span style={{ width: '9px', height: '9px', borderRadius: '50%', backgroundColor: bank.color, border: '1.5px solid var(--border-color)', flexShrink: 0 }} />
                             {bank.label}
                           </span>
@@ -1582,16 +1582,16 @@ export default function Transactions() {
                             onBlur={(e) => handleDescriptionBlur(tx.id, e.target.value, rawDesc)}
                             style={{ border: 'none', background: 'transparent', fontWeight: 700, width: '100%', fontSize: '1rem' }}
                           />
-                          <Edit2 size={16} color="#94a3b8" />
+                          <Edit2 size={16} color="var(--text-muted)" />
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
                           {rawDesc && tx.description !== rawDesc && (
-                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                               Orig: {rawDesc}
                             </div>
                           )}
                           {tx.raw_data?.split_group_id && (
-                            <div style={{ fontSize: '0.65rem', fontWeight: 800, backgroundColor: '#fef08a', color: '#854d0e', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid #ca8a04', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                            <div style={{ fontSize: '0.65rem', fontWeight: 800, backgroundColor: 'var(--pastel-yellow)', color: 'var(--warning-text)', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid #ca8a04', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                               <Scissors size={10} /> Dividida
                             </div>
                           )}
@@ -1645,7 +1645,7 @@ export default function Transactions() {
                           onClick={() => requestTransactionDeletion(tx)}
                           title={tx.raw_data?.split_group_id ? 'Eliminar división completa' : 'Eliminar transacción'}
                           aria-label={tx.raw_data?.split_group_id ? `Eliminar división completa de ${tx.description}` : `Eliminar ${tx.description}`}
-                          style={{ color: '#b91c1c' }}
+                          style={{ color: 'var(--danger-text)' }}
                         >
                           <Trash2 size={17} aria-hidden="true" />
                         </button>

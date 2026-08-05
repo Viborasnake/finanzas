@@ -16,7 +16,7 @@ const renderCustomNodeElement = ({ nodeDatum, toggleNode }: any) => {
   const amount = nodeDatum.attributes?.amount as number || 0;
   
   let fill = '#ffffff';
-  let stroke = '#000000';
+  let stroke = 'var(--border-color)000';
   
   if (isRoot) {
     fill = '#3b82f6';
@@ -36,7 +36,7 @@ const renderCustomNodeElement = ({ nodeDatum, toggleNode }: any) => {
       <circle r="12" fill={fill} stroke={stroke} strokeWidth="3" onClick={toggleNode} style={{ cursor: 'pointer' }} />
       <text 
         fill="black" 
-        stroke="white"
+        stroke="var(--surface-color)"
         strokeWidth="6" 
         paintOrder="stroke fill"
         x="18" 
@@ -51,8 +51,8 @@ const renderCustomNodeElement = ({ nodeDatum, toggleNode }: any) => {
       </text>
       {formattedAmount && (
         <text 
-          fill={isIngreso ? '#15803d' : (isEgreso ? '#b91c1c' : '#1d4ed8')} 
-          stroke="white"
+          fill={isIngreso ? '#15803d' : (isEgreso ? 'var(--danger-text)' : '#1d4ed8')} 
+          stroke="var(--surface-color)"
           strokeWidth="6" 
           paintOrder="stroke fill"
           x="18" 

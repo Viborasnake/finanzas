@@ -43,7 +43,7 @@ const CollapsibleSection = ({ id, icon: Icon, title, subtitle, description, defa
           <Icon size={26} />
           <div>
             <span role="heading" aria-level={2} style={{ display: 'block', margin: 0, fontSize: '1.1rem', fontWeight: 900 }}>{title}</span>
-            <span style={{ display: 'block', color: '#64748b', fontSize: '0.82rem', fontWeight: 800, marginTop: '0.25rem' }}>{subtitle}</span>
+            <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: 800, marginTop: '0.25rem' }}>{subtitle}</span>
           </div>
         </div>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontWeight: 900, fontSize: '0.9rem', color: 'var(--text-primary)', flexShrink: 0 }}>
@@ -241,12 +241,12 @@ export default function Settings() {
         >
           <div style={{ minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.45rem' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: '#dbeafe', boxShadow: '2px 2px 0 #000', fontSize: '0.72rem', fontWeight: 900 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: 'var(--pastel-blue)', boxShadow: '2px 2px 0 var(--border-color)', fontSize: '0.72rem', fontWeight: 900 }}>
                 <Activity size={14} strokeWidth={3} />
                 Estado del banco
               </span>
               <strong style={{ fontSize: '1rem' }}>{dashboardBankLabel}</strong>
-              <span style={{ color: '#64748b', fontWeight: 800, fontSize: '0.85rem' }}>{doneCount}/{items.length} listo</span>
+              <span style={{ color: 'var(--text-muted)', fontWeight: 800, fontSize: '0.85rem' }}>{doneCount}/{items.length} listo</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div role="progressbar" aria-label="Progreso de configuración" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress} style={{ flex: 1, maxWidth: '360px', height: '12px', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: 'var(--surface-color)', overflow: 'hidden' }}>
@@ -277,18 +277,18 @@ export default function Settings() {
                     navigate(item.path);
                   }
                 }}
-                style={{ textAlign: 'left', display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gridTemplateRows: 'auto auto', gap: '0.7rem 0.85rem', alignItems: 'start', minHeight: '116px', padding: '0.9rem', border: '2px solid var(--border-color)', borderRadius: '10px', backgroundColor: item.done ? '#dcfce7' : '#fff7ed', boxShadow: '2px 2px 0 #000', cursor: 'pointer' }}
+                style={{ textAlign: 'left', display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gridTemplateRows: 'auto auto', gap: '0.7rem 0.85rem', alignItems: 'start', minHeight: '116px', padding: '0.9rem', border: '2px solid var(--border-color)', borderRadius: '10px', backgroundColor: item.done ? 'var(--pastel-green)' : '#fff7ed', boxShadow: '2px 2px 0 var(--border-color)', cursor: 'pointer' }}
               >
                 <span style={{ width: '38px', height: '38px', borderRadius: '8px', border: '2px solid var(--border-color)', backgroundColor: 'var(--surface-color)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                   {item.done ? <CheckCircle2 size={20} fill="#22c55e" color="var(--border-color)" strokeWidth={2.5} /> : item.icon}
                 </span>
                 <span style={{ minWidth: 0 }}>
                   <strong style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.2rem' }}>{item.title}</strong>
-                  <span style={{ display: 'block', color: '#475569', fontWeight: 700, fontSize: '0.76rem', lineHeight: 1.35, overflowWrap: 'anywhere' }}>
+                  <span style={{ display: 'block', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.76rem', lineHeight: 1.35, overflowWrap: 'anywhere' }}>
                     {item.detail}
                   </span>
                 </span>
-                <span style={{ gridColumn: '2', justifySelf: 'start', alignSelf: 'end', display: 'inline-flex', alignItems: 'center', gap: '0.2rem', padding: '0.25rem 0.55rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: 'var(--surface-color)', boxShadow: '1px 1px 0 #000', fontSize: '0.72rem', fontWeight: 900 }}>
+                <span style={{ gridColumn: '2', justifySelf: 'start', alignSelf: 'end', display: 'inline-flex', alignItems: 'center', gap: '0.2rem', padding: '0.25rem 0.55rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: 'var(--surface-color)', boxShadow: '1px 1px 0 var(--border-color)', fontSize: '0.72rem', fontWeight: 900 }}>
                   {item.action}
                   <ChevronRight size={14} strokeWidth={3} />
                 </span>
@@ -565,7 +565,7 @@ export default function Settings() {
                     <span style={{ fontSize: '1.5rem' }}>{bank.emoji}</span>
                     <span style={{ fontWeight: 800, fontSize: '1.1rem' }}>{bank.label}</span>
                     {isMain && (
-                      <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', backgroundColor: '#fef08a', color: '#854d0e', borderRadius: '999px', fontWeight: 900, border: '2px solid var(--border-color)' }}>
+                      <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', backgroundColor: 'var(--pastel-yellow)', color: 'var(--warning-text)', borderRadius: '999px', fontWeight: 900, border: '2px solid var(--border-color)' }}>
                         BANCO PRINCIPAL
                       </span>
                     )}
@@ -595,7 +595,7 @@ export default function Settings() {
                             toast.success(`${bank.label} desconectado`);
                           }
                         })}
-                        style={{ padding: '0.5rem', backgroundColor: '#fee2e2', color: 'var(--danger-text)', border: '2px solid var(--danger)' }}
+                        style={{ padding: '0.5rem', backgroundColor: 'var(--danger-surface)', color: 'var(--danger-text)', border: '2px solid var(--danger)' }}
                         title="Desconectar banco"
                         aria-label={`Desconectar ${bank.label}`}
                       >
@@ -730,7 +730,7 @@ export default function Settings() {
             </div>
           ) : (
             <div className="settings-empty">
-              <p style={{ margin: 0, color: '#64748b', fontWeight: 600 }}>No has creado categorías personalizadas aún.</p>
+              <p style={{ margin: 0, color: 'var(--text-muted)', fontWeight: 600 }}>No has creado categorías personalizadas aún.</p>
             </div>
           )}
         </CollapsibleSection>
@@ -994,7 +994,7 @@ export default function Settings() {
           <button 
             type="button"
             className="btn" 
-            style={{ backgroundColor: '#fecaca', color: 'var(--danger-text)', borderColor: 'var(--danger)' }}
+            style={{ backgroundColor: 'var(--danger-surface)', color: 'var(--danger-text)', borderColor: 'var(--danger)' }}
             onClick={() => setDestructiveAction({
               title: '¿Borrar tu cuenta definitivamente?',
               description: 'Se eliminarán de forma irreversible tus transacciones, bancos, cuentas, categorías y reglas. Esta acción no se puede deshacer.',

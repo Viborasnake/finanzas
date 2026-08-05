@@ -370,7 +370,7 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
         <h2 style={{ textAlign: 'center' }}>¡Todo clasificado!</h2>
         <p style={{ textAlign: 'center', maxWidth: 360, margin: '0 auto' }}>No quedan movimientos pendientes de sugerir. Puedes re-escanear si importaste nuevas cartolas.</p>
         <div className="assistant-actions" style={{ justifyContent: 'center', marginTop: '1rem' }}>
-          <button type="button" className="btn btn-outline" style={{ backgroundColor: 'white' }} onClick={handleRescan}>
+          <button type="button" className="btn btn-outline" style={{ backgroundColor: 'var(--surface-color)' }} onClick={handleRescan}>
             <RefreshCw size={16} />
             Re-escanear reglas
           </button>
@@ -392,7 +392,7 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
           <strong>{safeIndex + 1}</strong> de {suggestions.length} sugerencias
         </span>
         <div className="assistant-actions" style={{ marginTop: 0 }}>
-          <button type="button" className="btn btn-outline" style={{ fontSize: '0.78rem', padding: '0.3rem 0.9rem', backgroundColor: 'white' }} onClick={handleRescan} disabled={saving}>
+          <button type="button" className="btn btn-outline" style={{ fontSize: '0.78rem', padding: '0.3rem 0.9rem', backgroundColor: 'var(--surface-color)' }} onClick={handleRescan} disabled={saving}>
             <RefreshCw size={14} />
             Re-escanear
           </button>
@@ -517,11 +517,11 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
                     return (
                       <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', padding: '0.4rem 0.6rem', background: 'var(--surface-color)', border: '1.5px solid var(--border-color)', borderRadius: 6 }}>
                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                          <span style={{ color: '#64748b', fontWeight: 700, fontSize: '0.75rem' }}>{t.date}</span>
+                          <span style={{ color: 'var(--text-muted)', fontWeight: 700, fontSize: '0.75rem' }}>{t.date}</span>
                           {t.bank && <span style={{ color: '#3b82f6', fontWeight: 800, fontSize: '0.7rem' }}>{t.bank.substring(0,3).toUpperCase()}</span>}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <span style={{ fontWeight: 800, color: t.type === 'ingreso' ? '#15803d' : '#b91c1c' }}>
+                          <span style={{ fontWeight: 800, color: t.type === 'ingreso' ? '#15803d' : 'var(--danger-text)' }}>
                             {t.type === 'ingreso' ? '+' : '-'}${Math.abs(t.amount).toLocaleString('es-CL')}
                           </span>
                           <button 
@@ -567,17 +567,17 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
             <Check size={16} />
             Aplicar y recordar
           </button>
-          <button type="button" className="btn btn-outline" style={{ backgroundColor: 'white' }} onClick={() => applySuggestion(current)} disabled={saving}>
+          <button type="button" className="btn btn-outline" style={{ backgroundColor: 'var(--surface-color)' }} onClick={() => applySuggestion(current)} disabled={saving}>
             Solo esta vez
           </button>
-          <button type="button" className="btn btn-outline" style={{ backgroundColor: 'white', color: '#64748b' }} onClick={() => setCurrentIndex(i => Math.min(i + 1, suggestions.length))} disabled={saving}>
+          <button type="button" className="btn btn-outline" style={{ backgroundColor: 'var(--surface-color)', color: 'var(--text-muted)' }} onClick={() => setCurrentIndex(i => Math.min(i + 1, suggestions.length))} disabled={saving}>
             <X size={15} />
             Omitir
           </button>
           {/* Navegación */}
           <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.4rem' }}>
-            <button type="button" className="btn btn-outline" style={{ backgroundColor: 'white', padding: '0.4rem 0.7rem' }} onClick={() => setCurrentIndex(i => Math.max(0, i - 1))} disabled={currentIndex === 0 || saving} aria-label="Sugerencia anterior"><ChevronLeft size={18} /></button>
-            <button type="button" className="btn btn-outline" style={{ backgroundColor: 'white', padding: '0.4rem 0.7rem' }} onClick={() => setCurrentIndex(i => Math.min(suggestions.length - 1, i + 1))} disabled={currentIndex >= suggestions.length - 1 || saving} aria-label="Sugerencia siguiente"><ChevronRight size={18} /></button>
+            <button type="button" className="btn btn-outline" style={{ backgroundColor: 'var(--surface-color)', padding: '0.4rem 0.7rem' }} onClick={() => setCurrentIndex(i => Math.max(0, i - 1))} disabled={currentIndex === 0 || saving} aria-label="Sugerencia anterior"><ChevronLeft size={18} /></button>
+            <button type="button" className="btn btn-outline" style={{ backgroundColor: 'var(--surface-color)', padding: '0.4rem 0.7rem' }} onClick={() => setCurrentIndex(i => Math.min(suggestions.length - 1, i + 1))} disabled={currentIndex >= suggestions.length - 1 || saving} aria-label="Sugerencia siguiente"><ChevronRight size={18} /></button>
           </div>
         </div>
       </div>

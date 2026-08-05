@@ -219,12 +219,12 @@ export function InitialAdjustmentManager() {
         style={{ width: '100%', minHeight: '44px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', color: 'inherit', textAlign: 'left' }}
       >
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', backgroundColor: '#f1f5f9', borderRadius: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', backgroundColor: 'var(--surface-subtle)', borderRadius: '8px' }}>
             <span style={{ fontSize: '1.2rem', fontWeight: 900 }}>$</span>
           </div>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Ajuste de Inicio (Saldo Inicial)</h2>
-            <span style={{ display: 'block', color: '#64748b', fontSize: '0.82rem', fontWeight: 800 }}>Configura el saldo base para que cuadre todo</span>
+            <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: 800 }}>Configura el saldo base para que cuadre todo</span>
           </div>
         </div>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontWeight: 900, fontSize: '0.9rem', color: 'var(--text-primary)', flexShrink: 0 }}>
@@ -262,7 +262,7 @@ export function InitialAdjustmentManager() {
                         <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600 }}>Fecha base: {parseLocalDateInput(adj.date).toLocaleDateString('es-CL')}</p>
                       </div>
                     ) : (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#854d0e', fontWeight: 700, fontSize: '0.9rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--warning-text)', fontWeight: 700, fontSize: '0.9rem' }}>
                         <AlertCircle size={16} /> No configurado
                       </div>
                     )}
@@ -271,10 +271,10 @@ export function InitialAdjustmentManager() {
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     {adj ? (
                       <>
-                        <button type="button" className="btn" onClick={() => isEditingThis ? setEditingBank(null) : handleEditClick(bank)} style={{ backgroundColor: 'white', border: '2px solid var(--border-color)', boxShadow: '2px 2px 0px var(--border-color)' }}>
+                        <button type="button" className="btn" onClick={() => isEditingThis ? setEditingBank(null) : handleEditClick(bank)} style={{ backgroundColor: 'var(--surface-color)', border: '2px solid var(--border-color)', boxShadow: '2px 2px 0px var(--border-color)' }}>
                           <Edit2 size={16} /> {isEditingThis ? 'Ocultar' : 'Editar'}
                         </button>
-                        <button type="button" className="btn" onClick={() => handleDelete(bank)} style={{ backgroundColor: '#fee2e2', color: 'var(--danger-text)', border: '2px solid var(--border-color)', boxShadow: '2px 2px 0px var(--border-color)' }}>
+                        <button type="button" className="btn" onClick={() => handleDelete(bank)} style={{ backgroundColor: 'var(--danger-surface)', color: 'var(--danger-text)', border: '2px solid var(--border-color)', boxShadow: '2px 2px 0px var(--border-color)' }}>
                           <Trash2 size={16} /> Borrar
                         </button>
                       </>
@@ -288,19 +288,19 @@ export function InitialAdjustmentManager() {
 
                 {/* Form area */}
                 {isEditingThis && (
-                  <div style={{ padding: '1.5rem', backgroundColor: 'white', borderTop: '2px solid var(--border-color)' }}>
+                  <div style={{ padding: '1.5rem', backgroundColor: 'var(--surface-color)', borderTop: '2px solid var(--border-color)' }}>
                     <h4 style={{ margin: '0 0 1.25rem 0', fontWeight: 800 }}>{adj ? 'Editar Ajuste' : 'Nuevo Ajuste de Inicio'} para {bankLabel}</h4>
                     
                     {!adj && suggestions[bank] && (
-                      <div style={{ backgroundColor: 'var(--account-card-paid)', border: '2px dashed #166534', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
-                        <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: '#166534', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Lightbulb size={17} aria-hidden="true" /> Sugerencia del sistema</p>
-                        <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: '#166534' }}>
+                      <div style={{ backgroundColor: 'var(--account-card-paid)', border: '2px dashed var(--success-text)', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
+                        <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: 'var(--success-text)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Lightbulb size={17} aria-hidden="true" /> Sugerencia del sistema</p>
+                        <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--success-text)' }}>
                           Basado en tu primera transacción importada, tu saldo inicial debió ser de <strong>${suggestions[bank].amount.toLocaleString('es-CL')}</strong> ({suggestions[bank].type}).
                         </p>
                         <button 
                           type="button"
                           onClick={() => applySuggestion(bank)} 
-                          style={{ backgroundColor: '#166534', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 800, cursor: 'pointer' }}
+                          style={{ backgroundColor: 'var(--success-text)', color: 'var(--surface-color)', border: 'none', padding: '0.5rem 1rem', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 800, cursor: 'pointer' }}
                         >
                           Autocompletar Formulario
                         </button>

@@ -63,7 +63,7 @@ export default function MigrationAudit() {
         <p style={{ fontWeight: 600, marginTop: '1rem' }}>
           Total de transacciones: {transactions.length}
         </p>
-        <button type="button" className="btn" style={{ backgroundColor: 'black', color: 'white', marginTop: '1rem', width: '100%', justifyContent: 'center' }} onClick={handleDownload}>
+        <button type="button" className="btn" style={{ backgroundColor: 'black', color: 'var(--surface-color)', marginTop: '1rem', width: '100%', justifyContent: 'center' }} onClick={handleDownload}>
           <Download size={20} />
           Descargar Backup JSON Completo
         </button>

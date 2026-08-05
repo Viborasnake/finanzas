@@ -153,7 +153,7 @@ export default function Login() {
               <LaikaPet pose="pointing" size={128} title="Laika te ayuda a elegir banco" />
             </div>
             <h2 style={{ fontSize: '1.75rem', margin: '0 0 0.5rem 0' }}>¿Con qué banco trabajas?</h2>
-            <p style={{ color: '#64748b', fontWeight: 600, fontSize: '0.9rem' }}>
+            <p style={{ color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.9rem' }}>
               Selecciona los bancos que quieres integrar. Podrás agregar más desde el menú lateral.
             </p>
           </div>
@@ -192,7 +192,7 @@ export default function Login() {
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 900, fontSize: '1rem' }}>{bank.label}</div>
                     {isSelected && (
-                      <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, marginTop: '0.2rem' }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, marginTop: '0.2rem' }}>
                         Integrado ✓
                       </div>
                     )}
@@ -208,7 +208,7 @@ export default function Login() {
                         padding: '0.3rem 0.6rem',
                         border: '2px solid var(--border-color)',
                         borderRadius: '2rem',
-                        backgroundColor: isMain ? '#fde047' : '#f1f5f9',
+                        backgroundColor: isMain ? '#fde047' : 'var(--surface-subtle)',
                         cursor: 'pointer',
                         flexShrink: 0,
                       }}
@@ -239,7 +239,7 @@ export default function Login() {
           <button
             type="button"
             onClick={() => navigate('/')}
-            style={{ width: '100%', minHeight: '44px', fontSize: '0.875rem', fontWeight: 700, color: '#475569', background: 'none', border: 'none', cursor: 'pointer' }}
+            style={{ width: '100%', minHeight: '44px', fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer' }}
           >
             Omitir por ahora
           </button>
@@ -257,7 +257,7 @@ export default function Login() {
             <LaikaPet pose="love" size={136} title="Laika celebra tu registro" />
           </div>
           <h2 style={{ fontSize: '2rem', fontWeight: 900, marginBottom: '1rem' }}>Revisa tu correo</h2>
-          <p style={{ color: '#64748b', fontWeight: 600, fontSize: '1rem', marginBottom: '2rem', lineHeight: 1.6 }}>
+          <p style={{ color: 'var(--text-muted)', fontWeight: 600, fontSize: '1rem', marginBottom: '2rem', lineHeight: 1.6 }}>
             Te hemos enviado un enlace de confirmación a <strong>{email}</strong>. 
             Haz clic en él para validar tu cuenta y comenzar a usar MisFinanzas.
           </p>
@@ -396,7 +396,7 @@ export default function Login() {
             <h2 style={{ fontSize: '1.5rem', marginBottom: '0.25rem', fontWeight: 900 }}>
               {isPasswordRecovery ? 'Recupera tu acceso' : (isSignUp ? 'Crear cuenta' : 'Bienvenido de nuevo')}
             </h2>
-            <p style={{ color: '#64748b', fontWeight: 600, fontSize: '0.875rem', marginBottom: '2rem' }}>
+            <p style={{ color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.875rem', marginBottom: '2rem' }}>
               {isPasswordRecovery
                 ? 'Te enviaremos un enlace seguro para crear una nueva contraseña.'
                 : (isSignUp ? 'Solo toma un minuto.' : 'Ingresa tus credenciales para continuar.')}
@@ -426,7 +426,7 @@ export default function Login() {
               ) : (
                 <form onSubmit={handlePasswordRecovery} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                   <div>
-                    <label htmlFor="recovery-email" className="label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b' }}>Email</label>
+                    <label htmlFor="recovery-email" className="label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Email</label>
                     <input
                       type="email"
                       id="recovery-email"
@@ -458,9 +458,9 @@ export default function Login() {
             ) : (
             <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div>
-                <label htmlFor="auth-email" className="label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b' }}>Email</label>
+                <label htmlFor="auth-email" className="label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Email</label>
                 <div style={{ position: 'relative' }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
                     <rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m2 7 10 7 10-7"></path>
                   </svg>
                   <input 
@@ -478,9 +478,9 @@ export default function Login() {
                 </div>
               </div>
               <div>
-                <label htmlFor="auth-password" className="label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b' }}>Contraseña</label>
+                <label htmlFor="auth-password" className="label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Contraseña</label>
                 <div style={{ position: 'relative' }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                   </svg>
                   <input 
@@ -523,7 +523,7 @@ export default function Login() {
           </div>
 
           {!isPasswordRecovery && <div style={{ marginTop: '2rem', textAlign: 'center' }}>
-            <span style={{ color: '#64748b', fontWeight: 600, fontSize: '0.875rem' }}>
+            <span style={{ color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.875rem' }}>
               {isSignUp ? '¿Ya tienes cuenta?' : '¿No tienes cuenta?'}
             </span>
             {' '}

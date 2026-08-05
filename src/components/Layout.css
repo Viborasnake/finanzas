@@ -15,7 +15,7 @@
   border: 2px solid var(--border-color);
   border-radius: 8px;
   background: var(--surface-color);
-  box-shadow: 3px 3px 0 #000;
+  box-shadow: 3px 3px 0 var(--border-color);
   font-weight: 900;
 }
 
@@ -25,7 +25,7 @@
 
 .sidebar {
   width: 248px;
-  background: linear-gradient(180deg, #dbeafe 0%, #e0f2fe 100%);
+  background: linear-gradient(180deg, var(--pastel-blue) 0%, var(--surface-color) 100%);
   border-right: 2px solid var(--border-color);
   display: flex;
   flex-direction: column;
@@ -138,7 +138,7 @@
 .bank-indicator-text {
   font-size: 0.72rem;
   font-weight: 900;
-  color: #000;
+  color: var(--border-color);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   flex: 1;
@@ -343,7 +343,7 @@
   width: 100%;
   margin: 0;
   color: var(--danger-text);
-  background-color: #fee2e2;
+  background-color: var(--danger-surface);
   border: 2px solid var(--border-color);
   border-radius: var(--radius-md);
   font-weight: 900;
@@ -472,7 +472,7 @@
   }
   
   .mobile-nav-item.active {
-    background-color: #000;
+    background-color: var(--border-color);
     color: #fff;
     box-shadow: 4px 4px 0px var(--primary);
   }
@@ -540,7 +540,7 @@
   .mobile-user-profile .email {
     font-weight: 800;
     font-size: 0.9rem;
-    color: #1e3a8a;
+    color: var(--text-primary);
     word-break: break-all;
   }
   
@@ -553,7 +553,7 @@
     width: 100%;
     background-color: #fef2f2;
     color: #b91c1c;
-    border: 2px solid #fecaca;
+    border: 2px solid var(--danger-surface);
     border-radius: var(--radius-md);
     font-weight: 800;
     font-size: 1rem;

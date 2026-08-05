@@ -229,7 +229,7 @@ export default function AdminDashboard() {
       <div className="card admin-users-card" style={{ padding: '2rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
           <div style={{ position: 'relative', flex: 1 }}>
-            <Search size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+            <Search size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input 
               type="text" 
               className="input" 
@@ -237,7 +237,7 @@ export default function AdminDashboard() {
               placeholder="Buscar por email, nombre o RUT..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ width: '100%', paddingLeft: '3rem', backgroundColor: 'white' }}
+              style={{ width: '100%', paddingLeft: '3rem', backgroundColor: 'var(--surface-color)' }}
             />
           </div>
         </div>
@@ -268,14 +268,14 @@ export default function AdminDashboard() {
                   const isCurrentUser = u.id === user?.id;
 
                   return (
-                    <tr key={u.id} style={{ backgroundColor: u.status === 'paused' ? '#fee2e2' : 'white' }}>
+                    <tr key={u.id} style={{ backgroundColor: u.status === 'paused' ? 'var(--danger-surface)' : 'var(--surface-color)' }}>
                       <td data-label="Usuario" style={{ fontWeight: 700 }}>
                         <div style={{ fontSize: '0.95rem' }}>{u.email}</div>
-                        <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500 }}>Registrado: {createdDate}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>Registrado: {createdDate}</div>
                       </td>
                       <td data-label="Detalles">
                         <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>{u.full_name || 'Sin nombre'}</div>
-                        <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>RUT: {u.rut || 'No registra'}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>RUT: {u.rut || 'No registra'}</div>
                       </td>
                       <td data-label="Transacciones" style={{ fontWeight: 800, fontSize: '1.1rem' }}>
                         {u.tx_count}
@@ -293,7 +293,7 @@ export default function AdminDashboard() {
                                     fontSize: '0.7rem', fontWeight: 800,
                                     padding: '0.15rem 0.5rem', borderRadius: '4px',
                                     border: '1.5px solid var(--border-color)',
-                                    backgroundColor: bank?.color ? `${bank.color}22` : '#f1f5f9',
+                                    backgroundColor: bank?.color ? `${bank.color}22` : 'var(--surface-subtle)',
                                     boxShadow: '1px 1px 0px var(--border-color)'
                                   }}
                                 >
@@ -302,7 +302,7 @@ export default function AdminDashboard() {
                               );
                             })
                           ) : (
-                            <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>Sin integraciones</span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Sin integraciones</span>
                           )}
                         </div>
                       </td>
@@ -323,7 +323,7 @@ export default function AdminDashboard() {
                             aria-label={isCurrentUser ? 'No puedes pausar tu propia cuenta administradora' : `${u.status === 'active' ? 'Pausar accesos' : 'Reactivar accesos'} de ${u.email}`}
                             disabled={isCurrentUser}
                             onClick={() => handleToggleStatus(u)}
-                            style={{ backgroundColor: u.status === 'active' ? '#ffedd5' : '#dcfce7' }}
+                            style={{ backgroundColor: u.status === 'active' ? '#ffedd5' : 'var(--pastel-green)' }}
                           >
                             <Power size={14} style={{ color: u.status === 'active' ? '#d97706' : '#16a34a' }} />
                           </button>
@@ -333,7 +333,7 @@ export default function AdminDashboard() {
                             title="Editar info de usuario"
                             aria-label={`Editar información de ${u.email}`}
                             onClick={() => handleEditDetails(u)}
-                            style={{ backgroundColor: '#e0f2fe' }}
+                            style={{ backgroundColor: 'var(--surface-color)' }}
                           >
                             <Edit size={14} style={{ color: '#0284c7' }} />
                           </button>
@@ -343,7 +343,7 @@ export default function AdminDashboard() {
                             title="Reenviar correo cambiar password"
                             aria-label={`Reenviar cambio de contraseña a ${u.email}`}
                             onClick={() => handleResendPasswordReset(u.email)}
-                            style={{ backgroundColor: '#f3e8ff' }}
+                            style={{ backgroundColor: 'var(--pastel-purple)' }}
                           >
                             <Key size={14} style={{ color: '#7c3aed' }} />
                           </button>
@@ -354,7 +354,7 @@ export default function AdminDashboard() {
                             aria-label={isCurrentUser ? 'No puedes eliminar tu propia cuenta administradora' : `Eliminar cuenta de ${u.email}`}
                             disabled={isCurrentUser}
                             onClick={() => setDeletingUser(u)}
-                            style={{ backgroundColor: '#fee2e2' }}
+                            style={{ backgroundColor: 'var(--danger-surface)' }}
                           >
                             <Trash2 size={14} style={{ color: '#dc2626' }} />
                           </button>
@@ -399,19 +399,19 @@ export default function AdminDashboard() {
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginBottom: '2rem' }}>
               <div>
-                <label htmlFor="admin-user-email" className="label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b' }}>Usuario (Email)</label>
+                <label htmlFor="admin-user-email" className="label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Usuario (Email)</label>
                 <input 
                   id="admin-user-email"
                   type="text" 
                   className="input" 
                   value={editingUser.email}
                   disabled
-                  style={{ backgroundColor: '#f1f5f9', cursor: 'not-allowed', fontWeight: 700 }}
+                  style={{ backgroundColor: 'var(--surface-subtle)', cursor: 'not-allowed', fontWeight: 700 }}
                 />
               </div>
 
               <div>
-                <label htmlFor="admin-user-name" className="label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b' }}>Nombre completo</label>
+                <label htmlFor="admin-user-name" className="label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Nombre completo</label>
                 <input 
                   id="admin-user-name"
                   type="text" 
@@ -419,12 +419,12 @@ export default function AdminDashboard() {
                   placeholder="Ej: Cristian Pizarro" 
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  style={{ backgroundColor: 'white' }}
+                  style={{ backgroundColor: 'var(--surface-color)' }}
                 />
               </div>
 
               <div>
-                <label htmlFor="admin-user-rut" className="label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b' }}>RUT asociado</label>
+                <label htmlFor="admin-user-rut" className="label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>RUT asociado</label>
                 <input 
                   id="admin-user-rut"
                   type="text" 
@@ -432,7 +432,7 @@ export default function AdminDashboard() {
                   placeholder="Ej: 17.673.553-9" 
                   value={editRut}
                   onChange={(e) => setEditRut(e.target.value)}
-                  style={{ backgroundColor: 'white' }}
+                  style={{ backgroundColor: 'var(--surface-color)' }}
                 />
               </div>
             </div>
@@ -486,7 +486,7 @@ export default function AdminDashboard() {
               Esta acción es irreversible y borrará:
               </span>
             </p>
-            <ul style={{ fontSize: '0.85rem', margin: '0 0 1.5rem 1rem', paddingLeft: '1rem', color: '#64748b', fontWeight: 600, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <ul style={{ fontSize: '0.85rem', margin: '0 0 1.5rem 1rem', paddingLeft: '1rem', color: 'var(--text-muted)', fontWeight: 600, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
               <li>Todos sus datos de inicio de sesión</li>
               <li>Sus transacciones importadas ({deletingUser.tx_count} registros)</li>
               <li>Sus configuraciones, RUT y reglas de clasificación</li>
@@ -518,7 +518,7 @@ export default function AdminDashboard() {
                 className="btn btn-primary" 
                 onClick={handleDeleteUser}
                 disabled={actionLoading || deleteConfirmText.toLowerCase() !== 'eliminar'}
-                style={{ backgroundColor: '#dc2626', color: 'white', border: '2px solid var(--border-color)' }}
+                style={{ backgroundColor: '#dc2626', color: 'var(--surface-color)', border: '2px solid var(--border-color)' }}
               >
                 {actionLoading ? 'Eliminando...' : 'Eliminar cuenta'}
               </button>

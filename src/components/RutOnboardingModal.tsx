@@ -40,11 +40,11 @@ export function RutOnboardingModal() {
     >
       <div className="settings-card" style={{ margin: 0 }}>
         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#fef08a', border: '3px solid var(--border-color)', marginBottom: '1rem', boxShadow: '4px 4px 0 #000' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'var(--pastel-yellow)', border: '3px solid var(--border-color)', marginBottom: '1rem', boxShadow: '4px 4px 0 var(--border-color)' }}>
             <BadgeCheck size={32} />
           </div>
           <h2 id="rut-onboarding-title" style={{ fontSize: '1.75rem', marginBottom: '0.5rem', fontWeight: 900 }}>Configuración inicial</h2>
-          <p id="rut-onboarding-description" style={{ color: '#475569', fontSize: '1.1rem', fontWeight: 600, lineHeight: 1.4 }}>
+          <p id="rut-onboarding-description" style={{ color: 'var(--text-secondary)', fontSize: '1.1rem', fontWeight: 600, lineHeight: 1.4 }}>
             Para que MisFinanzas reconozca automáticamente tus transferencias entre cuentas propias, necesitamos tu RUT.
           </p>
         </div>
@@ -70,7 +70,7 @@ export function RutOnboardingModal() {
           </button>
         </form>
 
-        <p style={{ marginTop: '1.25rem', fontSize: '0.85rem', color: '#64748b', textAlign: 'center', fontWeight: 500 }}>
+        <p style={{ marginTop: '1.25rem', fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', fontWeight: 500 }}>
           Guardamos tu RUT de forma segura en tu configuración y solo lo usamos para detectar movimientos entre tus propias cuentas.
         </p>
       </div>

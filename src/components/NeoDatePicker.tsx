@@ -116,7 +116,7 @@ export default function NeoDatePicker({ value, onChange }: NeoDatePickerProps) {
               type="button"
               onClick={handlePrevMonth}
               aria-label="Mes anterior"
-              style={{ background: '#f1f5f9', border: '2px solid var(--border-color)', borderRadius: '4px', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              style={{ background: 'var(--surface-subtle)', border: '2px solid var(--border-color)', borderRadius: '4px', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
               <ChevronLeft size={18} strokeWidth={3} />
             </button>
@@ -127,7 +127,7 @@ export default function NeoDatePicker({ value, onChange }: NeoDatePickerProps) {
               type="button"
               onClick={handleNextMonth}
               aria-label="Mes siguiente"
-              style={{ background: '#f1f5f9', border: '2px solid var(--border-color)', borderRadius: '4px', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              style={{ background: 'var(--surface-subtle)', border: '2px solid var(--border-color)', borderRadius: '4px', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
               <ChevronRight size={18} strokeWidth={3} />
             </button>
@@ -136,7 +136,7 @@ export default function NeoDatePicker({ value, onChange }: NeoDatePickerProps) {
           {/* Days Grid */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', marginBottom: '0.5rem' }}>
             {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(d => (
-              <div key={d} style={{ textAlign: 'center', fontWeight: 900, fontSize: '0.8rem', color: '#64748b' }}>{d}</div>
+              <div key={d} style={{ textAlign: 'center', fontWeight: 900, fontSize: '0.8rem', color: 'var(--text-muted)' }}>{d}</div>
             ))}
           </div>
 
@@ -160,7 +160,7 @@ export default function NeoDatePicker({ value, onChange }: NeoDatePickerProps) {
                   aria-pressed={isSelected}
                   aria-current={isToday ? 'date' : undefined}
                   style={{
-                    backgroundColor: isSelected ? 'var(--border-color)' : isToday ? '#fef08a' : 'var(--surface-color)',
+                    backgroundColor: isSelected ? 'var(--border-color)' : isToday ? 'var(--pastel-yellow)' : 'var(--surface-color)',
                     color: isSelected ? 'var(--surface-color)' : 'var(--border-color)',
                     border: '2px solid',
                     borderColor: isSelected || isToday ? 'var(--border-color)' : 'transparent',
@@ -171,11 +171,11 @@ export default function NeoDatePicker({ value, onChange }: NeoDatePickerProps) {
                     transition: 'all 0.1s',
                   }}
                   onMouseEnter={(e) => {
-                    if (!isSelected) e.currentTarget.style.backgroundColor = '#f1f5f9';
+                    if (!isSelected) e.currentTarget.style.backgroundColor = 'var(--surface-subtle)';
                     if (!isSelected) e.currentTarget.style.borderColor = 'var(--border-color)';
                   }}
                   onMouseLeave={(e) => {
-                    if (!isSelected) e.currentTarget.style.backgroundColor = isToday ? '#fef08a' : 'var(--surface-color)';
+                    if (!isSelected) e.currentTarget.style.backgroundColor = isToday ? 'var(--pastel-yellow)' : 'var(--surface-color)';
                     if (!isSelected) e.currentTarget.style.borderColor = isToday ? 'var(--border-color)' : 'transparent';
                   }}
                 >

@@ -995,7 +995,7 @@ export default function ImportModal({ onClose, presentation = 'dialog' }: Import
       
       if (othersCount > 0) {
         toast.custom((t) => (
-          <div className="card" style={{ padding: '1.5rem', border: '2px solid var(--border-color)', boxShadow: '4px 4px 0px var(--border-color)', background: 'white', maxWidth: '400px' }}>
+          <div className="card" style={{ padding: '1.5rem', border: '2px solid var(--border-color)', boxShadow: '4px 4px 0px var(--border-color)', background: 'var(--surface-color)', maxWidth: '400px' }}>
             <h3 style={{ marginTop: 0, fontSize: '1.125rem' }}>Renombrado Múltiple</h3>
             <p style={{ margin: '0.5rem 0 1.5rem' }}>
               Hay otras {othersCount} transacciones idénticas. ¿Quieres aplicar el nombre "{row.description}" a todas ellas también?

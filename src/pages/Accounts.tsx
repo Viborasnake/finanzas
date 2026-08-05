@@ -403,7 +403,7 @@ export default function Accounts() {
             <CalendarCheck size={34} strokeWidth={2.7} />
             Cuentas
           </h1>
-          <p style={{ margin: 0, color: '#64748b', fontWeight: 750, fontSize: '1.05rem' }}>
+          <p style={{ margin: 0, color: 'var(--text-muted)', fontWeight: 750, fontSize: '1.05rem' }}>
             Control de gastos fijos por categoría vinculada para {bankLabel}.
           </p>
         </div>
@@ -427,8 +427,8 @@ export default function Accounts() {
 
       <section className="accounts-panel">
         <div className="accounts-status-summary">
-          <span style={{ padding: '0.45rem 0.8rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: '#dcfce7', fontWeight: 900 }}>{paidCount} pagados</span>
-          <span style={{ padding: '0.45rem 0.8rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: '#fee2e2', fontWeight: 900 }}>{unpaidCount} sin pago</span>
+          <span style={{ padding: '0.45rem 0.8rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: 'var(--pastel-green)', fontWeight: 900 }}>{paidCount} pagados</span>
+          <span style={{ padding: '0.45rem 0.8rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: 'var(--danger-surface)', fontWeight: 900 }}>{unpaidCount} sin pago</span>
           {unconfiguredCount > 0 && (
             <span style={{ padding: '0.45rem 0.8rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: '#fef9c3', fontWeight: 900 }}>{unconfiguredCount} por vincular</span>
           )}
@@ -524,7 +524,7 @@ export default function Accounts() {
               </span>
               <div>
                 <strong style={{ display: 'block', fontSize: '0.95rem', color: '#334155' }}>Crear nueva cuenta</strong>
-                <div style={{ color: '#64748b', fontSize: '0.78rem', fontWeight: 600, marginTop: '0.15rem' }}>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem', fontWeight: 600, marginTop: '0.15rem' }}>
                   Añadir nuevo gasto mensual
                 </div>
               </div>

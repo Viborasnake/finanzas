@@ -629,7 +629,7 @@ export default function Dashboard() {
       byBank.set(bankName, {
         bank: bankName,
         label: bankInfo?.label || bankName,
-        color: bankInfo?.color || '#94a3b8',
+        color: bankInfo?.color || 'var(--text-muted)',
         ingresos: 0,
         egresos: 0,
         internal: 0,
@@ -644,7 +644,7 @@ export default function Dashboard() {
         byBank.set(bankName, {
           bank: bankName,
           label: bankInfo?.label || bankName,
-          color: bankInfo?.color || '#94a3b8',
+          color: bankInfo?.color || 'var(--text-muted)',
           ingresos: 0,
           egresos: 0,
           internal: 0,
@@ -788,7 +788,7 @@ export default function Dashboard() {
     const isPositive = pct >= 0;
     
     const isGood = invertGood ? !isPositive : isPositive;
-    const bgColor = isGood ? '#bbf7d0' : '#fecaca'; // pastel green / pastel red
+    const bgColor = isGood ? '#bbf7d0' : 'var(--danger-surface)'; // pastel green / pastel red
     
     return (
       <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.75rem', backgroundColor: bgColor, border: '2px solid var(--border-color)', borderRadius: '2rem', fontWeight: 800, fontSize: '0.85rem', color: 'var(--border-color)', boxShadow: '2px 2px 0px var(--border-color)' }}>
@@ -807,7 +807,7 @@ export default function Dashboard() {
             <Tooltip 
               contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '2px solid var(--border-color)', borderRadius: '8px', boxShadow: '4px 4px 0px var(--border-color)', padding: '8px' }}
               itemStyle={{ color: 'var(--text-primary)', fontWeight: 900, fontSize: '1.1rem' }}
-              labelStyle={{ color: '#64748b', fontWeight: 700, marginBottom: '4px', fontSize: '0.8rem', textTransform: 'capitalize' }}
+              labelStyle={{ color: 'var(--text-muted)', fontWeight: 700, marginBottom: '4px', fontSize: '0.8rem', textTransform: 'capitalize' }}
               formatter={(value: any) => [`$${Number(value).toLocaleString('es-CL')}`, dataKey]}
             />
             <Area type="monotone" dataKey={dataKey} stroke="var(--border-color)" strokeWidth={3} fill={fill} fillOpacity={1} />
@@ -826,7 +826,7 @@ export default function Dashboard() {
         action: dashboardBanks.length > 0 ? 'Cambiar banco' : 'Configurar banco',
         path: '/settings#bancos',
         done: dashboardBanks.length > 0,
-        color: '#dbeafe'
+        color: 'var(--pastel-blue)'
       },
       {
         title: 'Datos base',
@@ -835,7 +835,7 @@ export default function Dashboard() {
         action: 'Completar datos',
         path: '/settings#deteccion',
         done: false,
-        color: '#fef08a'
+        color: 'var(--pastel-yellow)'
       },
       {
         title: 'Primera cartola',
@@ -844,7 +844,7 @@ export default function Dashboard() {
         action: 'Importar cartola',
         path: '/import',
         done: false,
-        color: '#dcfce7'
+        color: 'var(--pastel-green)'
       },
       {
         title: 'Clasificación',
@@ -853,7 +853,7 @@ export default function Dashboard() {
         action: 'Ver clasificador',
         path: '/transactions',
         done: false,
-        color: '#f3e8ff'
+        color: 'var(--pastel-purple)'
       }
     ];
 
@@ -861,7 +861,7 @@ export default function Dashboard() {
       <div style={{ backgroundColor: 'var(--surface-color)', border: '2px solid var(--border-color)', borderRadius: '12px', boxShadow: '4px 4px 0px var(--border-color)', overflow: 'hidden' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '0', borderBottom: '2px solid var(--border-color)' }}>
           <div style={{ padding: '2rem', backgroundColor: 'var(--surface-subtle)' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.75rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: '#fef08a', boxShadow: '2px 2px 0px var(--border-color)', fontSize: '0.75rem', fontWeight: 900, marginBottom: '1.25rem' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.75rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: 'var(--pastel-yellow)', boxShadow: '2px 2px 0px var(--border-color)', fontSize: '0.75rem', fontWeight: 900, marginBottom: '1.25rem' }}>
               <Sparkles size={16} strokeWidth={3} />
               Primer inicio
             </div>
@@ -895,14 +895,14 @@ export default function Dashboard() {
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.25rem' }}>
               <LaikaPet pose={dashboardBanks.length > 0 ? 'pointing' : 'welcome'} size={178} title="Laika acompaña el inicio" />
             </div>
-            <div style={{ border: '2px solid var(--border-color)', borderRadius: '10px', boxShadow: '3px 3px 0px var(--border-color)', padding: '1rem', backgroundColor: '#dbeafe' }}>
+            <div style={{ border: '2px solid var(--border-color)', borderRadius: '10px', boxShadow: '3px 3px 0px var(--border-color)', padding: '1rem', backgroundColor: 'var(--pastel-blue)' }}>
               <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 900, color: '#334155', marginBottom: '0.35rem' }}>Banco activo</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.25rem', fontWeight: 900 }}>
                 <span style={{ width: '14px', height: '14px', borderRadius: '50%', background: isConsolidated ? 'linear-gradient(135deg, #e63000 0 33%, #f77f00 33% 66%, #a855f7 66% 100%)' : (activeBankInfo ? activeBankInfo.color : '#cbd5e1'), border: '2px solid var(--border-color)', boxShadow: '1px 1px 0px var(--border-color)' }} />
                 {dashboardBankLabel}
               </div>
             </div>
-            <div style={{ border: '2px solid var(--border-color)', borderRadius: '10px', boxShadow: '3px 3px 0px var(--border-color)', padding: '1rem', backgroundColor: '#dcfce7' }}>
+            <div style={{ border: '2px solid var(--border-color)', borderRadius: '10px', boxShadow: '3px 3px 0px var(--border-color)', padding: '1rem', backgroundColor: 'var(--pastel-green)' }}>
               <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 900, color: '#334155', marginBottom: '0.35rem' }}>Movimientos</div>
               <div style={{ fontSize: '1.25rem', fontWeight: 900 }}>0 cargados</div>
             </div>
@@ -951,14 +951,14 @@ export default function Dashboard() {
     return (
       <div className="dashboard-empty-period">
         <div>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', padding: '0.35rem 0.75rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: '#fef08a', boxShadow: '2px 2px 0 #000', fontWeight: 900, fontSize: '0.78rem', marginBottom: '1rem' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', padding: '0.35rem 0.75rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: 'var(--pastel-yellow)', boxShadow: '2px 2px 0 var(--border-color)', fontWeight: 900, fontSize: '0.78rem', marginBottom: '1rem' }}>
             <Search size={16} strokeWidth={3} />
             Sin movimientos en este periodo
           </div>
           <h2 style={{ margin: '0 0 0.6rem 0', fontSize: '1.6rem', fontWeight: 900 }}>
             No hay datos para {periodLabel}
           </h2>
-          <p style={{ margin: 0, color: '#475569', fontWeight: 650, lineHeight: 1.5, maxWidth: '640px' }}>
+          <p style={{ margin: 0, color: 'var(--text-secondary)', fontWeight: 650, lineHeight: 1.5, maxWidth: '640px' }}>
             Este banco tiene movimientos cargados, pero ninguno cae dentro del rango seleccionado. Por eso los gráficos y totales aparecen vacíos.
           </p>
         </div>
@@ -1032,7 +1032,7 @@ export default function Dashboard() {
             <div className="dashboard-context-line" aria-label={`Vista de ${dashboardBankLabel}`}>
               <span
                 className="dashboard-context-dot"
-                style={{ backgroundColor: isConsolidated ? '#111827' : (activeBankInfo?.color || '#94a3b8') }}
+                style={{ backgroundColor: isConsolidated ? '#111827' : (activeBankInfo?.color || 'var(--text-muted)') }}
                 aria-hidden="true"
               />
               <strong>{dashboardBankLabel}</strong>
@@ -1145,7 +1145,7 @@ export default function Dashboard() {
             ${totalEntradas.toLocaleString('es-CL')}
           </p>
           {c.rescateInversion > 0 && (
-            <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 700, marginBottom: '1.5rem', position: 'relative', zIndex: 10 }}>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '1.5rem', position: 'relative', zIndex: 10 }}>
               *Además rescataste ${c.rescateInversion.toLocaleString('es-CL')} desde inversiones; no se contabiliza como ingreso
             </div>
           )}
@@ -1153,7 +1153,7 @@ export default function Dashboard() {
             <div style={{ position: 'relative', zIndex: 10, flex: 1, paddingBottom: '1rem' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', border: '2px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden', display: 'table', backgroundColor: 'rgba(255,255,255,0.9)' }}>
                 <thead>
-                  <tr style={{ backgroundColor: '#f1f5f9', borderBottom: '2px solid var(--border-color)' }}>
+                  <tr style={{ backgroundColor: 'var(--surface-subtle)', borderBottom: '2px solid var(--border-color)' }}>
                     <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 900, borderRight: '2px solid var(--border-color)' }}>Concepto</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 900 }}>Monto</th>
                   </tr>
@@ -1164,14 +1164,14 @@ export default function Dashboard() {
                       key={row.name} 
                       onClick={() => openDetailsModal(row.name, 'ingreso')}
                       style={{ borderBottom: i === incomeData.length - 1 ? 'none' : '2px solid var(--border-color)', backgroundColor: row.isGray ? 'var(--surface-subtle)' : 'var(--surface-color)', cursor: 'pointer' }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f1f5f9')}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--surface-subtle)')}
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = row.isGray ? 'var(--surface-subtle)' : 'var(--surface-color)')}
                     >
-                      <td style={{ padding: '0.75rem', fontWeight: 700, borderRight: '2px solid var(--border-color)', color: row.isGray ? '#64748b' : 'var(--border-color)' }}>
+                      <td style={{ padding: '0.75rem', fontWeight: 700, borderRight: '2px solid var(--border-color)', color: row.isGray ? 'var(--text-muted)' : 'var(--border-color)' }}>
                         <div>{row.name}</div>
                         {row.subtext && <div style={{ fontSize: '0.75rem', fontWeight: 600, marginTop: '0.15rem', opacity: 0.9 }}>{row.subtext}</div>}
                       </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: row.isGray ? '#64748b' : 'var(--border-color)' }}>
+                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: row.isGray ? 'var(--text-muted)' : 'var(--border-color)' }}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
                           ${row.value.toLocaleString('es-CL')}
                           <button
@@ -1199,14 +1199,14 @@ export default function Dashboard() {
               </table>
             </div>
           )}
-          {renderSparkline('Ingresos', '#dcfce7')}
+          {renderSparkline('Ingresos', 'var(--pastel-green)')}
         </div>
 
         {/* Egresos Card */}
         <div style={{ ...neoCard, position: 'relative', overflow: 'hidden', paddingBottom: '7rem', marginBottom: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', position: 'relative', zIndex: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div style={{ backgroundColor: '#fecaca', borderRadius: '50%', border: '2px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, width: '44px', height: '44px' }}>
+              <div style={{ backgroundColor: 'var(--danger-surface)', borderRadius: '50%', border: '2px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, width: '44px', height: '44px' }}>
                 <CreditCard size={24} strokeWidth={2.5} />
               </div>
               <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: '"Montserrat", sans-serif', display: 'flex', alignItems: 'center' }}>
@@ -1224,7 +1224,7 @@ export default function Dashboard() {
             <div style={{ position: 'relative', zIndex: 10, flex: 1, paddingBottom: '1rem' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', border: '2px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden', display: 'table', backgroundColor: 'rgba(255,255,255,0.9)' }}>
                 <thead>
-                  <tr style={{ backgroundColor: '#f1f5f9', borderBottom: '2px solid var(--border-color)' }}>
+                  <tr style={{ backgroundColor: 'var(--surface-subtle)', borderBottom: '2px solid var(--border-color)' }}>
                     <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 900, borderRight: '2px solid var(--border-color)' }}>Concepto</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 900 }}>Monto</th>
                   </tr>
@@ -1235,14 +1235,14 @@ export default function Dashboard() {
                       key={row.name} 
                       onClick={() => openDetailsModal(row.name, 'egreso')}
                       style={{ borderBottom: i === expenseData.length - 1 ? 'none' : '2px solid var(--border-color)', backgroundColor: row.isGray ? 'var(--surface-subtle)' : 'var(--surface-color)', cursor: 'pointer' }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f1f5f9')}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--surface-subtle)')}
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = row.isGray ? 'var(--surface-subtle)' : 'var(--surface-color)')}
                     >
-                      <td style={{ padding: '0.75rem', fontWeight: 700, borderRight: '2px solid var(--border-color)', color: row.isGray ? '#64748b' : 'var(--border-color)' }}>
+                      <td style={{ padding: '0.75rem', fontWeight: 700, borderRight: '2px solid var(--border-color)', color: row.isGray ? 'var(--text-muted)' : 'var(--border-color)' }}>
                         <div>{row.name}</div>
                         {row.subtext && <div style={{ fontSize: '0.75rem', fontWeight: 600, marginTop: '0.15rem', opacity: 0.9 }}>{row.subtext}</div>}
                       </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: row.isGray ? '#64748b' : 'var(--border-color)' }}>
+                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: row.isGray ? 'var(--text-muted)' : 'var(--border-color)' }}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
                           ${row.value.toLocaleString('es-CL')}
                           <button
@@ -1262,7 +1262,7 @@ export default function Dashboard() {
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr style={{ backgroundColor: '#fecaca', borderTop: '2px solid var(--border-color)' }}>
+                  <tr style={{ backgroundColor: 'var(--danger-surface)', borderTop: '2px solid var(--border-color)' }}>
                     <td style={{ padding: '0.75rem', fontWeight: 900, borderRight: '2px solid var(--border-color)' }}>Total gastos</td>
                     <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 900 }}>${totalSalidas.toLocaleString('es-CL')}</td>
                   </tr>
@@ -1270,7 +1270,7 @@ export default function Dashboard() {
               </table>
             </div>
           )}
-          {renderSparkline('Egresos', '#fee2e2')}
+          {renderSparkline('Egresos', 'var(--danger-surface)')}
         </div>
         </div>
       </>
@@ -1377,7 +1377,7 @@ export default function Dashboard() {
               <InfoTooltip content="Línea de tiempo para ver tus tendencias. Puedes filtrar categorías abajo en el ranking para ver cómo evolucionan ingresos/gastos específicos a lo largo del tiempo." />
             </h2>
             {selectedCategories.length > 0 && (
-              <button type="button" onClick={() => setSelectedCategories([])} style={{ marginTop: '0.5rem', fontSize: '0.75rem', fontWeight: 800, background: '#fef08a', border: '2px solid var(--border-color)', borderRadius: '2rem', padding: '0.35rem 0.75rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+              <button type="button" onClick={() => setSelectedCategories([])} style={{ marginTop: '0.5rem', fontSize: '0.75rem', fontWeight: 800, background: 'var(--pastel-yellow)', border: '2px solid var(--border-color)', borderRadius: '2rem', padding: '0.35rem 0.75rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                 <X size={14} strokeWidth={3} />
                 Limpiar selección ({selectedCategories.length})
               </button>
@@ -1404,7 +1404,7 @@ export default function Dashboard() {
           <div style={{ height: '350px', width: '100%', display: 'flex', flexDirection: 'column' }}>
             <h4 style={{ margin: '0 0 0.5rem 0', fontWeight: 800, fontSize: '0.85rem' }}>{chartTitle}</h4>
             {selectedCategories.length === 0 && (
-              <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Haz clic en una barra del ranking para ver su evolución en el tiempo →</p>
+              <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Haz clic en una barra del ranking para ver su evolución en el tiempo →</p>
             )}
             <div style={{ flex: 1, minHeight: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -1419,7 +1419,7 @@ export default function Dashboard() {
                   {selectedCategories.length === 0 ? (
                     <>
                       <Line type="monotone" name="Ingresos" dataKey="Ingresos" stroke="#22c55e" strokeWidth={4} dot={{ r: 3, fill: '#bbf7d0', stroke: 'var(--border-color)', strokeWidth: 2 }} activeDot={{ r: 6, stroke: 'var(--border-color)', strokeWidth: 3 }} />
-                      <Line type="monotone" name="Egresos" dataKey="Egresos" stroke="#f43f5e" strokeWidth={4} dot={{ r: 3, fill: '#fecaca', stroke: 'var(--border-color)', strokeWidth: 2 }} activeDot={{ r: 6, stroke: 'var(--border-color)', strokeWidth: 3 }} />
+                      <Line type="monotone" name="Egresos" dataKey="Egresos" stroke="#f43f5e" strokeWidth={4} dot={{ r: 3, fill: 'var(--danger-surface)', stroke: 'var(--border-color)', strokeWidth: 2 }} activeDot={{ r: 6, stroke: 'var(--border-color)', strokeWidth: 3 }} />
                     </>
                   ) : (
                     selectedCategories.map((cat, i) => (
@@ -1437,7 +1437,7 @@ export default function Dashboard() {
               <h4 style={{ margin: '0 0 1rem 0', fontWeight: 800, display: 'flex', alignItems: 'center' }}>
                 Ranking de Egresos 
                 <InfoTooltip content="Las categorías en las que más has gastado o ingresado. Haz clic en cualquiera para graficarla en la línea de tiempo." />
-                <span style={{ fontWeight: 600, fontSize: '0.8rem', color: '#64748b', marginLeft: '0.5rem' }}>— clic para comparar</span>
+                <span style={{ fontWeight: 600, fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>— clic para comparar</span>
               </h4>
               <div style={{ overflowY: 'auto', maxHeight: '350px', paddingRight: '0.5rem' }}>
                 {barData.map((entry, index) => {
@@ -1456,7 +1456,7 @@ export default function Dashboard() {
                     >
                       <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: color, border: '2px solid var(--border-color)', flexShrink: 0 }}></div>
                       <div className="dashboard-ranking-label" title={entry.name}>{entry.name}</div>
-                      <div style={{ flex: 1, height: '20px', backgroundColor: '#f1f5f9', border: '2px solid var(--border-color)', borderRadius: '4px', overflow: 'hidden', position: 'relative' }}>
+                      <div style={{ flex: 1, height: '20px', backgroundColor: 'var(--surface-subtle)', border: '2px solid var(--border-color)', borderRadius: '4px', overflow: 'hidden', position: 'relative' }}>
                         <div style={{ height: '100%', width: `${pct}%`, backgroundColor: isSelected ? color : color + 'bb', borderRadius: '2px', transition: 'width 0.3s' }}></div>
                         {isSelected && <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: '2px solid var(--border-color)', borderRadius: '4px', boxSizing: 'border-box' }}></div>}
                       </div>
@@ -1480,7 +1480,7 @@ export default function Dashboard() {
     if (count === 0) return null;
 
     return (
-      <div style={{ backgroundColor: '#fef08a', border: '2px solid var(--border-color)', borderRadius: '12px', padding: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '2.5rem', boxShadow: '4px 4px 0px var(--border-color)' }}>
+      <div style={{ backgroundColor: 'var(--pastel-yellow)', border: '2px solid var(--border-color)', borderRadius: '12px', padding: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '2.5rem', boxShadow: '4px 4px 0px var(--border-color)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ backgroundColor: 'var(--surface-color)', padding: '0.75rem', borderRadius: '50%', border: '2px solid var(--border-color)' }}>
             <AlertTriangle color="var(--border-color)" size={24} strokeWidth={2.5} />
@@ -1585,16 +1585,16 @@ export default function Dashboard() {
               Resumen Anual {year}
               <InfoTooltip content="Perspectiva global de todo el año. Analiza qué meses te fue mejor y en cuáles gastaste más de lo que ganaste." />
             </h2>
-            <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: '#64748b' }}>Balance de ingresos, gastos y capacidad de ahorro a lo largo del año.</p>
+            <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-muted)' }}>Balance de ingresos, gastos y capacidad de ahorro a lo largo del año.</p>
           </div>
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
             {bestMonth && (
-              <div style={{ padding: '0.5rem 1rem', backgroundColor: '#dcfce7', border: '2px solid var(--border-color)', borderRadius: '2rem', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '2px 2px 0px var(--border-color)' }}>
+              <div style={{ padding: '0.5rem 1rem', backgroundColor: 'var(--pastel-green)', border: '2px solid var(--border-color)', borderRadius: '2rem', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '2px 2px 0px var(--border-color)' }}>
                 <TrendingUp size={16} /> Mejor mes: {bestMonth.mes}
               </div>
             )}
             {worstMonth && worstMonth.Balance < 0 && (
-              <div style={{ padding: '0.5rem 1rem', backgroundColor: '#fecaca', border: '2px solid var(--border-color)', borderRadius: '2rem', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '2px 2px 0px var(--border-color)' }}>
+              <div style={{ padding: '0.5rem 1rem', backgroundColor: 'var(--danger-surface)', border: '2px solid var(--border-color)', borderRadius: '2rem', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '2px 2px 0px var(--border-color)' }}>
                 <TrendingDown size={16} /> Peor mes: {worstMonth.mes}
               </div>
             )}
@@ -1606,7 +1606,7 @@ export default function Dashboard() {
           <div style={{ ...kpiStyle, backgroundColor: 'var(--account-card-paid)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', color: '#16a34a', letterSpacing: '0.05em' }}>Entradas disponibles</span>
-              <ArrowUpRight size={20} color="#16a34a" />
+              <ArrowUpRight size={20} color="var(--success)" />
             </div>
             <span style={{ fontSize: '1.5rem', fontWeight: 900, color: '#15803d' }}>${totalIng.toLocaleString('es-CL')}</span>
           </div>
@@ -1672,7 +1672,7 @@ export default function Dashboard() {
 
         {/* Sleek mini pills */}
         <div style={{ marginTop: '2rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <div style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748b', minWidth: '120px' }}>Tendencia Mensual</div>
+          <div style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)', minWidth: '120px' }}>Tendencia Mensual</div>
           <div style={{ display: 'flex', flex: 1, gap: '4px', height: '12px' }}>
             {monthlyData.map((d) => (
               <div 
@@ -1787,7 +1787,7 @@ export default function Dashboard() {
             <div className="dialog-header">
               <div>
                 <h2 id="dashboard-detail-dialog-title" style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: '"Montserrat", sans-serif' }}>{detailsModal.title}</h2>
-                <div id="dashboard-detail-dialog-period" style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 700, marginTop: '0.25rem', textTransform: 'capitalize' }}>
+                <div id="dashboard-detail-dialog-period" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, marginTop: '0.25rem', textTransform: 'capitalize' }}>
                   {dateRange.start.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' })} — {dateRange.end.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' })}
                 </div>
               </div>
@@ -1798,19 +1798,19 @@ export default function Dashboard() {
             <div className="dashboard-detail-body" style={{ padding: '1.5rem', overflowY: 'auto', flex: 1, backgroundColor: 'var(--surface-color)', borderRadius: '0 0 9px 9px' }}>
               {detailsModal.transactions.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '2rem 0' }}>
-                  <p style={{ margin: 0, fontWeight: 700, fontSize: '1.1rem', color: '#64748b' }}>No hay movimientos para este concepto.</p>
+                  <p style={{ margin: 0, fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-muted)' }}>No hay movimientos para este concepto.</p>
                 </div>
               ) : (
                 <table className="dashboard-detail-table" style={{ width: '100%', borderCollapse: 'collapse', border: '2px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
                   <thead>
                     <tr style={{ backgroundColor: 'var(--surface-subtle)', borderBottom: '2px solid #e2e8f0' }}>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 800, fontSize: '0.9rem', color: '#475569' }}>Fecha</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Fecha</th>
                       {isConsolidated && (
-                        <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 800, fontSize: '0.9rem', color: '#475569' }}>Banco</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Banco</th>
                       )}
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 800, fontSize: '0.9rem', color: '#475569' }}>Descripción</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 800, fontSize: '0.9rem', color: '#475569' }}>Categoría</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, fontSize: '0.9rem', color: '#475569' }}>Monto</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Descripción</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Categoría</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Monto</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1818,7 +1818,7 @@ export default function Dashboard() {
                       const bankId = getCanonicalBankId(t.bank);
                       const bankInfo = AVAILABLE_BANKS.find(bank => bank.id === bankId);
                       const bankLabel = bankInfo?.label || bankId;
-                      const bankColor = bankInfo?.color || '#94a3b8';
+                      const bankColor = bankInfo?.color || 'var(--text-muted)';
                       const categoryPath = Array.from(new Set([
                         t.categoria_principal,
                         t.categoria_secundaria
@@ -1855,7 +1855,7 @@ export default function Dashboard() {
                           <td data-label="Fecha" style={{ padding: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap', fontSize: '0.9rem' }}>{parseLocalDate(t.date).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                           {isConsolidated && (
                             <td data-label="Banco" style={{ padding: '0.75rem', whiteSpace: 'nowrap' }}>
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.55rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: 'var(--surface-color)', boxShadow: '1px 1px 0 #000', fontSize: '0.72rem', fontWeight: 900 }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.55rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: 'var(--surface-color)', boxShadow: '1px 1px 0 var(--border-color)', fontSize: '0.72rem', fontWeight: 900 }}>
                                 <span style={{ width: '9px', height: '9px', borderRadius: '50%', backgroundColor: bankColor, border: '1.5px solid var(--border-color)', flexShrink: 0 }} />
                                 {bankLabel}
                               </span>
@@ -1890,7 +1890,7 @@ export default function Dashboard() {
                     })}
                   </tbody>
                   <tfoot>
-                    <tr style={{ backgroundColor: '#f1f5f9', borderTop: '2px solid var(--border-color)' }}>
+                    <tr style={{ backgroundColor: 'var(--surface-subtle)', borderTop: '2px solid var(--border-color)' }}>
                       <td colSpan={isConsolidated ? 4 : 3} style={{ padding: '1rem 0.75rem', fontWeight: 900, fontSize: '1rem', color: 'var(--border-color)' }}>Total</td>
                       <td style={{ padding: '1rem 0.75rem', textAlign: 'right', fontWeight: 900, fontSize: '1rem', color: 'var(--border-color)' }}>
                         ${(detailsModal.transactions.reduce((acc, t) => acc + Math.abs(t.amount), 0)).toLocaleString('es-CL')}

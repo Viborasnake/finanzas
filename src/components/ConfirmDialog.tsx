@@ -66,7 +66,7 @@ export function ConfirmDialog({
     >
       <div style={{ padding: '1.25rem', borderBottom: '2px solid var(--border-color)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <span style={{ width: 42, height: 42, border: '2px solid var(--border-color)', borderRadius: 6, backgroundColor: '#fee2e2', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <span style={{ width: 42, height: 42, border: '2px solid var(--border-color)', borderRadius: 6, backgroundColor: 'var(--danger-surface)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <AlertTriangle size={22} aria-hidden="true" />
           </span>
           <h2 id={titleId} style={{ margin: 0, fontSize: '1.2rem', lineHeight: 1.2 }}>{title}</h2>
@@ -108,7 +108,7 @@ export function ConfirmDialog({
         )}
 
         {operationError && (
-          <p role="alert" style={{ margin: '1rem 0 0', padding: '0.75rem', border: '2px solid var(--danger)', backgroundColor: '#fee2e2', color: '#991b1b', fontWeight: 750 }}>
+          <p role="alert" style={{ margin: '1rem 0 0', padding: '0.75rem', border: '2px solid var(--danger)', backgroundColor: 'var(--danger-surface)', color: 'var(--danger-text)', fontWeight: 750 }}>
             {operationError}
           </p>
         )}
@@ -129,7 +129,7 @@ export function ConfirmDialog({
             onClick={() => void handleConfirm()}
             disabled={!canConfirm || isConfirming}
             aria-busy={isConfirming}
-            style={{ backgroundColor: '#fecaca', color: 'var(--danger-text)', borderColor: 'var(--danger)' }}
+            style={{ backgroundColor: 'var(--danger-surface)', color: 'var(--danger-text)', borderColor: 'var(--danger)' }}
           >
             {isConfirming ? <LoaderCircle size={18} className="spin" aria-hidden="true" /> : <AlertTriangle size={18} aria-hidden="true" />}
             {isConfirming ? 'Procesando...' : confirmLabel}

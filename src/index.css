@@ -4,15 +4,15 @@
   /* Neo-brutalist Theme */
   --bg-color: #fdfdfc;
   --surface-color: #ffffff;
-  --text-primary: #000000;
+  --text-primary: var(--border-color)000;
   --text-secondary: #334155;
   --text-muted: #64748b;
-  --border-color: #000000;
+  --border-color: var(--border-color)000;
   --surface-subtle: #f8fafc;
   --surface-disabled: #e2e8f0;
   --focus-ring: #2563eb;
   
-  --primary: #000000;
+  --primary: var(--border-color)000;
   --primary-hover: #222222;
   --primary-light: #f0f0f0;
   
@@ -300,7 +300,7 @@ button:disabled {
   left: 2px;
   right: 2px;
   bottom: 2px;
-  background: #000;
+  background: var(--border-color);
   border-radius: calc(var(--radius-md) - 2px);
   z-index: -1;
 }
@@ -598,14 +598,14 @@ select.input {
   border: 2px solid var(--border-color);
   border-radius: 999px;
   background: var(--surface-color);
-  box-shadow: 3px 3px 0 #000;
+  box-shadow: 3px 3px 0 var(--border-color);
 }
 
 .light-month-pill select {
   max-width: 190px;
   border: 0;
   background: transparent;
-  color: #000;
+  color: var(--border-color);
   font: inherit;
   font-weight: 900;
   text-transform: capitalize;
@@ -635,7 +635,7 @@ select.input {
   max-width: 150px;
   border: 0;
   background: transparent;
-  color: #000;
+  color: var(--border-color);
   cursor: pointer;
   font: inherit;
   font-weight: 900;
@@ -660,7 +660,7 @@ select.input {
   border: 3px solid var(--border-color);
   border-radius: 18px;
   background: var(--pastel-green);
-  box-shadow: 7px 7px 0 #000;
+  box-shadow: 7px 7px 0 var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -703,7 +703,7 @@ select.input {
   border: 2px solid var(--border-color);
   border-radius: 12px;
   background: var(--surface-color);
-  box-shadow: 4px 4px 0 #000;
+  box-shadow: 4px 4px 0 var(--border-color);
 }
 
 .light-kpi-income { background: var(--pastel-green); }
@@ -765,7 +765,7 @@ select.input {
   border: 3px solid var(--border-color);
   border-radius: 16px;
   background: var(--surface-color);
-  box-shadow: 6px 6px 0 #000;
+  box-shadow: 6px 6px 0 var(--border-color);
 }
 
 .light-section-heading {
@@ -888,7 +888,7 @@ select.input {
   align-items: center;
   gap: 0.35rem;
   margin-top: 1rem;
-  color: #000;
+  color: var(--border-color);
   font-size: 0.82rem;
   font-weight: 900;
   text-decoration: underline;
@@ -902,7 +902,7 @@ select.input {
   border: 2px solid var(--border-color);
   border-radius: 8px;
   background: var(--surface-subtle);
-  color: #000;
+  color: var(--border-color);
   font: inherit;
   font-size: 0.78rem;
   font-weight: 900;
@@ -946,7 +946,7 @@ select.input {
 
 .light-insight {
   background: var(--pastel-yellow);
-  box-shadow: 4px 4px 0 #000;
+  box-shadow: 4px 4px 0 var(--border-color);
 }
 
 .light-insight p {
@@ -1283,7 +1283,7 @@ select.input {
   border: 2px solid var(--border-color);
   border-radius: 8px;
   background: var(--pastel-yellow);
-  box-shadow: 3px 3px 0 #000;
+  box-shadow: 3px 3px 0 var(--border-color);
 }
 
 .split-debt-guidance strong,
@@ -1342,7 +1342,7 @@ select.input {
   border: 2px solid var(--border-color);
   border-radius: 999px;
   background: var(--surface-color);
-  box-shadow: 3px 3px 0 #000;
+  box-shadow: 3px 3px 0 var(--border-color);
   font-size: 0.83rem;
   font-weight: 900;
   text-align: center;
@@ -1794,7 +1794,7 @@ select.input {
   border: 2px solid var(--border-color);
   border-radius: 2rem;
   background: var(--surface-color);
-  box-shadow: 4px 4px 0 #000;
+  box-shadow: 4px 4px 0 var(--border-color);
 }
 
 .dashboard-date-control button {
@@ -1908,7 +1908,7 @@ select.input {
   border: 2px solid var(--border-color);
   border-radius: 10px;
   background: var(--surface-color);
-  box-shadow: 3px 3px 0 #000;
+  box-shadow: 3px 3px 0 var(--border-color);
   overflow: hidden;
 }
 
@@ -2184,7 +2184,7 @@ select.input {
 
 .dashboard-bank-summary strong {
   display: block;
-  color: #000;
+  color: var(--border-color);
   font-size: 1rem;
 }
 
@@ -2299,8 +2299,8 @@ select.input {
 
 .dashboard-category-level.is-active {
   border-radius: 5px;
-  color: #000;
-  box-shadow: inset 0 0 0 2px #000;
+  color: var(--border-color);
+  box-shadow: inset 0 0 0 2px var(--border-color);
 }
 
 .dashboard-category-level.is-principal {
@@ -2674,7 +2674,7 @@ select.input {
   border: 2px solid var(--border-color);
   border-radius: 999px;
   background: var(--surface-subtle);
-  box-shadow: 2px 2px 0 #000;
+  box-shadow: 2px 2px 0 var(--border-color);
   font-size: 0.75rem;
   font-weight: 900;
 }
@@ -2750,7 +2750,7 @@ select.input {
   border: 2px solid var(--border-color);
   border-radius: 7px;
   background: var(--surface-color);
-  box-shadow: 1px 1px 0 #000;
+  box-shadow: 1px 1px 0 var(--border-color);
 }
 
 .transactions-table-wrap {
@@ -2906,7 +2906,7 @@ select.input {
 }
 
 .category-picker-modes button.active {
-  background: #000;
+  background: var(--border-color);
   color: #fff;
   box-shadow: 2px 2px 0 #64748b;
 }
@@ -2972,7 +2972,7 @@ select.input {
   border: 2px solid var(--border-color);
   border-radius: 7px;
   background: var(--surface-color);
-  box-shadow: 1px 1px 0 #000;
+  box-shadow: 1px 1px 0 var(--border-color);
 }
 
 .category-suggestion-list {
@@ -2991,7 +2991,7 @@ select.input {
   gap: 0.75rem;
   border: 2px solid var(--border-color);
   border-radius: 8px;
-  box-shadow: 2px 2px 0 #000;
+  box-shadow: 2px 2px 0 var(--border-color);
   text-align: left;
 }
 
@@ -3075,8 +3075,8 @@ select.input {
   padding: 0.45rem 0.8rem;
   border: 2px solid var(--border-color);
   border-radius: 999px;
-  color: #000;
-  box-shadow: 2px 2px 0 #000;
+  color: var(--border-color);
+  box-shadow: 2px 2px 0 var(--border-color);
   font-size: 0.78rem;
   font-weight: 900;
 }
@@ -3097,7 +3097,7 @@ select.input {
   border: 2px solid var(--border-color);
   border-radius: 9px;
   background: var(--surface-color);
-  box-shadow: 3px 3px 0 #000;
+  box-shadow: 3px 3px 0 var(--border-color);
 }
 
 .category-tree-branch > button {
@@ -3150,7 +3150,7 @@ select.input {
   border: 2px solid var(--border-color);
   border-radius: 9px;
   background: #fef9c3;
-  box-shadow: 3px 3px 0 #000;
+  box-shadow: 3px 3px 0 var(--border-color);
 }
 
 .category-create-form label {
@@ -3207,7 +3207,7 @@ select.input {
   border: 2px solid var(--border-color);
   border-radius: 10px;
   background: var(--surface-color);
-  box-shadow: 4px 4px 0 #000;
+  box-shadow: 4px 4px 0 var(--border-color);
 }
 
 .accounts-status-summary {
@@ -3277,7 +3277,7 @@ select.input {
   border: 2px solid var(--border-color);
   border-radius: 9px;
   color: inherit;
-  box-shadow: 2px 2px 0 #000;
+  box-shadow: 2px 2px 0 var(--border-color);
   text-align: left;
 }
 
@@ -3780,7 +3780,7 @@ select.input {
   padding: 1rem;
   border: 2px solid var(--border-color);
   border-radius: 10px;
-  box-shadow: 4px 4px 0 #000;
+  box-shadow: 4px 4px 0 var(--border-color);
   background: var(--surface-color);
 }
 
@@ -3816,7 +3816,7 @@ select.input {
   background: var(--pastel-blue);
   border: 2px solid var(--border-color);
   border-radius: 10px;
-  box-shadow: 4px 4px 0 #000;
+  box-shadow: 4px 4px 0 var(--border-color);
   padding: 1.5rem;
   width: 100%;
   box-sizing: border-box;
@@ -3838,7 +3838,7 @@ select.input {
   border: 2px solid var(--border-color);
   border-radius: 999px;
   background: var(--pastel-yellow);
-  box-shadow: 2px 2px 0 #000;
+  box-shadow: 2px 2px 0 var(--border-color);
   font-size: 0.75rem;
   font-weight: 900;
   margin-bottom: 0.75rem;
@@ -3875,7 +3875,7 @@ select.input {
   border: 2px solid var(--border-color);
   border-radius: 999px;
   background: var(--surface-color);
-  box-shadow: 2px 2px 0 #000;
+  box-shadow: 2px 2px 0 var(--border-color);
   font-size: 0.85rem;
   font-weight: 900;
 }
@@ -3891,7 +3891,7 @@ select.input {
   background: var(--surface-color);
   border: 2px solid var(--border-color);
   border-radius: 10px;
-  box-shadow: 3px 3px 0 #000;
+  box-shadow: 3px 3px 0 var(--border-color);
   overflow: hidden;
 }
 
@@ -3915,7 +3915,7 @@ select.input {
   background: var(--pastel-green);
   border: 2px solid var(--border-color);
   border-radius: 10px;
-  box-shadow: 3px 3px 0 #000;
+  box-shadow: 3px 3px 0 var(--border-color);
   padding: 1rem;
 }
 
@@ -3944,7 +3944,7 @@ select.input {
   background: var(--surface-color);
   border: 2px solid var(--border-color);
   border-radius: 10px;
-  box-shadow: 3px 3px 0 #000;
+  box-shadow: 3px 3px 0 var(--border-color);
   padding: 1rem;
 }
 
@@ -4178,7 +4178,7 @@ select.input {
   border: 2px solid var(--border-color);
   border-radius: 999px;
   background: var(--pastel-yellow);
-  box-shadow: 2px 2px 0 #000;
+  box-shadow: 2px 2px 0 var(--border-color);
   font-size: 0.75rem;
   font-weight: 900;
   margin-bottom: 0.75rem;
@@ -4211,7 +4211,7 @@ select.input {
   border: 2px solid var(--border-color);
   border-radius: 999px;
   background: var(--surface-color);
-  box-shadow: 2px 2px 0 #000;
+  box-shadow: 2px 2px 0 var(--border-color);
   font-weight: 900;
   font-size: 0.82rem;
   padding: 0.55rem 0.8rem;
@@ -4259,7 +4259,7 @@ select.input {
   border: 2px solid var(--border-color);
   border-radius: 10px;
   background: var(--surface-subtle);
-  box-shadow: 2px 2px 0 #000;
+  box-shadow: 2px 2px 0 var(--border-color);
 }
 
 .settings-section-title h2 {
@@ -5183,7 +5183,7 @@ select.input {
   align-items: center;
   justify-content: center;
   gap: 0.6rem;
-  border: 3px dashed #000;
+  border: 3px dashed var(--border-color);
   border-radius: var(--radius-md);
   background: var(--surface-subtle);
   text-align: center;
@@ -5518,7 +5518,7 @@ select.input {
 .capture-duplicate-review input[type="radio"] {
   width: 22px;
   height: 22px;
-  accent-color: #000;
+  accent-color: var(--border-color);
 }
 
 .capture-checkbox span {

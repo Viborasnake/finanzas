@@ -132,7 +132,7 @@ export default function SplitTransactionModal({ transaction, onClose, onSave }: 
           
           <div id="split-dialog-summary" className="split-dialog-summary">
             <div>
-              <div style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748b' }}>Monto Original</div>
+              <div style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Monto Original</div>
               <div style={{ fontSize: '1.25rem', fontWeight: 900 }}>${totalAmount.toLocaleString('es-CL')}</div>
               <div style={{ fontSize: '0.85rem', fontWeight: 600, marginTop: '0.25rem' }}>{transaction.description || transaction.original_description}</div>
             </div>
@@ -163,7 +163,7 @@ export default function SplitTransactionModal({ transaction, onClose, onSave }: 
                     <button 
                       type="button"
                       onClick={() => removePart(part.id)}
-                      style={{ background: '#fecaca', border: '2px solid var(--border-color)', borderRadius: '4px', cursor: 'pointer', padding: '0.2rem', display: 'flex' }}
+                      style={{ background: 'var(--danger-surface)', border: '2px solid var(--border-color)', borderRadius: '4px', cursor: 'pointer', padding: '0.2rem', display: 'flex' }}
                       title="Eliminar división"
                       aria-label={`Eliminar división ${index + 1}`}
                     >

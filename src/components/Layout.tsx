@@ -89,7 +89,7 @@ function BankIndicator() {
         aria-haspopup="menu"
         aria-disabled={!canOpen}
       >
-        <div className="bank-dot" style={{ backgroundColor: isConsolidated ? '#0f172a' : (activeBankInfo ? '#22c55e' : '#94a3b8') }} />
+        <div className="bank-dot" style={{ backgroundColor: isConsolidated ? '#0f172a' : (activeBankInfo ? '#22c55e' : 'var(--text-muted)') }} />
         <span className="bank-indicator-text">
           {displayLabel}
         </span>
@@ -126,12 +126,12 @@ function BankIndicator() {
                       border: '1px solid var(--border-color)'
                     }} />
                     <span>Todos los bancos</span>
-                    <span style={{ fontSize: '0.58rem', padding: '0.1rem 0.35rem', backgroundColor: '#dbeafe', color: '#0f172a', borderRadius: '999px', fontWeight: 900, border: '1px solid var(--border-color)' }}>Vista</span>
+                    <span style={{ fontSize: '0.58rem', padding: '0.1rem 0.35rem', backgroundColor: 'var(--pastel-blue)', color: '#0f172a', borderRadius: '999px', fontWeight: 900, border: '1px solid var(--border-color)' }}>Vista</span>
                     {isConsolidated && <Check size={14} style={{ marginLeft: 'auto' }} />}
                   </button>
                 </div>
               )}
-              <div style={{ fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748b', padding: '0.4rem 0.5rem 0.25rem' }}>Bancos conectados</div>
+              <div style={{ fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)', padding: '0.4rem 0.5rem 0.25rem' }}>Bancos conectados</div>
               {connectedBanks.map(bankId => {
                 const bank = AVAILABLE_BANKS.find(b => b.id === bankId);
                 if (!bank) return null;
@@ -148,12 +148,12 @@ function BankIndicator() {
                     >
                       <span style={{ 
                         width: '12px', height: '12px', borderRadius: '50%', display: 'inline-block',
-                        background: `radial-gradient(circle at 30% 30%, ${bank.color || '#ccc'}, #000)`,
+                        background: `radial-gradient(circle at 30% 30%, ${bank.color || '#ccc'}, var(--border-color))`,
                         boxShadow: '1px 1px 0px var(--border-color)'
                       }} />
                       <span>{bank.label}</span>
                       {isMain && (
-                        <span style={{ fontSize: '0.6rem', padding: '0.1rem 0.4rem', backgroundColor: '#fef08a', color: '#854d0e', borderRadius: '999px', fontWeight: 900, border: '1px solid var(--border-color)' }}>Principal</span>
+                        <span style={{ fontSize: '0.6rem', padding: '0.1rem 0.4rem', backgroundColor: 'var(--pastel-yellow)', color: 'var(--warning-text)', borderRadius: '999px', fontWeight: 900, border: '1px solid var(--border-color)' }}>Principal</span>
                       )}
                       {isActive && <Check size={14} style={{ marginLeft: 'auto' }} />}
                     </button>
