@@ -519,11 +519,11 @@ export default function Accounts() {
         >
           <div className="dialog-header">
             <div>
-              <h2 id="account-detail-dialog-title" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <h2 id="account-detail-dialog-title" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                 {selectedStatus.item.name}
-                <button type="button" className="btn btn-outline" style={{ padding: '0.35rem 0.75rem', minHeight: 'auto', fontSize: '0.75rem' }} onClick={openAccountConfiguration}>
-                  <Pencil size={14} />
-                  {selectedStatus.configured ? 'Editar regla' : 'Vincular'}
+                <button type="button" className="btn btn-primary" style={{ padding: '0.35rem 0.75rem', minHeight: 'auto', fontSize: '0.75rem' }} onClick={openAccountConfiguration}>
+                  <Settings size={14} />
+                  {selectedStatus.configured ? 'Regla de detección' : 'Automatizar detección'}
                 </button>
               </h2>
               <p id="account-detail-dialog-description" className="account-detail-subtitle" style={{ marginTop: '0.25rem', color: 'var(--text-muted)' }}>
@@ -639,8 +639,8 @@ export default function Accounts() {
                   <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
                     <button
                       type="button"
-                      className="btn btn-outline"
-                      style={{ borderStyle: 'dashed' }}
+                      className="btn btn-primary"
+                      style={{ padding: '0.75rem 1.5rem' }}
                       onClick={() => {
                         const now = new Date();
                         const defaultDate = now >= range.start && now <= range.end ? now : range.start;
@@ -652,7 +652,7 @@ export default function Accounts() {
                         setShowManualForm(true);
                       }}
                     >
-                      <Plus size={16} /> Registrar un pago manual
+                      <Plus size={18} /> Registrar un pago manual
                     </button>
                   </div>
                 ) : (
