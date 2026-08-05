@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Calendar, CalendarCheck, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleAlert, Link2, Pencil, Plus, Settings, X } from 'lucide-react';
+import { Calendar, CalendarCheck, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleAlert, Link2, Pencil, Plus, Settings, X, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/authContextValue';
@@ -339,6 +339,20 @@ export default function Accounts() {
     }
   };
 
+  const handleDeleteManualPayment = async (transactionId: string) => {
+    if (!window.confirm('¿Seguro que deseas eliminar este pago manual? Esta acción no se puede deshacer.')) return;
+    try {
+      const { error } = await supabase.from('transactions').delete().eq('id', transactionId);
+      if (error) throw error;
+      toast.success('Pago manual eliminado');
+      setTransactions(prev => prev.filter(t => t.id !== transactionId));
+      if (editingTransactionId === transactionId) setEditingTransactionId(null);
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Error al eliminar pago manual');
+    }
+  };
+
   const [showConfigModal, setShowConfigModal] = useState(false);
 
   useEffect(() => {
@@ -572,10 +586,17 @@ export default function Accounts() {
                           </div>
                           <strong className="account-transaction-amount">${getTransactionAmount(tx).toLocaleString('es-CL')}</strong>
                         </div>
-                        <button type="button" className="btn btn-outline account-correction-toggle" onClick={() => setEditingTransactionId(editingTransactionId === tx.id ? null : tx.id)} aria-expanded={editingTransactionId === tx.id}>
-                          <Pencil size={16} />
-                          Cambiar
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+                          {tx.raw_data?.is_manual && (
+                            <button type="button" className="btn btn-outline" style={{ borderColor: 'var(--danger)', color: 'var(--danger)', padding: '0.35rem 0.75rem', minHeight: 'auto', fontSize: '0.8rem' }} onClick={() => handleDeleteManualPayment(tx.id)}>
+                              <Trash2 size={16} /> Eliminar
+                            </button>
+                          )}
+                          <button type="button" className="btn btn-outline account-correction-toggle" onClick={() => setEditingTransactionId(editingTransactionId === tx.id ? null : tx.id)} aria-expanded={editingTransactionId === tx.id}>
+                            <Pencil size={16} />
+                            Cambiar
+                          </button>
+                        </div>
                         {editingTransactionId === tx.id && (
                           <div className="account-inline-correction">
                             <CascadingCategorySelector
@@ -718,9 +739,16 @@ export default function Accounts() {
                                     <strong>{tx.description || tx.original_description || 'Sin descripción'}</strong>
                                     <span>{tx.date} · {tx.bank || 'Sin banco'}</span>
                                   </div>
-                                  <button type="button" className="btn btn-outline" onClick={() => setEditingTransactionId(editingTransactionId === tx.id ? null : tx.id)} aria-expanded={editingTransactionId === tx.id}>
-                                    <Pencil size={15} /> Corregir
-                                  </button>
+                                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    {tx.raw_data?.is_manual && (
+                                      <button type="button" className="btn btn-outline" style={{ borderColor: 'var(--danger)', color: 'var(--danger)', padding: '0.35rem 0.75rem', minHeight: 'auto', fontSize: '0.8rem' }} onClick={() => handleDeleteManualPayment(tx.id)}>
+                                        <Trash2 size={15} /> Eliminar
+                                      </button>
+                                    )}
+                                    <button type="button" className="btn btn-outline" onClick={() => setEditingTransactionId(editingTransactionId === tx.id ? null : tx.id)} aria-expanded={editingTransactionId === tx.id}>
+                                      <Pencil size={15} /> Corregir
+                                    </button>
+                                  </div>
                                   {editingTransactionId === tx.id && (
                                     <div className="account-inline-correction">
                                       <CascadingCategorySelector
