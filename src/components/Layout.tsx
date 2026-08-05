@@ -122,11 +122,11 @@ function BankIndicator() {
                     <span style={{ 
                       width: '12px', height: '12px', borderRadius: '50%', display: 'inline-block',
                       background: 'linear-gradient(135deg, #e63000 0 33%, #f77f00 33% 66%, #a855f7 66% 100%)',
-                      boxShadow: '1px 1px 0px #000',
-                      border: '1px solid #000'
+                      boxShadow: '1px 1px 0px var(--border-color)',
+                      border: '1px solid var(--border-color)'
                     }} />
                     <span>Todos los bancos</span>
-                    <span style={{ fontSize: '0.58rem', padding: '0.1rem 0.35rem', backgroundColor: '#dbeafe', color: '#0f172a', borderRadius: '999px', fontWeight: 900, border: '1px solid #000' }}>Vista</span>
+                    <span style={{ fontSize: '0.58rem', padding: '0.1rem 0.35rem', backgroundColor: '#dbeafe', color: '#0f172a', borderRadius: '999px', fontWeight: 900, border: '1px solid var(--border-color)' }}>Vista</span>
                     {isConsolidated && <Check size={14} style={{ marginLeft: 'auto' }} />}
                   </button>
                 </div>
@@ -149,11 +149,11 @@ function BankIndicator() {
                       <span style={{ 
                         width: '12px', height: '12px', borderRadius: '50%', display: 'inline-block',
                         background: `radial-gradient(circle at 30% 30%, ${bank.color || '#ccc'}, #000)`,
-                        boxShadow: '1px 1px 0px #000'
+                        boxShadow: '1px 1px 0px var(--border-color)'
                       }} />
                       <span>{bank.label}</span>
                       {isMain && (
-                        <span style={{ fontSize: '0.6rem', padding: '0.1rem 0.4rem', backgroundColor: '#fef08a', color: '#854d0e', borderRadius: '999px', fontWeight: 900, border: '1px solid #000' }}>Principal</span>
+                        <span style={{ fontSize: '0.6rem', padding: '0.1rem 0.4rem', backgroundColor: '#fef08a', color: '#854d0e', borderRadius: '999px', fontWeight: 900, border: '1px solid var(--border-color)' }}>Principal</span>
                       )}
                       {isActive && <Check size={14} style={{ marginLeft: 'auto' }} />}
                     </button>

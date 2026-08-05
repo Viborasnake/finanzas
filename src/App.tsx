@@ -80,13 +80,13 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (isPaused) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100dvh', backgroundColor: '#fdfdfc', padding: '2rem', textAlign: 'center' }}>
-        <div className="card animate-fade-in" style={{ maxWidth: '400px', border: '3px solid black', boxShadow: '6px 6px 0px black', padding: '2rem', borderRadius: '12px', backgroundColor: 'white' }}>
+        <div className="card animate-fade-in" style={{ maxWidth: '400px', border: '3px solid var(--border-color)', boxShadow: '6px 6px 0px var(--border-color)', padding: '2rem', borderRadius: '12px', backgroundColor: 'white' }}>
           <LockKeyhole size={46} strokeWidth={2.4} aria-hidden="true" />
           <h2 style={{ fontSize: '1.75rem', margin: '1rem 0', fontWeight: 900 }}>Cuenta pausada</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontWeight: 600, lineHeight: 1.5 }}>
             Tu acceso a la plataforma ha sido temporalmente suspendido por el administrador. Ponte en contacto con soporte si crees que esto es un error.
           </p>
-          <button type="button" className="btn btn-outline" style={{ width: '100%', border: '2px solid black' }} onClick={signOut}>
+          <button type="button" className="btn btn-outline" style={{ width: '100%', border: '2px solid var(--border-color)' }} onClick={signOut}>
             Cerrar sesión
           </button>
         </div>
@@ -104,11 +104,11 @@ function App() {
         position="bottom-right"
         toastOptions={{
           style: {
-            border: '2px solid black',
-            boxShadow: '4px 4px 0px black',
+            border: '2px solid var(--border-color)',
+            boxShadow: '4px 4px 0px var(--border-color)',
             borderRadius: 'var(--radius-sm)',
             fontWeight: 600,
-            color: 'black'
+            color: 'var(--text-primary)'
           },
           success: {
             style: {

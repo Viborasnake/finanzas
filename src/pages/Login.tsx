@@ -183,7 +183,7 @@ export default function Login() {
                     borderRadius: '12px',
                     backgroundColor: isSelected ? '#f8fafc' : '#fff',
                     cursor: 'pointer',
-                    boxShadow: isSelected ? '4px 4px 0px #000' : 'none',
+                    boxShadow: isSelected ? '4px 4px 0px var(--border-color)' : 'none',
                     transition: 'all 0.15s',
                     userSelect: 'none',
                   }}
@@ -206,7 +206,7 @@ export default function Login() {
                       style={{
                         fontSize: '0.7rem', fontWeight: 800,
                         padding: '0.3rem 0.6rem',
-                        border: '2px solid #000',
+                        border: '2px solid var(--border-color)',
                         borderRadius: '2rem',
                         backgroundColor: isMain ? '#fde047' : '#f1f5f9',
                         cursor: 'pointer',
@@ -217,7 +217,7 @@ export default function Login() {
                     </button>
                   )}
                   {isSelected && isMain && selectedBanks.length === 1 && (
-                    <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '0.3rem 0.6rem', backgroundColor: '#fde047', border: '2px solid #000', borderRadius: '2rem' }}>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '0.3rem 0.6rem', backgroundColor: '#fde047', border: '2px solid var(--border-color)', borderRadius: '2rem' }}>
                       ⭐ Principal
                     </span>
                   )}

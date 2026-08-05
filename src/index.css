@@ -34,6 +34,17 @@
   --warning-surface: #fef3c7;
   --warning-text: #854d0e;
   
+  --account-card-unconfigured: #fefce8;
+  --account-card-unconfigured-badge: #fde047;
+  --account-card-paid: #f0fdf4;
+  --account-card-paid-badge: #86efac;
+  --account-card-missing: #fff1f2;
+  --account-card-missing-badge: #fecaca;
+  --account-card-overdue: #fff1f2;
+  --account-card-overdue-badge: #fca5a5;
+  --account-card-pending: #fff7ed;
+  --account-card-pending-badge: #fed7aa;
+  
   /* Shape system: icons 4px, controls 8px, surfaces 12px, semantic pills only. */
   --radius-sm: 4px;
   --radius-md: 8px;
@@ -41,10 +52,10 @@
   --radius-pill: 9999px;
   
   /* Hard shadows characteristic of neo-brutalism */
-  --shadow-sm: 2px 2px 0px 0px #000000;
-  --shadow-md: 4px 4px 0px 0px #000000;
-  --shadow-lg: 4px 4px 0px 0px #000000;
-  --shadow-hover: 4px 4px 0px 0px #000000;
+  --shadow-sm: 2px 2px 0px 0px var(--border-color);
+  --shadow-md: 4px 4px 0px 0px var(--border-color);
+  --shadow-lg: 4px 4px 0px 0px var(--border-color);
+  --shadow-hover: 4px 4px 0px 0px var(--border-color);
   
   --border-width: 2px;
   --control-height: 44px;
@@ -82,10 +93,21 @@ html.dark {
   --warning-surface: #713f12;
   --warning-text: #fde047;
   
-  --shadow-sm: 2px 2px 0px 0px #52525b;
-  --shadow-md: 4px 4px 0px 0px #52525b;
-  --shadow-lg: 4px 4px 0px 0px #52525b;
-  --shadow-hover: 4px 4px 0px 0px #52525b;
+  --account-card-unconfigured: #713f12;
+  --account-card-unconfigured-badge: #854d0e;
+  --account-card-paid: #14532d;
+  --account-card-paid-badge: #166534;
+  --account-card-missing: #7f1d1d;
+  --account-card-missing-badge: #991b1b;
+  --account-card-overdue: #7f1d1d;
+  --account-card-overdue-badge: #991b1b;
+  --account-card-pending: #7c2d12;
+  --account-card-pending-badge: #9a3412;
+  
+  --shadow-sm: 2px 2px 0px 0px var(--border-color);
+  --shadow-md: 4px 4px 0px 0px var(--border-color);
+  --shadow-lg: 4px 4px 0px 0px var(--border-color);
+  --shadow-hover: 4px 4px 0px 0px var(--border-color);
 }
 
 * {
@@ -214,7 +236,7 @@ button:disabled {
 
 .btn:active {
   transform: translate(2px, 2px);
-  box-shadow: 0px 0px 0px 0px #000000;
+  box-shadow: 0px 0px 0px 0px var(--border-color)000;
 }
 
 .btn-icon {
@@ -225,7 +247,7 @@ button:disabled {
   border-radius: var(--radius-sm);
   border: var(--border-width) solid var(--border-color);
   box-shadow: var(--shadow-sm);
-  background-color: #ffffff;
+  background-color: var(--surface-color)fff;
   transition: all 0.1s ease;
   color: var(--text-primary);
   cursor: pointer;
@@ -237,17 +259,17 @@ button:disabled {
 .btn-icon:hover {
   background-color: var(--pastel-yellow);
   transform: translate(-2px, -2px);
-  box-shadow: 4px 4px 0px 0px #000000;
+  box-shadow: 4px 4px 0px 0px var(--border-color)000;
 }
 
 .btn-icon:active {
   transform: translate(2px, 2px);
-  box-shadow: 0px 0px 0px 0px #000000;
+  box-shadow: 0px 0px 0px 0px var(--border-color)000;
 }
 
 .btn-primary {
   background-color: var(--primary);
-  color: white;
+  color: var(--bg-color);
 }
 
 .btn-primary:hover {
@@ -283,7 +305,7 @@ button:disabled {
   z-index: -1;
 }
 .btn-gradient {
-  color: white; /* Since inner is black */
+  color: var(--bg-color); /* Since inner is black */
 }
 
 .input {
@@ -347,7 +369,7 @@ select.input {
   font-size: 0.75rem;
   font-weight: 700;
   border: var(--border-width) solid var(--border-color);
-  box-shadow: 2px 2px 0px 0px #000000;
+  box-shadow: 2px 2px 0px 0px var(--border-color)000;
 }
 
 .badge-success {
@@ -573,9 +595,9 @@ select.input {
 
 .light-month-pill {
   padding: 0.65rem 0.85rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface-color);
   box-shadow: 3px 3px 0 #000;
 }
 
@@ -635,7 +657,7 @@ select.input {
 .light-balance-card {
   min-height: 180px;
   padding: clamp(1.4rem, 4vw, 2.2rem);
-  border: 3px solid #000;
+  border: 3px solid var(--border-color);
   border-radius: 18px;
   background: var(--pastel-green);
   box-shadow: 7px 7px 0 #000;
@@ -678,9 +700,9 @@ select.input {
 
 .light-kpi {
   padding: 1rem 1.1rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 12px;
-  background: #fff;
+  background: var(--surface-color);
   box-shadow: 4px 4px 0 #000;
 }
 
@@ -740,9 +762,9 @@ select.input {
 
 .light-section {
   padding: 1.25rem;
-  border: 3px solid #000;
+  border: 3px solid var(--border-color);
   border-radius: 16px;
-  background: #fff;
+  background: var(--surface-color);
   box-shadow: 6px 6px 0 #000;
 }
 
@@ -762,7 +784,7 @@ select.input {
 
 .light-section-heading > strong {
   padding: 0.3rem 0.6rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 999px;
   background: var(--pastel-yellow);
   font-size: 0.82rem;
@@ -771,7 +793,7 @@ select.input {
 .light-progress,
 .light-category-track {
   overflow: hidden;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   background: #e2e8f0;
 }
 
@@ -827,7 +849,7 @@ select.input {
 .light-status-icon {
   width: 32px;
   height: 32px;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
@@ -877,7 +899,7 @@ select.input {
   width: 100%;
   margin-top: 0.75rem;
   padding: 0.6rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 8px;
   background: #f8fafc;
   color: #000;
@@ -915,7 +937,7 @@ select.input {
 .light-insight,
 .light-error {
   padding: 1rem 1.1rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -1053,8 +1075,8 @@ select.input {
   background-size: 1000px 100%;
   animation: skeleton-shimmer 2s infinite linear;
   border-radius: var(--radius-sm);
-  border: 2px solid #000;
-  box-shadow: 2px 2px 0px #000;
+  border: 2px solid var(--border-color);
+  box-shadow: 2px 2px 0px var(--border-color);
 }
 
 .route-loading {
@@ -1092,9 +1114,9 @@ select.input {
   grid-template-columns: auto minmax(0, 1fr);
   gap: 0.85rem;
   align-items: start;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: var(--radius-md);
-  background: #fff7f7;
+  background: var(--surface-color)7f7;
   box-shadow: var(--shadow-md);
 }
 
@@ -1217,7 +1239,7 @@ select.input {
   justify-content: space-between;
   gap: 1rem;
   padding: 1rem;
-  border-bottom: 2px solid #000;
+  border-bottom: 2px solid var(--border-color);
   background: #fef08a;
 }
 
@@ -1245,7 +1267,7 @@ select.input {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 8px;
   background: #f8fafc;
 }
@@ -1258,7 +1280,7 @@ select.input {
 
 .split-debt-guidance {
   padding: 0.85rem 1rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 8px;
   background: var(--pastel-yellow);
   box-shadow: 3px 3px 0 #000;
@@ -1297,7 +1319,7 @@ select.input {
   display: grid;
   grid-template-columns: 1fr;
   gap: 0.75rem;
-  border-top: 2px solid #000;
+  border-top: 2px solid var(--border-color);
   background: #f1f5f9;
 }
 
@@ -1317,9 +1339,9 @@ select.input {
   min-width: 0;
   padding: 0.65rem 0.75rem;
   overflow: hidden;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface-color);
   box-shadow: 3px 3px 0 #000;
   font-size: 0.83rem;
   font-weight: 900;
@@ -1349,7 +1371,7 @@ select.input {
   max-width: 240px;
   padding: 0.35rem 0.55rem;
   display: inline-block;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: var(--radius-sm);
   background: var(--pastel-blue);
   font-size: 0.72rem;
@@ -1458,7 +1480,7 @@ select.input {
     padding: 0.75rem;
     border: 2px solid #dbe3ee !important;
     border-radius: 10px;
-    background: #fff !important;
+    background: var(--surface-color) !important;
   }
 
   .dashboard-detail-table tbody td[data-label] {
@@ -1551,7 +1573,7 @@ select.input {
     display: grid;
     grid-template-columns: 1fr auto;
     margin-top: 0.65rem;
-    border: 2px solid #000 !important;
+    border: 2px solid var(--border-color) !important;
     border-radius: 8px;
     overflow: hidden;
   }
@@ -1754,7 +1776,7 @@ select.input {
   width: 12px;
   height: 12px;
   flex: 0 0 12px;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 50%;
 }
 
@@ -1769,9 +1791,9 @@ select.input {
   width: 100%;
   min-height: 44px;
   overflow: hidden;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 2rem;
-  background: #fff;
+  background: var(--surface-color);
   box-shadow: 4px 4px 0 #000;
 }
 
@@ -1784,7 +1806,7 @@ select.input {
 .dashboard-period-trigger {
   min-width: 0;
   border: 0;
-  background: #fff;
+  background: var(--surface-color);
   cursor: pointer;
 }
 
@@ -1883,16 +1905,16 @@ select.input {
   display: grid;
   grid-template-columns: minmax(240px, 0.85fr) minmax(0, 1.7fr);
   margin: 0 0 1rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 10px;
-  background: #fff;
+  background: var(--surface-color);
   box-shadow: 3px 3px 0 #000;
   overflow: hidden;
 }
 
 .dashboard-cash-summary-primary {
   padding: 1rem 1.15rem;
-  border-right: 2px solid #000;
+  border-right: 2px solid var(--border-color);
 }
 
 .dashboard-cash-summary span,
@@ -1960,7 +1982,7 @@ select.input {
 
 @media (max-width: 720px) {
   .dashboard-cash-summary { grid-template-columns: 1fr; }
-  .dashboard-cash-summary-primary { border-right: 0; border-bottom: 2px solid #000; }
+  .dashboard-cash-summary-primary { border-right: 0; border-bottom: 2px solid var(--border-color); }
   .dashboard-cash-summary-breakdown { grid-template-columns: 1fr 1fr; }
   .dashboard-cash-summary-breakdown > div { border-bottom: 1px solid #cbd5e1; }
 }
@@ -2027,14 +2049,14 @@ select.input {
   align-items: center;
   padding: 1.5rem;
   margin-bottom: 2.5rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: var(--radius-md);
-  background: #fff;
+  background: var(--surface-color);
   box-shadow: var(--shadow-md);
 }
 
 .dashboard-error-state {
-  background: #fff7f7;
+  background: var(--surface-color)7f7;
 }
 
 .dashboard-state-icon {
@@ -2043,7 +2065,7 @@ select.input {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: var(--radius-md);
   background: var(--danger-surface);
   box-shadow: var(--shadow-sm);
@@ -2067,7 +2089,7 @@ select.input {
   align-items: start;
   padding: 1rem;
   margin-bottom: 1.5rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: var(--radius-md);
   background: var(--warning-surface);
   box-shadow: var(--shadow-sm);
@@ -2123,7 +2145,7 @@ select.input {
   align-self: flex-start;
   gap: 0.4rem;
   padding: 0.45rem 0.7rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   font-size: 0.78rem;
@@ -2141,7 +2163,7 @@ select.input {
 .dashboard-bank-summary {
   display: grid;
   grid-template-columns: 1fr;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: var(--radius-md);
   background: #f8fafc;
   overflow: hidden;
@@ -2175,9 +2197,9 @@ select.input {
 .dashboard-bank-card {
   min-width: 0;
   padding: 1rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: var(--radius-md);
-  background: #fff;
+  background: var(--surface-color);
   box-shadow: var(--shadow-sm);
 }
 
@@ -2256,7 +2278,7 @@ select.input {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   padding: 0.25rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: var(--radius-md);
   background: #f1f5f9;
 }
@@ -2330,7 +2352,7 @@ select.input {
 
 .dashboard-advanced {
   margin-top: 2.5rem;
-  border-top: 2px solid #000;
+  border-top: 2px solid var(--border-color);
   padding-top: 1.25rem;
 }
 
@@ -2342,7 +2364,7 @@ select.input {
   justify-content: space-between;
   gap: 1rem;
   padding: 0.85rem 1rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: var(--radius-md);
   background: #f8fafc;
   box-shadow: var(--shadow-sm);
@@ -2649,7 +2671,7 @@ select.input {
   display: inline-flex;
   align-items: center;
   padding: 0.35rem 0.7rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 999px;
   background: #f8fafc;
   box-shadow: 2px 2px 0 #000;
@@ -2663,13 +2685,13 @@ select.input {
   gap: 0.75rem;
   margin-bottom: 1rem;
   padding: 0.75rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 10px;
   background: #f8fafc;
 }
 
 .transactions-filter-bar .input {
-  background-color: #fff;
+  background-color: var(--surface-color);
   font-weight: 700;
   min-height: 46px;
 }
@@ -2677,7 +2699,7 @@ select.input {
 .transactions-filter-toggle {
   width: 100%;
   justify-content: space-between;
-  background: #fff;
+  background: var(--surface-color);
 }
 
 .transactions-filter-toggle span {
@@ -2687,7 +2709,7 @@ select.input {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1.5px solid #000;
+  border: 1.5px solid var(--border-color);
   border-radius: 999px;
   background: #fef08a;
   font-size: 0.72rem;
@@ -2706,7 +2728,7 @@ select.input {
 
 .transactions-filter-reset {
   width: 100%;
-  background: #fff;
+  background: var(--surface-color);
 }
 
 .transactions-search {
@@ -2725,17 +2747,17 @@ select.input {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 7px;
-  background: #fff;
+  background: var(--surface-color);
   box-shadow: 1px 1px 0 #000;
 }
 
 .transactions-table-wrap {
   overflow-x: auto;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 10px;
-  background: #fff;
+  background: var(--surface-color);
 }
 
 .transactions-table {
@@ -2779,7 +2801,7 @@ select.input {
 .editable-cell:focus-within {
   padding: 0.25rem 0.4rem;
   border-color: var(--focus-ring) !important;
-  background: #fff !important;
+  background: var(--surface-color) !important;
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
 }
 
@@ -2827,14 +2849,14 @@ select.input {
   grid-template-columns: 1fr;
   gap: 0.65rem;
   padding: 0.85rem 1rem;
-  border-bottom: 2px solid #000;
-  background: #fff;
+  border-bottom: 2px solid var(--border-color);
+  background: var(--surface-color);
 }
 
 .category-picker-context > div {
   min-width: 0;
   padding: 0.65rem 0.75rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 8px;
   background: #f8fafc;
 }
@@ -2862,8 +2884,8 @@ select.input {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.45rem;
   padding: 0.75rem 1rem;
-  border-bottom: 2px solid #000;
-  background: #fff;
+  border-bottom: 2px solid var(--border-color);
+  background: var(--surface-color);
 }
 
 .category-picker-modes button {
@@ -2874,9 +2896,9 @@ select.input {
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface-color);
   color: #0f172a;
   font-size: 0.78rem;
   font-weight: 900;
@@ -2933,7 +2955,7 @@ select.input {
   width: 100%;
   padding-right: 3rem;
   padding-left: 2.45rem;
-  background: #fff;
+  background: var(--surface-color);
 }
 
 .category-picker-search button {
@@ -2947,9 +2969,9 @@ select.input {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 7px;
-  background: #fff;
+  background: var(--surface-color);
   box-shadow: 1px 1px 0 #000;
 }
 
@@ -2967,7 +2989,7 @@ select.input {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 8px;
   box-shadow: 2px 2px 0 #000;
   text-align: left;
@@ -3032,7 +3054,7 @@ select.input {
   gap: 0.6rem;
   border: 2px dashed #94a3b8;
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface-color);
 }
 
 .category-picker-empty span {
@@ -3051,7 +3073,7 @@ select.input {
 .category-type-tabs button {
   min-height: 44px;
   padding: 0.45rem 0.8rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 999px;
   color: #000;
   box-shadow: 2px 2px 0 #000;
@@ -3072,9 +3094,9 @@ select.input {
 .category-tree-branch {
   overflow: hidden;
   align-self: start;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 9px;
-  background: #fff;
+  background: var(--surface-color);
   box-shadow: 3px 3px 0 #000;
 }
 
@@ -3109,9 +3131,9 @@ select.input {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  border: 1.5px solid #000;
+  border: 1.5px solid var(--border-color);
   border-radius: 7px;
-  background: #fff;
+  background: var(--surface-color);
   font-weight: 750;
   text-align: left;
 }
@@ -3125,7 +3147,7 @@ select.input {
   display: grid;
   grid-template-columns: 1fr;
   gap: 0.85rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 9px;
   background: #fef9c3;
   box-shadow: 3px 3px 0 #000;
@@ -3143,14 +3165,14 @@ select.input {
 
 .category-create-form .input {
   width: 100%;
-  background: #fff;
+  background: var(--surface-color);
 }
 
 .category-create-preview {
   padding: 0.75rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface-color);
 }
 
 .category-create-preview strong {
@@ -3170,8 +3192,8 @@ select.input {
   align-items: center;
   justify-content: space-between;
   gap: 0.65rem;
-  border-top: 2px solid #000;
-  background: #fff;
+  border-top: 2px solid var(--border-color);
+  background: var(--surface-color);
 }
 
 .category-picker-footer span {
@@ -3182,9 +3204,9 @@ select.input {
 
 .accounts-panel {
   padding: 1.25rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 10px;
-  background: #fff;
+  background: var(--surface-color);
   box-shadow: 4px 4px 0 #000;
 }
 
@@ -3197,7 +3219,7 @@ select.input {
 
 .accounts-explanation {
   margin-bottom: 1.25rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 8px;
   background: #eff6ff;
 }
@@ -3252,7 +3274,7 @@ select.input {
     "result result";
   gap: 0.4rem 0.65rem;
   align-items: start;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 9px;
   color: inherit;
   box-shadow: 2px 2px 0 #000;
@@ -3266,9 +3288,9 @@ select.input {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 6px;
-  background: #fff;
+  background: var(--surface-color);
 }
 
 .account-status-copy {
@@ -3328,7 +3350,7 @@ select.input {
 .account-status-result > span {
   padding: 0.2rem 0.5rem;
   display: inline-block;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 999px;
   font-size: 0.7rem;
   font-weight: 900;
@@ -3356,7 +3378,7 @@ select.input {
 
 .account-detail-metric {
   padding: 0.75rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 8px;
   background: #f8fafc;
 }
@@ -3384,12 +3406,12 @@ select.input {
 }
 
 .account-detail-metric.state-pending {
-  background: #fff7ed;
+  background: var(--surface-color)7ed;
 }
 
 .account-detail-metric.state-missing,
 .account-detail-metric.state-overdue {
-  background: #fff1f2;
+  background: var(--surface-color)1f2;
 }
 
 .account-detection-rule {
@@ -3398,7 +3420,7 @@ select.input {
   grid-template-columns: auto minmax(0, 1fr);
   gap: 0.75rem;
   align-items: start;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 8px;
   background: #eff6ff;
 }
@@ -3409,9 +3431,9 @@ select.input {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface-color);
 }
 
 .account-detection-rule h3,
@@ -3475,9 +3497,9 @@ select.input {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface-color);
   font-size: 0.75rem;
   font-weight: 900;
 }
@@ -3494,13 +3516,13 @@ select.input {
   padding: 0.75rem;
   display: grid;
   gap: 0.65rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface-color);
 }
 
 .account-candidate-row {
-  background: #fffbeb;
+  background: var(--surface-color)beb;
 }
 
 .account-transaction-main {
@@ -3599,7 +3621,7 @@ select.input {
 
 .account-manual-toggle {
   margin-top: 0.75rem;
-  background: #fff;
+  background: var(--surface-color);
 }
 
 .account-manual-form {
@@ -3608,7 +3630,7 @@ select.input {
   display: grid;
   grid-template-columns: 1fr;
   gap: 0.75rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 8px;
   background: #f8fafc;
 }
@@ -3625,7 +3647,7 @@ select.input {
 
 .account-manual-form .input {
   width: 100%;
-  background: #fff;
+  background: var(--surface-color);
 }
 
 .account-history-toggle {
@@ -3661,9 +3683,9 @@ select.input {
 
 .account-history-month {
   overflow: hidden;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 8px;
-  background: #fff1f2;
+  background: var(--surface-color)1f2;
 }
 
 .account-history-month.has-payments {
@@ -3713,8 +3735,8 @@ select.input {
   padding: 0.65rem;
   display: grid;
   gap: 0.5rem;
-  border-top: 2px solid #000;
-  background: #fff;
+  border-top: 2px solid var(--border-color);
+  background: var(--surface-color);
 }
 
 .account-history-payment {
@@ -3756,10 +3778,10 @@ select.input {
 .confirm-toast {
   width: min(440px, calc(100vw - 2rem));
   padding: 1rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 10px;
   box-shadow: 4px 4px 0 #000;
-  background: #fff;
+  background: var(--surface-color);
 }
 
 .confirm-toast-header {
@@ -3792,7 +3814,7 @@ select.input {
 
 .smart-assistant {
   background: var(--pastel-blue);
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 10px;
   box-shadow: 4px 4px 0 #000;
   padding: 1.5rem;
@@ -3813,7 +3835,7 @@ select.input {
   align-items: center;
   gap: 0.35rem;
   padding: 0.3rem 0.7rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 999px;
   background: #fef08a;
   box-shadow: 2px 2px 0 #000;
@@ -3850,9 +3872,9 @@ select.input {
   display: inline-flex;
   align-items: center;
   padding: 0.35rem 0.7rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface-color);
   box-shadow: 2px 2px 0 #000;
   font-size: 0.85rem;
   font-weight: 900;
@@ -3866,8 +3888,8 @@ select.input {
   display: flex;
   flex-direction: column;
   margin-top: 1rem;
-  background: #fff;
-  border: 2px solid #000;
+  background: var(--surface-color);
+  border: 2px solid var(--border-color);
   border-radius: 10px;
   box-shadow: 3px 3px 0 #000;
   overflow: hidden;
@@ -3891,7 +3913,7 @@ select.input {
   flex-direction: column;
   gap: 0.35rem;
   background: #dcfce7;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 10px;
   box-shadow: 3px 3px 0 #000;
   padding: 1rem;
@@ -3919,8 +3941,8 @@ select.input {
   gap: 0.75rem;
   align-items: start;
   margin-top: 1rem;
-  background: #fff;
-  border: 2px solid #000;
+  background: var(--surface-color);
+  border: 2px solid var(--border-color);
   border-radius: 10px;
   box-shadow: 3px 3px 0 #000;
   padding: 1rem;
@@ -3951,7 +3973,7 @@ select.input {
   min-height: 38px;
   padding: 0.4rem 0.65rem;
   font-size: 0.76rem;
-  background: #fff;
+  background: var(--surface-color);
 }
 
 .assistant-contact-saved {
@@ -3992,7 +4014,7 @@ select.input {
   min-width: 0;
   padding: 0.55rem 0.65rem;
   font-size: 0.82rem;
-  background: #fff;
+  background: var(--surface-color);
 }
 
 .assistant-contact-actions {
@@ -4153,7 +4175,7 @@ select.input {
 .settings-kicker {
   display: inline-flex;
   padding: 0.3rem 0.75rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 999px;
   background: #fef08a;
   box-shadow: 2px 2px 0 #000;
@@ -4186,9 +4208,9 @@ select.input {
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface-color);
   box-shadow: 2px 2px 0 #000;
   font-weight: 900;
   font-size: 0.82rem;
@@ -4234,7 +4256,7 @@ select.input {
   padding: 0.35rem;
   width: 40px;
   height: 40px;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 10px;
   background: #f8fafc;
   box-shadow: 2px 2px 0 #000;
@@ -4320,7 +4342,7 @@ select.input {
 
 .input[aria-invalid="true"] {
   border-color: #dc2626;
-  background: #fff7f7;
+  background: var(--surface-color)7f7;
 }
 
 .settings-rule-category:has(.field-error) > button,
@@ -4361,9 +4383,9 @@ select.input {
   width: 100%;
   min-height: 48px;
   padding: 0.75rem 3.25rem 0.75rem 2.75rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface-color);
   color: var(--text-primary);
   font: inherit;
   font-weight: 700;
@@ -4398,7 +4420,7 @@ select.input {
   gap: 1rem;
   min-width: 0;
   padding: 0.9rem 1rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 8px;
   background: #f8fafc;
 }
@@ -4543,7 +4565,7 @@ select.input {
 .settings-list-item,
 .settings-list-row {
   padding: 0.85rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 9px;
   background: #f8fafc;
 }
@@ -4578,7 +4600,7 @@ select.input {
 }
 
 .settings-danger {
-  background: #fff7f7;
+  background: var(--surface-color)7f7;
 }
 
 .bank-row {
@@ -5059,9 +5081,9 @@ select.input {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   overflow: hidden;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: var(--radius-pill);
-  background: #fff;
+  background: var(--surface-color);
   box-shadow: var(--shadow-sm);
 }
 
@@ -5080,7 +5102,7 @@ select.input {
 }
 
 .import-source-tabs button + button {
-  border-left: 2px solid #000;
+  border-left: 2px solid var(--border-color);
 }
 
 .import-source-tabs button.active {
@@ -5132,7 +5154,7 @@ select.input {
   display: flex;
   gap: 0.7rem;
   align-items: center;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: var(--radius-sm);
   background: var(--pastel-blue);
 }
@@ -5175,7 +5197,7 @@ select.input {
 
 .capture-dropzone.has-file {
   align-items: stretch;
-  background: #fff;
+  background: var(--surface-color);
   text-align: left;
 }
 
@@ -5199,7 +5221,7 @@ select.input {
   width: 100%;
   max-height: 330px;
   object-fit: contain;
-  background: #fff;
+  background: var(--surface-color);
 }
 
 .capture-selected-file > div {
@@ -5316,9 +5338,9 @@ select.input {
   height: 16px;
   margin-top: 1.25rem;
   overflow: hidden;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: var(--radius-pill);
-  background: #fff;
+  background: var(--surface-color);
 }
 
 .capture-progress span {
@@ -5349,8 +5371,8 @@ select.input {
   padding: 1rem 0;
   display: grid;
   gap: 1rem;
-  border-top: 2px solid #000;
-  border-bottom: 2px solid #000;
+  border-top: 2px solid var(--border-color);
+  border-bottom: 2px solid var(--border-color);
 }
 
 .capture-date-control,
@@ -5371,9 +5393,9 @@ select.input {
 .capture-review-summary strong,
 .capture-review-summary span {
   padding: 0.45rem 0.65rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: var(--radius-pill);
-  background: #fff;
+  background: var(--surface-color);
   font-size: 0.72rem;
   font-weight: 900;
 }
@@ -5388,7 +5410,7 @@ select.input {
   display: flex;
   gap: 0.7rem;
   align-items: flex-start;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: var(--radius-md);
   font-size: 0.82rem;
   font-weight: 700;
@@ -5441,7 +5463,7 @@ select.input {
   max-height: 620px;
   margin-bottom: 1rem;
   object-fit: contain;
-  background: #fff;
+  background: var(--surface-color);
 }
 
 .capture-selection-actions {
@@ -5459,9 +5481,9 @@ select.input {
 .capture-candidate {
   min-width: 0;
   padding: 1rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: var(--radius-md);
-  background: #fff;
+  background: var(--surface-color);
   box-shadow: var(--shadow-sm);
 }
 
@@ -5505,14 +5527,14 @@ select.input {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: 50%;
   background: var(--pastel-blue);
 }
 
 .capture-confidence {
   padding: 0.35rem 0.55rem;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: var(--radius-pill);
   font-size: 0.68rem;
   font-weight: 900;
@@ -5573,7 +5595,7 @@ select.input {
 .capture-duplicate-review {
   margin: 1rem -1rem -1rem;
   padding: 1rem;
-  border-top: 2px solid #000;
+  border-top: 2px solid var(--border-color);
   background: var(--warning-surface);
 }
 
@@ -5646,9 +5668,9 @@ select.input {
   display: flex;
   gap: 0.55rem;
   align-items: center;
-  border: 2px solid #000;
+  border: 2px solid var(--border-color);
   border-radius: var(--radius-sm);
-  background: #fff;
+  background: var(--surface-color);
   font-size: 0.76rem;
   font-weight: 800;
   cursor: pointer;
@@ -5662,7 +5684,7 @@ select.input {
   padding: 1rem max(1rem, env(safe-area-inset-right)) calc(1rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
   display: grid;
   gap: 0.8rem;
-  border-top: 2px solid #000;
+  border-top: 2px solid var(--border-color);
   background: rgba(255, 255, 255, 0.97);
   backdrop-filter: blur(8px);
 }

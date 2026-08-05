@@ -427,10 +427,10 @@ export default function Accounts() {
 
       <section className="accounts-panel">
         <div className="accounts-status-summary">
-          <span style={{ padding: '0.45rem 0.8rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#dcfce7', fontWeight: 900 }}>{paidCount} pagados</span>
-          <span style={{ padding: '0.45rem 0.8rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#fee2e2', fontWeight: 900 }}>{unpaidCount} sin pago</span>
+          <span style={{ padding: '0.45rem 0.8rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: '#dcfce7', fontWeight: 900 }}>{paidCount} pagados</span>
+          <span style={{ padding: '0.45rem 0.8rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: '#fee2e2', fontWeight: 900 }}>{unpaidCount} sin pago</span>
           {unconfiguredCount > 0 && (
-            <span style={{ padding: '0.45rem 0.8rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#fef9c3', fontWeight: 900 }}>{unconfiguredCount} por vincular</span>
+            <span style={{ padding: '0.45rem 0.8rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: '#fef9c3', fontWeight: 900 }}>{unconfiguredCount} por vincular</span>
           )}
         </div>
 
@@ -455,11 +455,11 @@ export default function Accounts() {
           <div className="accounts-grid">
             {statuses.map(status => {
               const visual = {
-                unconfigured: { background: '#fefce8', badge: '#fde047' },
-                paid: { background: '#f0fdf4', badge: '#86efac' },
-                missing: { background: '#fff1f2', badge: '#fecaca' },
-                overdue: { background: '#fff1f2', badge: '#fca5a5' },
-                pending: { background: '#fff7ed', badge: '#fed7aa' }
+                unconfigured: { background: 'var(--account-card-unconfigured)', badge: 'var(--account-card-unconfigured-badge)' },
+                paid: { background: 'var(--account-card-paid)', badge: 'var(--account-card-paid-badge)' },
+                missing: { background: 'var(--account-card-missing)', badge: 'var(--account-card-missing-badge)' },
+                overdue: { background: 'var(--account-card-overdue)', badge: 'var(--account-card-overdue-badge)' },
+                pending: { background: 'var(--account-card-pending)', badge: 'var(--account-card-pending-badge)' }
               }[status.statusKind] || { background: 'var(--surface-color)', badge: '#e2e8f0' };
 
               return (

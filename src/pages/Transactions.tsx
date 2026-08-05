@@ -451,7 +451,7 @@ export function CascadingCategorySelector({ initialTipo, initialPrincipal, initi
                           type="button"
                           aria-expanded={isExpanded}
                           onClick={() => setExpandedPrincipal(isExpanded ? null : principal)}
-                          style={{ backgroundColor: getBgColor(selectedTipo), borderBottom: isExpanded ? '2px solid #000' : 'none' }}
+                          style={{ backgroundColor: getBgColor(selectedTipo), borderBottom: isExpanded ? '2px solid var(--border-color)' : 'none' }}
                         >
                           <span>{principal}</span>
                           <ChevronRight size={18} strokeWidth={3} style={{ transform: isExpanded ? 'rotate(90deg)' : 'none', flexShrink: 0 }} />
@@ -459,7 +459,7 @@ export function CascadingCategorySelector({ initialTipo, initialPrincipal, initi
                         {isExpanded && (
                           <div className="category-tree-options">
                             {getAccountingHint(selectedTipo, principal) && (
-                              <p style={{ margin: 0, padding: '0.75rem', backgroundColor: '#f8fafc', borderBottom: '2px solid #000', color: '#475569', fontSize: '0.78rem', fontWeight: 700, lineHeight: 1.4 }}>
+                              <p style={{ margin: 0, padding: '0.75rem', backgroundColor: '#f8fafc', borderBottom: '2px solid var(--border-color)', color: '#475569', fontSize: '0.78rem', fontWeight: 700, lineHeight: 1.4 }}>
                                 {getAccountingHint(selectedTipo, principal)}
                               </p>
                             )}
@@ -1148,7 +1148,7 @@ export default function Transactions() {
               </div>
             )}
             {searchParams.get('review') === 'recent' && (
-              <div role="status" style={{ marginTop: '0.75rem', maxWidth: 620, padding: '0.75rem 1rem', border: '2px solid #000', borderRadius: 8, background: '#dcfce7', boxShadow: '2px 2px 0 #000', fontWeight: 750 }}>
+              <div role="status" style={{ marginTop: '0.75rem', maxWidth: 620, padding: '0.75rem 1rem', border: '2px solid var(--border-color)', borderRadius: 8, background: '#dcfce7', boxShadow: '2px 2px 0 #000', fontWeight: 750 }}>
                 Importación completada. Tus movimientos ya están disponibles aquí; revisa las coincidencias si el sistema detectó posibles duplicados.
               </div>
             )}
@@ -1354,8 +1354,8 @@ export default function Transactions() {
           ) : (
             <div style={{ display: 'grid', gap: '1rem' }}>
               {duplicateGroups.map((group, groupIndex) => (
-                <section key={group.key} style={{ border: '2px solid #000', borderRadius: 10, overflow: 'hidden', background: 'var(--surface-color)' }}>
-                  <div style={{ padding: '0.9rem 1rem', borderBottom: '2px solid #000', background: group.containsSplit ? '#fef3c7' : '#f8fafc', display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <section key={group.key} style={{ border: '2px solid var(--border-color)', borderRadius: 10, overflow: 'hidden', background: 'var(--surface-color)' }}>
+                  <div style={{ padding: '0.9rem 1rem', borderBottom: '2px solid var(--border-color)', background: group.containsSplit ? '#fef3c7' : '#f8fafc', display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     <div>
                       <strong>Coincidencia {groupIndex + 1}</strong>
                       <div style={{ marginTop: '0.2rem', fontSize: '0.85rem', color: '#475569', fontWeight: 650 }}>{group.reason}</div>
@@ -1565,8 +1565,8 @@ export default function Transactions() {
                       </td>
                       {connectedBanks.length > 1 && (
                         <td data-label="Banco" style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.55rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: 'var(--surface-color)', boxShadow: '1px 1px 0 #000', fontSize: '0.72rem', fontWeight: 900 }}>
-                            <span style={{ width: '9px', height: '9px', borderRadius: '50%', backgroundColor: bank.color, border: '1.5px solid #000', flexShrink: 0 }} />
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.55rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: 'var(--surface-color)', boxShadow: '1px 1px 0 #000', fontSize: '0.72rem', fontWeight: 900 }}>
+                            <span style={{ width: '9px', height: '9px', borderRadius: '50%', backgroundColor: bank.color, border: '1.5px solid var(--border-color)', flexShrink: 0 }} />
                             {bank.label}
                           </span>
                         </td>

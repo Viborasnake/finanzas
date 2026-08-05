@@ -75,7 +75,7 @@ export default function NeoDatePicker({ value, onChange }: NeoDatePickerProps) {
           alignItems: 'center',
           gap: '0.5rem',
           backgroundColor: 'var(--surface-color)',
-          border: '2px solid #000',
+          border: '2px solid var(--border-color)',
           borderRadius: '8px',
           padding: '0.5rem 1rem',
           cursor: 'pointer',
@@ -83,7 +83,7 @@ export default function NeoDatePicker({ value, onChange }: NeoDatePickerProps) {
           userSelect: 'none',
           transition: 'all 0.1s ease',
           transform: isOpen ? 'translate(2px, 2px)' : 'none',
-          boxShadow: isOpen ? '0px 0px 0px #000' : '4px 4px 0px #000',
+          boxShadow: isOpen ? '0px 0px 0px var(--border-color)' : '4px 4px 0px var(--border-color)',
           textAlign: 'left'
         }}
       >
@@ -103,9 +103,9 @@ export default function NeoDatePicker({ value, onChange }: NeoDatePickerProps) {
             left: 0,
             zIndex: 100,
             backgroundColor: 'var(--surface-color)',
-            border: '2px solid #000',
+            border: '2px solid var(--border-color)',
             borderRadius: '12px',
-            boxShadow: '4px 4px 0px #000',
+            boxShadow: '4px 4px 0px var(--border-color)',
             padding: '1rem',
             width: '280px'
           }}
@@ -116,7 +116,7 @@ export default function NeoDatePicker({ value, onChange }: NeoDatePickerProps) {
               type="button"
               onClick={handlePrevMonth}
               aria-label="Mes anterior"
-              style={{ background: '#f1f5f9', border: '2px solid #000', borderRadius: '4px', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              style={{ background: '#f1f5f9', border: '2px solid var(--border-color)', borderRadius: '4px', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
               <ChevronLeft size={18} strokeWidth={3} />
             </button>
@@ -127,7 +127,7 @@ export default function NeoDatePicker({ value, onChange }: NeoDatePickerProps) {
               type="button"
               onClick={handleNextMonth}
               aria-label="Mes siguiente"
-              style={{ background: '#f1f5f9', border: '2px solid #000', borderRadius: '4px', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              style={{ background: '#f1f5f9', border: '2px solid var(--border-color)', borderRadius: '4px', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
               <ChevronRight size={18} strokeWidth={3} />
             </button>

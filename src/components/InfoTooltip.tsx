@@ -79,10 +79,10 @@ export default function InfoTooltip({ content }: InfoTooltipProps) {
           left: coords.left,
           transform: 'translate(-50%, -100%)',
           backgroundColor: 'var(--surface-color)',
-          border: '2px solid #000',
+          border: '2px solid var(--border-color)',
           borderRadius: '8px',
           padding: '0.75rem',
-          boxShadow: '4px 4px 0px #000',
+          boxShadow: '4px 4px 0px var(--border-color)',
           width: 'max-content',
           maxWidth: 'min(250px, calc(100vw - 2rem))',
           zIndex: 99999,
@@ -103,8 +103,8 @@ export default function InfoTooltip({ content }: InfoTooltipProps) {
             width: '10px',
             height: '10px',
             backgroundColor: 'var(--surface-color)',
-            borderRight: '2px solid #000',
-            borderBottom: '2px solid #000'
+            borderRight: '2px solid var(--border-color)',
+            borderBottom: '2px solid var(--border-color)'
           }} />
         </div>,
         document.body

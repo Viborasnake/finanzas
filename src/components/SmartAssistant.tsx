@@ -500,7 +500,7 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
                             <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>Clasificar "{t.description}"</span>
                             <button type="button" className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }} onClick={() => setEditingTxId(null)}>Cancelar</button>
                           </div>
-                          <div style={{ border: '2px solid #000', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ border: '2px solid var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
                             <CascadingCategorySelector
                               initialPrincipal="Sin Especificar"
                               initialSecundaria="Sin Especificar"
@@ -562,7 +562,7 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
         </div>
 
         {/* Acciones por sugerencia */}
-        <div className="assistant-actions" style={{ marginTop: 0, borderTop: '2px solid #000', padding: '1rem' }}>
+        <div className="assistant-actions" style={{ marginTop: 0, borderTop: '2px solid var(--border-color)', padding: '1rem' }}>
           <button type="button" className="btn btn-primary" style={{ flex: '1 1 auto', justifyContent: 'center' }} onClick={() => applySuggestion(current, { persistRule: true })} disabled={saving}>
             <Check size={16} />
             Aplicar y recordar

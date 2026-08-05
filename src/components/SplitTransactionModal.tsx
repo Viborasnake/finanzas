@@ -156,14 +156,14 @@ export default function SplitTransactionModal({ transaction, onClose, onSave }: 
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {parts.map((part, index) => (
-              <div key={part.id} style={{ border: '2px solid #000', borderRadius: '8px', padding: '1rem', position: 'relative' }}>
+              <div key={part.id} style={{ border: '2px solid var(--border-color)', borderRadius: '8px', padding: '1rem', position: 'relative' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                   <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>División {index + 1}</div>
                   {parts.length > 2 && (
                     <button 
                       type="button"
                       onClick={() => removePart(part.id)}
-                      style={{ background: '#fecaca', border: '2px solid #000', borderRadius: '4px', cursor: 'pointer', padding: '0.2rem', display: 'flex' }}
+                      style={{ background: '#fecaca', border: '2px solid var(--border-color)', borderRadius: '4px', cursor: 'pointer', padding: '0.2rem', display: 'flex' }}
                       title="Eliminar división"
                       aria-label={`Eliminar división ${index + 1}`}
                     >

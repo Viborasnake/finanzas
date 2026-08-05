@@ -22,8 +22,8 @@ export function useActionQueue() {
       <div 
         style={{ 
           padding: '1rem', 
-          border: '2px solid black', 
-          boxShadow: '4px 4px 0px black', 
+          border: '2px solid var(--border-color)', 
+          boxShadow: '4px 4px 0px var(--border-color)', 
           background: 'white', 
           display: 'flex', 
           alignItems: 'center', 
@@ -45,7 +45,7 @@ export function useActionQueue() {
             padding: '0.4rem 0.8rem', 
             background: '#fecaca', 
             color: '#991b1b', 
-            border: '2px solid black', 
+            border: '2px solid var(--border-color)', 
             borderRadius: 'var(--radius-sm)', 
             fontWeight: 700, 
             cursor: 'pointer',
