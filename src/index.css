@@ -2,13 +2,13 @@
 
 :root {
   /* Neo-brutalist Theme */
-  --bg-color: var(--bg-color);
+  --bg-color: #fdfdfc;
   --surface-color: #ffffff;
   --text-primary: #000000;
   --text-secondary: #334155;
   --text-muted: #64748b;
   --border-color: #000000;
-  --surface-subtle: var(--surface-subtle);
+  --surface-subtle: #f8fafc;
   --surface-disabled: #e2e8f0;
   --focus-ring: #2563eb;
   
@@ -236,7 +236,7 @@ button:disabled {
 
 .btn:active {
   transform: translate(2px, 2px);
-  box-shadow: 0px 0px 0px 0px var(--border-color)000;
+  box-shadow: 0px 0px 0px 0px var(--border-color);
 }
 
 .btn-icon {
@@ -247,7 +247,7 @@ button:disabled {
   border-radius: var(--radius-sm);
   border: var(--border-width) solid var(--border-color);
   box-shadow: var(--shadow-sm);
-  background-color: var(--surface-color)fff;
+  background-color: var(--surface-color);
   transition: all 0.1s ease;
   color: var(--text-primary);
   cursor: pointer;
@@ -259,12 +259,12 @@ button:disabled {
 .btn-icon:hover {
   background-color: var(--pastel-yellow);
   transform: translate(-2px, -2px);
-  box-shadow: 4px 4px 0px 0px var(--border-color)000;
+  box-shadow: 4px 4px 0px 0px var(--border-color);
 }
 
 .btn-icon:active {
   transform: translate(2px, 2px);
-  box-shadow: 0px 0px 0px 0px var(--border-color)000;
+  box-shadow: 0px 0px 0px 0px var(--border-color);
 }
 
 .btn-primary {
@@ -369,7 +369,7 @@ select.input {
   font-size: 0.75rem;
   font-weight: 700;
   border: var(--border-width) solid var(--border-color);
-  box-shadow: 2px 2px 0px 0px var(--border-color)000;
+  box-shadow: 2px 2px 0px 0px var(--border-color);
 }
 
 .badge-success {
