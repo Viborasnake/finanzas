@@ -6,7 +6,7 @@ import { AVAILABLE_BANKS, useBanks, type Bank } from '../contexts/bankContextVal
 import { 
   ChevronLeft, ChevronRight, TrendingUp, TrendingDown, 
   Wallet, CreditCard, AlertTriangle, Sparkles, Search, X, Edit2,
-  ArrowUpRight, ArrowDownRight, Scale, PiggyBank, Calendar, Landmark, FileSpreadsheet, Tags, CheckCircle2, Settings, ChevronDown, RefreshCw
+  ArrowUpRight, ArrowDownRight, Scale, PiggyBank, CalendarCheck, Landmark, FileSpreadsheet, Tags, CheckCircle2, Settings, ChevronDown, RefreshCw
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { 

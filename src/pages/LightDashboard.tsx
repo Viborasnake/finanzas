@@ -42,9 +42,10 @@ export default function LightDashboard() {
   const isConsolidated = dashboardScope === 'all' && connectedBanks.length > 1;
   const scopedBanks = isConsolidated ? connectedBanks : (activeBank ? [activeBank] : []);
   const scopedBankKey = scopedBanks.join('|');
+  const activeBankInfo = AVAILABLE_BANKS.find(bank => bank.id === activeBank);
   const scopeLabel = isConsolidated
     ? 'Todos los bancos'
-    : AVAILABLE_BANKS.find(bank => bank.id === activeBank)?.label || 'Sin banco';
+    : activeBankInfo?.label || 'Sin banco';
 
   const fetchAllForBank = useCallback(async (bankId: string) => {
     if (!user) return [];
@@ -131,7 +132,17 @@ export default function LightDashboard() {
       <header className="light-header">
         <div>
           <span className="light-eyebrow"><Sparkles size={16} aria-hidden="true" /> Vista Light</span>
-          <h1 className="app-page-title">Tu mes, sin ruido</h1>
+          <div className="dashboard-title-context" style={{ marginBottom: '0.5rem' }}>
+            <h1 className="app-page-title">Tu mes, sin ruido</h1>
+            <div className="dashboard-context-line" aria-label={`Vista de ${scopeLabel}`}>
+              <span
+                className="dashboard-context-dot"
+                style={{ backgroundColor: isConsolidated ? '#111827' : (activeBankInfo?.color || '#94a3b8') }}
+                aria-hidden="true"
+              />
+              <strong>{scopeLabel}</strong>
+            </div>
+          </div>
           <p>Solo lo esencial de {summary.range.label}: pagos importantes y panorama general de gastos.</p>
         </div>
         <div className="dashboard-month-navigation light-month-navigation">
@@ -151,8 +162,6 @@ export default function LightDashboard() {
             >
               {monthOptions.map(option => <option key={option.key} value={option.key}>{option.label}</option>)}
             </select>
-            <span aria-hidden="true">·</span>
-            <span className="light-period-scope">{scopeLabel}</span>
           </label>
           <button type="button" className="dashboard-month-arrow" onClick={() => shiftSelectedMonth(-1)} disabled={selectedMonthIndex === 0} aria-label="Mes siguiente" title="Mes siguiente">
             <ChevronRight size={19} strokeWidth={3} />
