@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useId } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Receipt, Settings, LogOut, Menu, X, ChevronDown, Check, ChevronLeft, ChevronRight, User as UserIcon, Shield, CalendarCheck, FileSpreadsheet, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Receipt, Settings, LogOut, Menu, X, ChevronDown, Check, ChevronLeft, ChevronRight, User as UserIcon, Shield, CalendarCheck, FileSpreadsheet, Sparkles, Moon, Sun, Monitor } from 'lucide-react';
 import { useAuth } from '../contexts/authContextValue';
 import { useBanks, AVAILABLE_BANKS, type DashboardBankScope } from '../contexts/bankContextValue';
 import { useSettings } from '../contexts/settingsContextValue';
+import { useTheme } from '../contexts/themeContextValue';
 import { RutOnboardingModal } from './RutOnboardingModal';
 import './Layout.css'; 
 
@@ -21,6 +22,26 @@ const managementNavItems = [
 const systemNavItems = [
   { name: 'Ajustes', path: '/settings', icon: <Settings size={20} /> },
 ];
+
+function ThemeToggle({ isCollapsed }: { isCollapsed?: boolean }) {
+  const { theme, setTheme } = useTheme();
+
+  const cycleTheme = () => {
+    if (theme === 'system') setTheme('light');
+    else if (theme === 'light') setTheme('dark');
+    else setTheme('system');
+  };
+
+  const Icon = theme === 'light' ? Sun : theme === 'dark' ? Moon : Monitor;
+  const label = theme === 'light' ? 'Tema Claro' : theme === 'dark' ? 'Tema Oscuro' : 'Tema Sistema';
+
+  return (
+    <button type="button" className="nav-item theme-toggle-btn" onClick={cycleTheme} title={isCollapsed ? label : undefined} aria-label="Cambiar tema" style={{ background: 'transparent', border: 'none', cursor: 'pointer', width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', color: 'inherit', fontWeight: 'inherit', fontSize: '1rem', borderRadius: 'var(--radius-md)' }}>
+      <Icon size={20} />
+      {!isCollapsed && <span>{label}</span>}
+    </button>
+  );
+}
 
 function BankIndicator() {
   const { connectedBanks, activeBank, dashboardScope, mainBank, setDashboardScope } = useBanks();
@@ -290,6 +311,7 @@ export default function Layout() {
               <span>{user.email}</span>
             </div>
           )}
+          <ThemeToggle isCollapsed={isCollapsed} />
           <button type="button" className="nav-item logout-btn" onClick={handleSignOut} title={isCollapsed ? 'Cerrar sesión' : undefined} aria-label="Cerrar sesión">
             <LogOut size={20} />
             <span>Cerrar Sesión</span>
@@ -352,6 +374,9 @@ export default function Layout() {
                   </div>
                 </div>
               )}
+              <div style={{ padding: '0 0.5rem', marginBottom: '0.5rem' }}>
+                <ThemeToggle />
+              </div>
               <button 
                 type="button"
                 className="mobile-logout-btn" 

@@ -265,7 +265,7 @@ export default function Login() {
             type="button"
             onClick={() => setStep('auth')}
             className="btn btn-outline"
-            style={{ width: '100%', padding: '0.875rem', fontSize: '1rem', border: '2px solid black' }}
+            style={{ width: '100%', padding: '0.875rem', fontSize: '1rem', border: '2px solid var(--border-color)' }}
           >
             Volver al inicio
           </button>
@@ -283,7 +283,7 @@ export default function Login() {
         style={{ 
           flex: 1, 
           backgroundColor: 'var(--pastel-blue)', 
-          borderRight: '2px solid black', 
+          borderRight: '2px solid var(--border-color)', 
           display: 'flex', 
           flexDirection: 'column',
           padding: '3rem 4rem',
@@ -308,19 +308,19 @@ export default function Login() {
           
           <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             <li style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '1rem', fontWeight: 700 }}>
-              <div style={{ background: 'transparent', border: '2px solid black', borderRadius: '50%', padding: '0.25rem', display: 'flex' }}>
+              <div style={{ background: 'transparent', border: '2px solid var(--border-color)', borderRadius: '50%', padding: '0.25rem', display: 'flex' }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
               </div>
               Clasificación asistida en segundos
             </li>
             <li style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '1rem', fontWeight: 700 }}>
-              <div style={{ background: 'transparent', border: '2px solid black', borderRadius: '50%', padding: '0.25rem', display: 'flex' }}>
+              <div style={{ background: 'transparent', border: '2px solid var(--border-color)', borderRadius: '50%', padding: '0.25rem', display: 'flex' }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
               </div>
               Análisis de flujo de caja real
             </li>
             <li style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '1rem', fontWeight: 700 }}>
-              <div style={{ background: 'transparent', border: '2px solid black', borderRadius: '50%', padding: '0.25rem', display: 'flex' }}>
+              <div style={{ background: 'transparent', border: '2px solid var(--border-color)', borderRadius: '50%', padding: '0.25rem', display: 'flex' }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
               </div>
               Identifica gastos hormiga automáticamente
@@ -353,7 +353,7 @@ export default function Login() {
 
           {/* Tabs */}
           {!isPasswordRecovery && (
-            <div className="auth-tabs" role="tablist" aria-label="Acceso a MisFinanzas" style={{ display: 'flex', backgroundColor: '#fff', borderRadius: '999px', border: '2px solid black', marginBottom: '2.5rem', padding: '0.25rem', boxShadow: '4px 4px 0px black' }}>
+            <div className="auth-tabs" role="tablist" aria-label="Acceso a MisFinanzas" style={{ display: 'flex', backgroundColor: 'var(--surface-color)', borderRadius: '999px', border: '2px solid var(--border-color)', marginBottom: '2.5rem', padding: '0.25rem', boxShadow: '4px 4px 0px var(--border-color)' }}>
               <button
                 type="button"
                 role="tab"
@@ -364,7 +364,7 @@ export default function Login() {
                 tabIndex={!isSignUp ? 0 : -1}
                 onClick={() => selectAuthMode(false)}
                 onKeyDown={handleAuthTabKeyDown}
-                style={{ flex: 1, padding: '0.75rem', borderRadius: '1.5rem', background: !isSignUp ? 'var(--pastel-blue)' : 'transparent', color: 'black', fontWeight: 800, fontSize: '0.875rem', cursor: 'pointer', transition: 'all 0.1s', border: !isSignUp ? '2px solid black' : '2px solid transparent' }}
+                style={{ flex: 1, padding: '0.75rem', borderRadius: '1.5rem', background: !isSignUp ? 'var(--pastel-blue)' : 'transparent', color: 'var(--text-primary)', fontWeight: 800, fontSize: '0.875rem', cursor: 'pointer', transition: 'all 0.1s', border: !isSignUp ? '2px solid var(--border-color)' : '2px solid transparent' }}
               >
                 Iniciar sesión
               </button>
@@ -378,7 +378,7 @@ export default function Login() {
                 tabIndex={isSignUp ? 0 : -1}
                 onClick={() => selectAuthMode(true)}
                 onKeyDown={handleAuthTabKeyDown}
-                style={{ flex: 1, padding: '0.75rem', borderRadius: '1.5rem', background: isSignUp ? 'var(--pastel-blue)' : 'transparent', color: 'black', fontWeight: 800, fontSize: '0.875rem', cursor: 'pointer', transition: 'all 0.1s', border: isSignUp ? '2px solid black' : '2px solid transparent' }}
+                style={{ flex: 1, padding: '0.75rem', borderRadius: '1.5rem', background: isSignUp ? 'var(--pastel-blue)' : 'transparent', color: 'var(--text-primary)', fontWeight: 800, fontSize: '0.875rem', cursor: 'pointer', transition: 'all 0.1s', border: isSignUp ? '2px solid var(--border-color)' : '2px solid transparent' }}
               >
                 Registrarse
               </button>
@@ -403,7 +403,7 @@ export default function Login() {
             </p>
             
             {error && (
-              <div role="alert" style={{ backgroundColor: 'var(--danger-surface)', color: 'var(--danger-text)', padding: '0.75rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', border: '2px solid black', boxShadow: '2px 2px 0px black', fontWeight: 700, fontSize: '0.875rem' }}>
+              <div role="alert" style={{ backgroundColor: 'var(--danger-surface)', color: 'var(--danger-text)', padding: '0.75rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', border: '2px solid var(--border-color)', boxShadow: '2px 2px 0px var(--border-color)', fontWeight: 700, fontSize: '0.875rem' }}>
                 {error}
               </div>
             )}
@@ -411,7 +411,7 @@ export default function Login() {
             {isPasswordRecovery ? (
               recoverySent ? (
                 <div role="status" aria-live="polite">
-                  <div style={{ padding: '1rem', background: 'var(--pastel-green)', border: '2px solid black', borderRadius: 'var(--radius-md)', fontWeight: 700, lineHeight: 1.5 }}>
+                  <div style={{ padding: '1rem', background: 'var(--pastel-green)', border: '2px solid var(--border-color)', borderRadius: 'var(--radius-md)', fontWeight: 700, lineHeight: 1.5 }}>
                     Si existe una cuenta asociada a <strong>{email}</strong>, recibirás un correo con el enlace de recuperación.
                   </div>
                   <button
@@ -512,7 +512,7 @@ export default function Login() {
               <button 
                 type="submit" 
                 className="btn btn-primary" 
-                style={{ marginTop: '0.5rem', width: '100%', fontSize: '0.9rem', padding: '0.875rem', backgroundColor: 'var(--pastel-blue)', color: 'black', border: '2px solid black' }}
+                style={{ marginTop: '0.5rem', width: '100%', fontSize: '0.9rem', padding: '0.875rem', backgroundColor: 'var(--pastel-blue)', color: 'var(--text-primary)', border: '2px solid var(--border-color)' }}
                 disabled={loading}
                 aria-busy={loading}
               >

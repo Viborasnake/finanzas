@@ -249,7 +249,7 @@ export function InitialAdjustmentManager() {
             const bankLabel = getBankLabel(bank);
 
             return (
-              <div key={bank} style={{ border: '2px solid black', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+              <div key={bank} style={{ border: '2px solid var(--border-color)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
                 <div style={{ backgroundColor: adj ? '#f8fafc' : '#fefce8', padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                   
                   <div>
@@ -271,10 +271,10 @@ export function InitialAdjustmentManager() {
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     {adj ? (
                       <>
-                        <button type="button" className="btn" onClick={() => isEditingThis ? setEditingBank(null) : handleEditClick(bank)} style={{ backgroundColor: 'white', border: '2px solid black', boxShadow: '2px 2px 0px black' }}>
+                        <button type="button" className="btn" onClick={() => isEditingThis ? setEditingBank(null) : handleEditClick(bank)} style={{ backgroundColor: 'white', border: '2px solid var(--border-color)', boxShadow: '2px 2px 0px var(--border-color)' }}>
                           <Edit2 size={16} /> {isEditingThis ? 'Ocultar' : 'Editar'}
                         </button>
-                        <button type="button" className="btn" onClick={() => handleDelete(bank)} style={{ backgroundColor: '#fee2e2', color: 'var(--danger-text)', border: '2px solid black', boxShadow: '2px 2px 0px black' }}>
+                        <button type="button" className="btn" onClick={() => handleDelete(bank)} style={{ backgroundColor: '#fee2e2', color: 'var(--danger-text)', border: '2px solid var(--border-color)', boxShadow: '2px 2px 0px var(--border-color)' }}>
                           <Trash2 size={16} /> Borrar
                         </button>
                       </>
@@ -288,7 +288,7 @@ export function InitialAdjustmentManager() {
 
                 {/* Form area */}
                 {isEditingThis && (
-                  <div style={{ padding: '1.5rem', backgroundColor: 'white', borderTop: '2px solid black' }}>
+                  <div style={{ padding: '1.5rem', backgroundColor: 'white', borderTop: '2px solid var(--border-color)' }}>
                     <h4 style={{ margin: '0 0 1.25rem 0', fontWeight: 800 }}>{adj ? 'Editar Ajuste' : 'Nuevo Ajuste de Inicio'} para {bankLabel}</h4>
                     
                     {!adj && suggestions[bank] && (
@@ -331,7 +331,7 @@ export function InitialAdjustmentManager() {
                         <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
                           Guardar Ajuste
                         </button>
-                        <button type="button" className="btn" onClick={() => setEditingBank(null)} style={{ backgroundColor: '#e2e8f0', color: 'black' }}>
+                        <button type="button" className="btn" onClick={() => setEditingBank(null)} style={{ backgroundColor: '#e2e8f0', color: 'var(--text-primary)' }}>
                           Cancelar
                         </button>
                       </div>

@@ -460,7 +460,7 @@ export default function Accounts() {
                 missing: { background: '#fff1f2', badge: '#fecaca' },
                 overdue: { background: '#fff1f2', badge: '#fca5a5' },
                 pending: { background: '#fff7ed', badge: '#fed7aa' }
-              }[status.statusKind] || { background: '#fff', badge: '#e2e8f0' };
+              }[status.statusKind] || { background: 'var(--surface-color)', badge: '#e2e8f0' };
 
               return (
                 <button
@@ -473,7 +473,7 @@ export default function Accounts() {
                   style={{ backgroundColor: visual.background }}
                 >
                   <span className="account-status-icon">
-                    {status.paid ? <CheckCircle2 size={22} fill="#22c55e" color="#000" /> : <Loader2 size={20} className="animate-spin" style={{ animationDuration: '3s' }} />}
+                    {status.paid ? <CheckCircle2 size={22} fill="#22c55e" color="var(--border-color)" /> : <Loader2 size={20} className="animate-spin" style={{ animationDuration: '3s' }} />}
                   </span>
 
                   <div className="account-status-copy">
@@ -498,7 +498,7 @@ export default function Accounts() {
                       </strong>
                     ) : null}
                     
-                    <span style={{ backgroundColor: visual.badge, padding: '0.1rem 0.4rem', border: '2px solid black', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 900, boxShadow: '2px 2px 0px black' }}>
+                    <span style={{ backgroundColor: visual.badge, padding: '0.1rem 0.4rem', border: '2px solid var(--border-color)', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 900, boxShadow: '2px 2px 0px var(--border-color)' }}>
                       {status.statusLabel}
                     </span>
 
@@ -519,7 +519,7 @@ export default function Accounts() {
               aria-label="Crear nueva cuenta"
               style={{ width: '100%', color: 'inherit', textAlign: 'left', display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gap: '0.8rem', alignItems: 'center', padding: '0.9rem', border: '2px dashed #94a3b8', borderRadius: '10px', backgroundColor: '#f8fafc', minHeight: '76px' }}
             >
-              <span style={{ width: '38px', height: '38px', border: '2px solid #94a3b8', borderRadius: '8px', backgroundColor: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ width: '38px', height: '38px', border: '2px solid #94a3b8', borderRadius: '8px', backgroundColor: 'var(--surface-color)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Plus size={22} color="#64748b" />
               </span>
               <div>
@@ -544,7 +544,7 @@ export default function Accounts() {
             <div>
               <h2 id="account-detail-dialog-title" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                 {selectedStatus.item.name}
-                <button type="button" className="btn" style={{ backgroundColor: 'var(--pastel-purple)', color: 'black', border: '2px solid black', padding: '0.35rem 0.75rem', minHeight: 'auto', fontSize: '0.75rem' }} onClick={openAccountConfiguration}>
+                <button type="button" className="btn" style={{ backgroundColor: 'var(--pastel-purple)', color: 'var(--text-primary)', border: '2px solid var(--border-color)', padding: '0.35rem 0.75rem', minHeight: 'auto', fontSize: '0.75rem' }} onClick={openAccountConfiguration}>
                   <Settings size={14} />
                   {selectedStatus.configured ? 'Regla de detección' : 'Automatizar detección'}
                 </button>
@@ -559,10 +559,10 @@ export default function Accounts() {
           </div>
 
           <div className="account-detail-body">
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', marginBottom: '2.5rem', padding: '1.25rem', backgroundColor: '#fff', borderRadius: 'var(--radius-lg)', border: '2px solid black', boxShadow: '4px 4px 0px black' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', marginBottom: '2.5rem', padding: '1.25rem', backgroundColor: 'var(--surface-color)', borderRadius: 'var(--radius-lg)', border: '2px solid var(--border-color)', boxShadow: '4px 4px 0px var(--border-color)' }}>
               <div style={{ flex: 1, minWidth: '120px' }}>
                 <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Estado</span>
-                <strong style={{ fontSize: '1.25rem', padding: '0.15rem 0.6rem', backgroundColor: selectedStatus.paid ? 'var(--pastel-green)' : 'var(--pastel-yellow)', border: '2px solid black', borderRadius: '4px' }}>
+                <strong style={{ fontSize: '1.25rem', padding: '0.15rem 0.6rem', backgroundColor: selectedStatus.paid ? 'var(--pastel-green)' : 'var(--pastel-yellow)', border: '2px solid var(--border-color)', borderRadius: '4px' }}>
                   {selectedStatus.statusLabel}
                 </strong>
               </div>
@@ -578,9 +578,9 @@ export default function Accounts() {
 
             {selectedStatus.configured && (
               <section className="account-detail-section" aria-labelledby="current-account-payments-title" style={{ marginBottom: '2.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingBottom: '0.75rem', borderBottom: '2px solid black', marginBottom: '1.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingBottom: '0.75rem', borderBottom: '2px solid var(--border-color)', marginBottom: '1.25rem' }}>
                   <h3 id="current-account-payments-title" style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900 }}>Pagos del periodo</h3>
-                  <span style={{ background: '#fff', border: '2px solid black', padding: '0.1rem 0.6rem', borderRadius: '999px', fontSize: '0.85rem', fontWeight: 900, boxShadow: '2px 2px 0px black' }}>{selectedStatus.currentPayments.length}</span>
+                  <span style={{ background: 'var(--surface-color)', border: '2px solid var(--border-color)', padding: '0.1rem 0.6rem', borderRadius: '999px', fontSize: '0.85rem', fontWeight: 900, boxShadow: '2px 2px 0px var(--border-color)' }}>{selectedStatus.currentPayments.length}</span>
                 </div>
 
                 {selectedStatus.currentPayments.length > 0 ? (
@@ -598,7 +598,7 @@ export default function Accounts() {
                           </div>
                           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
                             {tx.raw_data?.is_manual && (
-                              <button type="button" className="btn btn-outline" style={{ backgroundColor: '#fff', borderColor: 'var(--danger)', color: 'var(--danger)', padding: '0.35rem 0.75rem', minHeight: 'auto', fontSize: '0.8rem' }} onClick={() => handleDeleteManualPayment(tx.id)}>
+                              <button type="button" className="btn btn-outline" style={{ backgroundColor: 'var(--surface-color)', borderColor: 'var(--danger)', color: 'var(--danger)', padding: '0.35rem 0.75rem', minHeight: 'auto', fontSize: '0.8rem' }} onClick={() => handleDeleteManualPayment(tx.id)}>
                                 <Trash2 size={16} /> Eliminar
                               </button>
                             )}
@@ -626,7 +626,7 @@ export default function Accounts() {
                         <button
                           type="button"
                           className="btn"
-                          style={{ backgroundColor: '#fff', color: 'black', border: '2px solid black', padding: '0.85rem 1.75rem', fontSize: '1rem' }}
+                          style={{ backgroundColor: 'var(--surface-color)', color: 'var(--text-primary)', border: '2px solid var(--border-color)', padding: '0.85rem 1.75rem', fontSize: '1rem' }}
                           onClick={() => {
                             const now = new Date();
                             const defaultDate = now >= range.start && now <= range.end ? now : range.start;
@@ -653,7 +653,7 @@ export default function Accounts() {
                         <button
                           type="button"
                           className="btn"
-                          style={{ backgroundColor: '#fff', color: 'black', border: '2px solid black', padding: '0.85rem 1.75rem', fontSize: '1rem' }}
+                          style={{ backgroundColor: 'var(--surface-color)', color: 'var(--text-primary)', border: '2px solid var(--border-color)', padding: '0.85rem 1.75rem', fontSize: '1rem' }}
                           onClick={() => {
                             const now = new Date();
                             const defaultDate = now >= range.start && now <= range.end ? now : range.start;
@@ -673,7 +673,7 @@ export default function Accounts() {
                 )}
 
                 {showManualForm && (
-                  <form onSubmit={handleManualPayment} className="account-manual-form" style={{ marginTop: '1.5rem', marginBottom: '1.5rem', padding: '1.5rem', backgroundColor: 'var(--pastel-yellow)', border: '3px solid black', borderRadius: 'var(--radius-lg)', boxShadow: '6px 6px 0px black' }}>
+                  <form onSubmit={handleManualPayment} className="account-manual-form" style={{ marginTop: '1.5rem', marginBottom: '1.5rem', padding: '1.5rem', backgroundColor: 'var(--pastel-yellow)', border: '3px solid var(--border-color)', borderRadius: 'var(--radius-lg)', boxShadow: '6px 6px 0px var(--border-color)' }}>
                     <div className="account-section-heading" style={{ marginBottom: '1.25rem' }}>
                       <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900 }}>Registrar pago manual</h3>
                     </div>
@@ -698,8 +698,8 @@ export default function Accounts() {
                       {manualTouched.bank && manualErrors.bank && <small id="manual-payment-bank-error" className="field-error" role="alert">{manualErrors.bank}</small>}
                     </label>
                     <div className="account-manual-actions" style={{ marginTop: '1.5rem', display: 'flex', gap: '0.75rem' }}>
-                      <button type="submit" className="btn" style={{ backgroundColor: 'var(--pastel-green)', color: 'black', border: '2px solid black', opacity: (isSubmittingManual || !manualFormIsValid) ? 0.6 : 1 }} disabled={isSubmittingManual || !manualFormIsValid}>{isSubmittingManual ? 'Guardando...' : 'Guardar pago'}</button>
-                      <button type="button" className="btn" style={{ backgroundColor: '#fff', color: 'black', border: '2px solid black' }} onClick={() => { setShowManualForm(false); setManualTouched({ date: false, amount: false, bank: false }); }}>Cancelar</button>
+                      <button type="submit" className="btn" style={{ backgroundColor: 'var(--pastel-green)', color: 'var(--text-primary)', border: '2px solid var(--border-color)', opacity: (isSubmittingManual || !manualFormIsValid) ? 0.6 : 1 }} disabled={isSubmittingManual || !manualFormIsValid}>{isSubmittingManual ? 'Guardando...' : 'Guardar pago'}</button>
+                      <button type="button" className="btn" style={{ backgroundColor: 'var(--surface-color)', color: 'var(--text-primary)', border: '2px solid var(--border-color)' }} onClick={() => { setShowManualForm(false); setManualTouched({ date: false, amount: false, bank: false }); }}>Cancelar</button>
                     </div>
                   </form>
                 )}
@@ -708,9 +708,9 @@ export default function Accounts() {
 
             {selectedStatus.configured && !selectedStatus.paid && selectedStatus.candidates.length > 0 && (
               <section className="account-detail-section" aria-labelledby="candidate-payments-title" style={{ marginBottom: '2.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingBottom: '0.5rem', borderBottom: '2px solid black', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingBottom: '0.5rem', borderBottom: '2px solid var(--border-color)', marginBottom: '1rem' }}>
                   <h3 id="candidate-payments-title" style={{ margin: 0, fontSize: '1.2rem' }}>Sugerencias</h3>
-                  <span style={{ background: '#fff', border: '2px solid black', padding: '0.1rem 0.5rem', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 800 }}>{selectedStatus.candidates.length}</span>
+                  <span style={{ background: 'var(--surface-color)', border: '2px solid var(--border-color)', padding: '0.1rem 0.5rem', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 800 }}>{selectedStatus.candidates.length}</span>
                 </div>
 
                 <div className="account-candidate-list">

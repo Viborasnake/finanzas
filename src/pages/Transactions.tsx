@@ -1049,7 +1049,7 @@ export default function Transactions() {
               type="button"
               className="btn btn-outline" 
               onClick={() => cancelRename(t.id)}
-              style={{ backgroundColor: '#fff' }}
+              style={{ backgroundColor: 'var(--surface-color)' }}
             >
               Cancelar
             </button>
@@ -1143,7 +1143,7 @@ export default function Transactions() {
           <div>
             <h1 className="app-page-title">Transacciones</h1>
             {uncatCount > 0 && (
-              <div style={{ display: 'inline-block', backgroundColor: '#fef08a', color: '#854d0e', padding: '0.5rem 1rem', borderRadius: '2rem', border: '2px solid black', fontWeight: 800, fontSize: '0.875rem' }}>
+              <div style={{ display: 'inline-block', backgroundColor: '#fef08a', color: '#854d0e', padding: '0.5rem 1rem', borderRadius: '2rem', border: '2px solid var(--border-color)', fontWeight: 800, fontSize: '0.875rem' }}>
                 Faltan {uncatCount} transacciones por clasificar
               </div>
             )}
@@ -1354,7 +1354,7 @@ export default function Transactions() {
           ) : (
             <div style={{ display: 'grid', gap: '1rem' }}>
               {duplicateGroups.map((group, groupIndex) => (
-                <section key={group.key} style={{ border: '2px solid #000', borderRadius: 10, overflow: 'hidden', background: '#fff' }}>
+                <section key={group.key} style={{ border: '2px solid #000', borderRadius: 10, overflow: 'hidden', background: 'var(--surface-color)' }}>
                   <div style={{ padding: '0.9rem 1rem', borderBottom: '2px solid #000', background: group.containsSplit ? '#fef3c7' : '#f8fafc', display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     <div>
                       <strong>Coincidencia {groupIndex + 1}</strong>
@@ -1565,7 +1565,7 @@ export default function Transactions() {
                       </td>
                       {connectedBanks.length > 1 && (
                         <td data-label="Banco" style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.55rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#fff', boxShadow: '1px 1px 0 #000', fontSize: '0.72rem', fontWeight: 900 }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.55rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: 'var(--surface-color)', boxShadow: '1px 1px 0 #000', fontSize: '0.72rem', fontWeight: 900 }}>
                             <span style={{ width: '9px', height: '9px', borderRadius: '50%', backgroundColor: bank.color, border: '1.5px solid #000', flexShrink: 0 }} />
                             {bank.label}
                           </span>

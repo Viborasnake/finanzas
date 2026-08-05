@@ -186,7 +186,7 @@ export default function AdminDashboard() {
             Acceso protegido según el rol asignado a tu cuenta.
           </p>
         </div>
-        <button type="button" className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '2px solid black' }} onClick={loadData} disabled={loading}>
+        <button type="button" className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '2px solid var(--border-color)' }} onClick={loadData} disabled={loading}>
           <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
           Actualizar datos
         </button>
@@ -195,7 +195,7 @@ export default function AdminDashboard() {
       {/* Summary Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
         <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-          <div style={{ padding: '0.75rem', backgroundColor: 'var(--pastel-blue)', border: '2px solid black', borderRadius: '8px', display: 'flex' }}>
+          <div style={{ padding: '0.75rem', backgroundColor: 'var(--pastel-blue)', border: '2px solid var(--border-color)', borderRadius: '8px', display: 'flex' }}>
             <Users size={28} />
           </div>
           <div>
@@ -205,7 +205,7 @@ export default function AdminDashboard() {
         </div>
 
         <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-          <div style={{ padding: '0.75rem', backgroundColor: 'var(--pastel-green)', border: '2px solid black', borderRadius: '8px', display: 'flex' }}>
+          <div style={{ padding: '0.75rem', backgroundColor: 'var(--pastel-green)', border: '2px solid var(--border-color)', borderRadius: '8px', display: 'flex' }}>
             <Receipt size={28} />
           </div>
           <div>
@@ -215,7 +215,7 @@ export default function AdminDashboard() {
         </div>
 
         <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-          <div style={{ padding: '0.75rem', backgroundColor: 'var(--pastel-yellow)', border: '2px solid black', borderRadius: '8px', display: 'flex' }}>
+          <div style={{ padding: '0.75rem', backgroundColor: 'var(--pastel-yellow)', border: '2px solid var(--border-color)', borderRadius: '8px', display: 'flex' }}>
             <Landmark size={28} />
           </div>
           <div>
@@ -292,9 +292,9 @@ export default function AdminDashboard() {
                                     display: 'inline-flex', alignItems: 'center', gap: '0.2rem',
                                     fontSize: '0.7rem', fontWeight: 800,
                                     padding: '0.15rem 0.5rem', borderRadius: '4px',
-                                    border: '1.5px solid black',
+                                    border: '1.5px solid var(--border-color)',
                                     backgroundColor: bank?.color ? `${bank.color}22` : '#f1f5f9',
-                                    boxShadow: '1px 1px 0px black'
+                                    boxShadow: '1px 1px 0px var(--border-color)'
                                   }}
                                 >
                                   {bank?.emoji || '🏦'} {bank?.label || bankId}
@@ -518,7 +518,7 @@ export default function AdminDashboard() {
                 className="btn btn-primary" 
                 onClick={handleDeleteUser}
                 disabled={actionLoading || deleteConfirmText.toLowerCase() !== 'eliminar'}
-                style={{ backgroundColor: '#dc2626', color: 'white', border: '2px solid black' }}
+                style={{ backgroundColor: '#dc2626', color: 'white', border: '2px solid var(--border-color)' }}
               >
                 {actionLoading ? 'Eliminando...' : 'Eliminar cuenta'}
               </button>

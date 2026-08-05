@@ -995,7 +995,7 @@ export default function ImportModal({ onClose, presentation = 'dialog' }: Import
       
       if (othersCount > 0) {
         toast.custom((t) => (
-          <div className="card" style={{ padding: '1.5rem', border: '2px solid black', boxShadow: '4px 4px 0px black', background: 'white', maxWidth: '400px' }}>
+          <div className="card" style={{ padding: '1.5rem', border: '2px solid var(--border-color)', boxShadow: '4px 4px 0px var(--border-color)', background: 'white', maxWidth: '400px' }}>
             <h3 style={{ marginTop: 0, fontSize: '1.125rem' }}>Renombrado Múltiple</h3>
             <p style={{ margin: '0.5rem 0 1.5rem' }}>
               Hay otras {othersCount} transacciones idénticas. ¿Quieres aplicar el nombre "{row.description}" a todas ellas también?
@@ -1068,7 +1068,7 @@ export default function ImportModal({ onClose, presentation = 'dialog' }: Import
       )}
       
       {error && (
-        <div role="alert" style={{ backgroundColor: 'var(--danger-surface)', color: 'var(--danger-text)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', border: '2px solid black', boxShadow: '4px 4px 0px black', display: 'flex', alignItems: 'center', gap: '0.75rem', fontWeight: 700 }}>
+        <div role="alert" style={{ backgroundColor: 'var(--danger-surface)', color: 'var(--danger-text)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', border: '2px solid var(--border-color)', boxShadow: '4px 4px 0px var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.75rem', fontWeight: 700 }}>
           <AlertTriangle />
           {error}
         </div>
@@ -1104,7 +1104,7 @@ export default function ImportModal({ onClose, presentation = 'dialog' }: Import
       )}
 
       {step === 'confirm' && (
-        <div className="card animate-fade-in import-confirm-card" style={{ textAlign: 'center', border: '2px solid black', boxShadow: '4px 4px 0px black' }}>
+        <div className="card animate-fade-in import-confirm-card" style={{ textAlign: 'center', border: '2px solid var(--border-color)', boxShadow: '4px 4px 0px var(--border-color)' }}>
            <h3 style={{ fontSize: '2rem', marginBottom: '1rem', fontWeight: 900 }}>Confirma el banco</h3>
            <p style={{ fontSize: '1.1rem', marginBottom: '2rem', color: 'var(--text-secondary)' }}>Hemos analizado el archivo y detectado que pertenece a:</p>
            
@@ -1113,7 +1113,7 @@ export default function ImportModal({ onClose, presentation = 'dialog' }: Import
              <select
                id="import-bank"
                className="form-input" 
-               style={{ maxWidth: '300px', margin: '0 auto', fontSize: '1.25rem', textAlign: 'center', padding: '1rem', border: '2px solid black', borderRadius: '12px', boxShadow: '4px 4px 0px black', cursor: 'pointer', fontWeight: 800 }}
+               style={{ maxWidth: '300px', margin: '0 auto', fontSize: '1.25rem', textAlign: 'center', padding: '1rem', border: '2px solid var(--border-color)', borderRadius: '12px', boxShadow: '4px 4px 0px var(--border-color)', cursor: 'pointer', fontWeight: 800 }}
                value={detectedBank || ''} 
                onChange={(e) => setDetectedBank(e.target.value as Bank)}
              >
@@ -1145,7 +1145,7 @@ export default function ImportModal({ onClose, presentation = 'dialog' }: Import
             Se detectaron {data.length} transacciones de {detectedBank}. Puedes editar los nombres antes de guardar. El banco activo no cambiará hasta que confirmes.
           </p>
 
-          <div style={{ maxHeight: '400px', overflowY: 'auto', border: '2px solid black', borderRadius: 'var(--radius-sm)' }}>
+          <div style={{ maxHeight: '400px', overflowY: 'auto', border: '2px solid var(--border-color)', borderRadius: 'var(--radius-sm)' }}>
             <table className="responsive-table" style={{ width: '100%', tableLayout: 'fixed' }}>
               <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                 <tr>
@@ -1220,7 +1220,7 @@ export default function ImportModal({ onClose, presentation = 'dialog' }: Import
               Este PDF está protegido por contraseña. Para cartolas de MACH, la clave es tu RUT sin puntos, guión ni dígito verificador (ej: 17673553).
             </p>
             {passwordError && (
-              <div role="alert" style={{ color: 'var(--danger-text)', fontWeight: 700, marginBottom: '1rem', padding: '0.75rem', backgroundColor: 'var(--danger-surface)', borderRadius: '8px', border: '2px solid black', fontSize: '0.9rem' }}>
+              <div role="alert" style={{ color: 'var(--danger-text)', fontWeight: 700, marginBottom: '1rem', padding: '0.75rem', backgroundColor: 'var(--danger-surface)', borderRadius: '8px', border: '2px solid var(--border-color)', fontSize: '0.9rem' }}>
                 {passwordError}
               </div>
             )}

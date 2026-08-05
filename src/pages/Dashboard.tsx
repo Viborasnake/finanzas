@@ -772,7 +772,7 @@ export default function Dashboard() {
 
   // --- Styles ---
   const neoCard = {
-    backgroundColor: '#fff',
+    backgroundColor: 'var(--surface-color)',
     border: '2px solid #000',
     borderRadius: '12px',
     boxShadow: '4px 4px 0px #000',
@@ -805,12 +805,12 @@ export default function Dashboard() {
           <AreaChart data={historyData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
             <XAxis dataKey="label" hide />
             <Tooltip 
-              contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '2px solid black', borderRadius: '8px', boxShadow: '4px 4px 0px black', padding: '8px' }}
-              itemStyle={{ color: 'black', fontWeight: 900, fontSize: '1.1rem' }}
+              contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '2px solid var(--border-color)', borderRadius: '8px', boxShadow: '4px 4px 0px var(--border-color)', padding: '8px' }}
+              itemStyle={{ color: 'var(--text-primary)', fontWeight: 900, fontSize: '1.1rem' }}
               labelStyle={{ color: '#64748b', fontWeight: 700, marginBottom: '4px', fontSize: '0.8rem', textTransform: 'capitalize' }}
               formatter={(value: any) => [`$${Number(value).toLocaleString('es-CL')}`, dataKey]}
             />
-            <Area type="monotone" dataKey={dataKey} stroke="#000" strokeWidth={3} fill={fill} fillOpacity={1} />
+            <Area type="monotone" dataKey={dataKey} stroke="var(--border-color)" strokeWidth={3} fill={fill} fillOpacity={1} />
           </AreaChart>
         </ResponsiveContainer>
       </div>
@@ -858,7 +858,7 @@ export default function Dashboard() {
     ];
 
     return (
-      <div style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '12px', boxShadow: '4px 4px 0px #000', overflow: 'hidden' }}>
+      <div style={{ backgroundColor: 'var(--surface-color)', border: '2px solid #000', borderRadius: '12px', boxShadow: '4px 4px 0px #000', overflow: 'hidden' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '0', borderBottom: '2px solid #000' }}>
           <div style={{ padding: '2rem', backgroundColor: '#f8fafc' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.75rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#fef08a', boxShadow: '2px 2px 0px #000', fontSize: '0.75rem', fontWeight: 900, marginBottom: '1.25rem' }}>
@@ -883,7 +883,7 @@ export default function Dashboard() {
                 type="button"
                 className="btn btn-outline"
                 onClick={() => navigate('/settings#deteccion')}
-                style={{ padding: '0.9rem 1.25rem', fontSize: '0.95rem', backgroundColor: '#fff' }}
+                style={{ padding: '0.9rem 1.25rem', fontSize: '0.95rem', backgroundColor: 'var(--surface-color)' }}
               >
                 <Settings size={20} />
                 Revisar configuración
@@ -891,7 +891,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div style={{ padding: '2rem', backgroundColor: '#fff', borderLeft: '2px solid #000', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '1rem' }}>
+          <div style={{ padding: '2rem', backgroundColor: 'var(--surface-color)', borderLeft: '2px solid #000', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.25rem' }}>
               <LaikaPet pose={dashboardBanks.length > 0 ? 'pointing' : 'welcome'} size={178} title="Laika acompaña el inicio" />
             </div>
@@ -918,13 +918,13 @@ export default function Dashboard() {
               style={{ textAlign: 'left', padding: '1rem', minHeight: '190px', border: '2px solid #000', borderRadius: '10px', boxShadow: '3px 3px 0px #000', backgroundColor: step.color, display: 'flex', flexDirection: 'column', gap: '0.85rem' }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ width: '42px', height: '42px', borderRadius: '10px', border: '2px solid #000', backgroundColor: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxShadow: '2px 2px 0px #000' }}>
+                <span style={{ width: '42px', height: '42px', borderRadius: '10px', border: '2px solid #000', backgroundColor: 'var(--surface-color)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxShadow: '2px 2px 0px #000' }}>
                   {step.icon}
                 </span>
                 {step.done ? (
-                  <CheckCircle2 size={26} fill="#22c55e" color="#000" strokeWidth={2.5} />
+                  <CheckCircle2 size={26} fill="#22c55e" color="var(--border-color)" strokeWidth={2.5} />
                 ) : (
-                  <span style={{ width: '30px', height: '30px', borderRadius: '999px', border: '2px solid #000', backgroundColor: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, boxShadow: '2px 2px 0px #000' }}>
+                  <span style={{ width: '30px', height: '30px', borderRadius: '999px', border: '2px solid #000', backgroundColor: 'var(--surface-color)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, boxShadow: '2px 2px 0px #000' }}>
                     {index + 1}
                   </span>
                 )}
@@ -978,7 +978,7 @@ export default function Dashboard() {
             type="button"
             className="btn btn-outline"
             onClick={() => navigate('/import')}
-            style={{ justifyContent: 'center', backgroundColor: '#fff' }}
+            style={{ justifyContent: 'center', backgroundColor: 'var(--surface-color)' }}
           >
             <FileSpreadsheet size={18} />
             Importar cartola
@@ -1482,8 +1482,8 @@ export default function Dashboard() {
     return (
       <div style={{ backgroundColor: '#fef08a', border: '2px solid #000', borderRadius: '12px', padding: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '2.5rem', boxShadow: '4px 4px 0px #000' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ backgroundColor: '#fff', padding: '0.75rem', borderRadius: '50%', border: '2px solid #000' }}>
-            <AlertTriangle color="#000" size={24} strokeWidth={2.5} />
+          <div style={{ backgroundColor: 'var(--surface-color)', padding: '0.75rem', borderRadius: '50%', border: '2px solid #000' }}>
+            <AlertTriangle color="var(--border-color)" size={24} strokeWidth={2.5} />
           </div>
           <div>
             <h4 style={{ margin: '0 0 0.25rem 0', color: '#000', fontSize: '1.2rem', fontWeight: 900 }}>Tienes {count} {count === 1 ? 'movimiento' : 'movimientos'} sin clasificar</h4>
@@ -1556,7 +1556,7 @@ export default function Dashboard() {
       const d = monthlyData.find(m => m.mes === label);
       if (!d) return null;
       return (
-        <div style={{ backgroundColor: '#fff', border: '2px solid #000', borderRadius: '10px', boxShadow: '4px 4px 0px #000', padding: '1rem', minWidth: '180px' }}>
+        <div style={{ backgroundColor: 'var(--surface-color)', border: '2px solid #000', borderRadius: '10px', boxShadow: '4px 4px 0px #000', padding: '1rem', minWidth: '180px' }}>
           <div style={{ fontWeight: 900, fontSize: '1.1rem', marginBottom: '0.75rem', textTransform: 'capitalize', borderBottom: '2px solid #000', paddingBottom: '0.25rem' }}>{label}. {year}</div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', color: '#16a34a', fontWeight: 800 }}>
             <span>Entradas disponibles</span><span>${d.Ingresos.toLocaleString('es-CL')}</span>
@@ -1663,8 +1663,8 @@ export default function Dashboard() {
               />
               <YAxis hide />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.04)', radius: 8 }} />
-              <Bar dataKey="Ingresos" fill="#4ade80" stroke="#000" strokeWidth={2} radius={[6, 6, 0, 0]} maxBarSize={45} isAnimationActive={true} />
-              <Bar dataKey="Egresos" fill="#fb7185" stroke="#000" strokeWidth={2} radius={[6, 6, 0, 0]} maxBarSize={45} isAnimationActive={true} />
+              <Bar dataKey="Ingresos" fill="#4ade80" stroke="var(--border-color)" strokeWidth={2} radius={[6, 6, 0, 0]} maxBarSize={45} isAnimationActive={true} />
+              <Bar dataKey="Egresos" fill="#fb7185" stroke="var(--border-color)" strokeWidth={2} radius={[6, 6, 0, 0]} maxBarSize={45} isAnimationActive={true} />
               <Area type="monotone" dataKey="Balance" stroke="#2563eb" strokeWidth={4} fill="#60a5fa" fillOpacity={0.3} dot={{ r: 5, fill: '#fff', stroke: '#2563eb', strokeWidth: 3 }} activeDot={{ r: 8, fill: '#2563eb', stroke: '#fff', strokeWidth: 3 }} isAnimationActive={true} />
             </ComposedChart>
           </ResponsiveContainer>
@@ -1795,7 +1795,7 @@ export default function Dashboard() {
                 <X size={24} strokeWidth={3} />
               </button>
             </div>
-            <div className="dashboard-detail-body" style={{ padding: '1.5rem', overflowY: 'auto', flex: 1, backgroundColor: '#fff', borderRadius: '0 0 9px 9px' }}>
+            <div className="dashboard-detail-body" style={{ padding: '1.5rem', overflowY: 'auto', flex: 1, backgroundColor: 'var(--surface-color)', borderRadius: '0 0 9px 9px' }}>
               {detailsModal.transactions.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '2rem 0' }}>
                   <p style={{ margin: 0, fontWeight: 700, fontSize: '1.1rem', color: '#64748b' }}>No hay movimientos para este concepto.</p>
@@ -1855,7 +1855,7 @@ export default function Dashboard() {
                           <td data-label="Fecha" style={{ padding: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap', fontSize: '0.9rem' }}>{parseLocalDate(t.date).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                           {isConsolidated && (
                             <td data-label="Banco" style={{ padding: '0.75rem', whiteSpace: 'nowrap' }}>
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.55rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#fff', boxShadow: '1px 1px 0 #000', fontSize: '0.72rem', fontWeight: 900 }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.55rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: 'var(--surface-color)', boxShadow: '1px 1px 0 #000', fontSize: '0.72rem', fontWeight: 900 }}>
                                 <span style={{ width: '9px', height: '9px', borderRadius: '50%', backgroundColor: bankColor, border: '1.5px solid #000', flexShrink: 0 }} />
                                 {bankLabel}
                               </span>

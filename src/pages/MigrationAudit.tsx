@@ -72,7 +72,7 @@ export default function MigrationAudit() {
       <div className="card">
         <h2 style={{ marginTop: 0 }}>Conteo por Categoría Actual</h2>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', marginTop: '1rem' }}>
-          <thead style={{ borderBottom: '2px solid black' }}>
+          <thead style={{ borderBottom: '2px solid var(--border-color)' }}>
             <tr>
               <th style={{ padding: '0.75rem', fontWeight: 800 }}>Categoría Antigua</th>
               <th style={{ padding: '0.75rem', fontWeight: 800, textAlign: 'right' }}>Cantidad</th>
@@ -82,7 +82,7 @@ export default function MigrationAudit() {
             {Object.entries(counts)
               .sort((a, b) => b[1] - a[1])
               .map(([name, count], i) => (
-              <tr key={name} style={{ borderBottom: '2px solid black', backgroundColor: i % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.03)' }}>
+              <tr key={name} style={{ borderBottom: '2px solid var(--border-color)', backgroundColor: i % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.03)' }}>
                 <td style={{ padding: '0.75rem', fontWeight: 600 }}>{name}</td>
                 <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800 }}>{count}</td>
               </tr>

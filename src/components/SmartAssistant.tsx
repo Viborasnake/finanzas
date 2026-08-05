@@ -515,7 +515,7 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
                     }
                     
                     return (
-                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', padding: '0.4rem 0.6rem', background: '#fff', border: '1.5px solid var(--border-color)', borderRadius: 6 }}>
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', padding: '0.4rem 0.6rem', background: 'var(--surface-color)', border: '1.5px solid var(--border-color)', borderRadius: 6 }}>
                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                           <span style={{ color: '#64748b', fontWeight: 700, fontSize: '0.75rem' }}>{t.date}</span>
                           {t.bank && <span style={{ color: '#3b82f6', fontWeight: 800, fontSize: '0.7rem' }}>{t.bank.substring(0,3).toUpperCase()}</span>}

@@ -76,7 +76,7 @@ export default function ResetPassword() {
             </p>
 
             {error && (
-              <div role="alert" style={{ marginBottom: '1rem', padding: '0.8rem', border: '2px solid black', borderRadius: 'var(--radius-md)', background: 'var(--danger-surface)', color: 'var(--danger-text)', fontWeight: 700 }}>
+              <div role="alert" style={{ marginBottom: '1rem', padding: '0.8rem', border: '2px solid var(--border-color)', borderRadius: 'var(--radius-md)', background: 'var(--danger-surface)', color: 'var(--danger-text)', fontWeight: 700 }}>
                 {error}
               </div>
             )}

@@ -51,6 +51,43 @@
   --focus-outline-width: 3px;
 }
 
+html.dark {
+  --bg-color: #121212;
+  --surface-color: #1e1e1e;
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --border-color: #52525b;
+  --surface-subtle: #27272a;
+  --surface-disabled: #3f3f46;
+  
+  --primary: #ffffff;
+  --primary-hover: #e4e4e7;
+  --primary-light: #27272a;
+  
+  --pastel-green: #14532d;
+  --pastel-yellow: #713f12;
+  --pastel-purple: #4c1d95;
+  --pastel-blue: #1e3a8a;
+  --pastel-pink: #831843;
+  --gradient-rainbow: linear-gradient(120deg, rgba(131,24,67,1) 0%, rgba(113,63,18,1) 25%, rgba(20,83,45,1) 50%, rgba(30,58,138,1) 75%, rgba(76,29,149,1) 100%);
+
+  --danger: #ef4444;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger-surface: #7f1d1d;
+  --danger-text: #fca5a5;
+  --success-surface: #14532d;
+  --success-text: #86efac;
+  --warning-surface: #713f12;
+  --warning-text: #fde047;
+  
+  --shadow-sm: 2px 2px 0px 0px #52525b;
+  --shadow-md: 4px 4px 0px 0px #52525b;
+  --shadow-lg: 4px 4px 0px 0px #52525b;
+  --shadow-hover: 4px 4px 0px 0px #52525b;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;

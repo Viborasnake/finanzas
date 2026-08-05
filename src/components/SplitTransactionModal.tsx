@@ -217,7 +217,7 @@ export default function SplitTransactionModal({ transaction, onClose, onSave }: 
             type="button"
             onClick={addPart}
             className="btn btn-outline"
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', width: '100%', backgroundColor: '#fff' }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', width: '100%', backgroundColor: 'var(--surface-color)' }}
           >
             <Plus size={18} strokeWidth={3} />
             Añadir otra división
@@ -226,7 +226,7 @@ export default function SplitTransactionModal({ transaction, onClose, onSave }: 
 
         {/* Footer */}
         <div className="split-dialog-footer">
-          <button type="button" className="btn btn-outline" onClick={onClose} style={{ backgroundColor: '#fff' }}>Cancelar</button>
+          <button type="button" className="btn btn-outline" onClick={onClose} style={{ backgroundColor: 'var(--surface-color)' }}>Cancelar</button>
           <button 
             type="button"
             className="btn btn-primary" 

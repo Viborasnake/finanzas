@@ -78,7 +78,7 @@ export default function InfoTooltip({ content }: InfoTooltipProps) {
           top: coords.top - 8,
           left: coords.left,
           transform: 'translate(-50%, -100%)',
-          backgroundColor: '#fff',
+          backgroundColor: 'var(--surface-color)',
           border: '2px solid #000',
           borderRadius: '8px',
           padding: '0.75rem',
@@ -102,7 +102,7 @@ export default function InfoTooltip({ content }: InfoTooltipProps) {
             transform: 'translateX(-50%) rotate(45deg)',
             width: '10px',
             height: '10px',
-            backgroundColor: '#fff',
+            backgroundColor: 'var(--surface-color)',
             borderRight: '2px solid #000',
             borderBottom: '2px solid #000'
           }} />

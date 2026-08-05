@@ -188,7 +188,7 @@ export function FixedExpensesConfigModal({ onClose }: Props) {
                 onSave={(t: any, p: any, s: any) => setNewFixedCategory({ tipo: t, principal: p, secundaria: s })}
               />
             </div>
-            <button type="submit" className="btn" style={{ backgroundColor: 'var(--pastel-green)', color: 'black', border: '2px solid black', padding: '0.75rem 1.5rem', fontSize: '1rem', marginTop: '0.5rem', alignSelf: 'flex-start' }}>
+            <button type="submit" className="btn" style={{ backgroundColor: 'var(--pastel-green)', color: 'var(--text-primary)', border: '2px solid var(--border-color)', padding: '0.75rem 1.5rem', fontSize: '1rem', marginTop: '0.5rem', alignSelf: 'flex-start' }}>
               <Plus size={18} strokeWidth={2.5} />
               Agregar cuenta
             </button>
@@ -199,7 +199,7 @@ export function FixedExpensesConfigModal({ onClose }: Props) {
               <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Aún no tienes cuentas configuradas.</p>
             ) : (
               fixedExpenses.map(item => (
-                <div key={item.id} className="settings-list-row" style={{ backgroundColor: '#fff', boxShadow: '4px 4px 0px black', marginBottom: '0.75rem', padding: '0.6rem 1rem' }}>
+                <div key={item.id} className="settings-list-row" style={{ backgroundColor: 'var(--surface-color)', boxShadow: '4px 4px 0px var(--border-color)', marginBottom: '0.75rem', padding: '0.6rem 1rem' }}>
                   {editingFixedId === item.id ? (
                     <div className="settings-fixed-expense-edit">
                       <input
@@ -241,10 +241,10 @@ export function FixedExpensesConfigModal({ onClose }: Props) {
                         {item.keyword && <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>(Clave: "{item.keyword}")</span>}
                       </div>
                       <div className="settings-rule-actions" style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button type="button" className="btn btn-outline" style={{ backgroundColor: '#fff', border: '2px solid black', padding: '0.35rem 0.75rem', fontSize: '0.85rem' }} onClick={() => startEditFixedExpense(item)} aria-label={`Editar ${item.name}`} title="Editar">
+                        <button type="button" className="btn btn-outline" style={{ backgroundColor: 'var(--surface-color)', border: '2px solid var(--border-color)', padding: '0.35rem 0.75rem', fontSize: '0.85rem' }} onClick={() => startEditFixedExpense(item)} aria-label={`Editar ${item.name}`} title="Editar">
                           <Edit size={14} /> Editar
                         </button>
-                        <button type="button" className="btn-icon" style={{ backgroundColor: '#fca5a5', border: '2px solid black' }} onClick={() => handleDeleteFixedExpense(item.id)} aria-label={`Eliminar ${item.name}`} title="Eliminar"><Trash2 size={16} /></button>
+                        <button type="button" className="btn-icon" style={{ backgroundColor: '#fca5a5', border: '2px solid var(--border-color)' }} onClick={() => handleDeleteFixedExpense(item.id)} aria-label={`Eliminar ${item.name}`} title="Eliminar"><Trash2 size={16} /></button>
                       </div>
                     </div>
                   )}

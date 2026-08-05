@@ -231,7 +231,7 @@ export default function Settings() {
     const nextItem = items.find(item => !item.done) || items[items.length - 1];
 
     return (
-      <section style={{ border: '2px solid #000', borderRadius: '12px', boxShadow: '4px 4px 0px #000', backgroundColor: '#fff', marginBottom: '2rem', overflow: 'hidden' }}>
+      <section style={{ border: '2px solid #000', borderRadius: '12px', boxShadow: '4px 4px 0px #000', backgroundColor: 'var(--surface-color)', marginBottom: '2rem', overflow: 'hidden' }}>
         <button
           type="button"
           onClick={toggleSetupCollapsed}
@@ -249,7 +249,7 @@ export default function Settings() {
               <span style={{ color: '#64748b', fontWeight: 800, fontSize: '0.85rem' }}>{doneCount}/{items.length} listo</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div role="progressbar" aria-label="Progreso de configuración" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress} style={{ flex: 1, maxWidth: '360px', height: '12px', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#fff', overflow: 'hidden' }}>
+              <div role="progressbar" aria-label="Progreso de configuración" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress} style={{ flex: 1, maxWidth: '360px', height: '12px', border: '2px solid #000', borderRadius: '999px', backgroundColor: 'var(--surface-color)', overflow: 'hidden' }}>
                 <div style={{ width: `${progress}%`, height: '100%', backgroundColor: progress === 100 ? '#86efac' : '#fde047' }} />
               </div>
               <span style={{ fontWeight: 900, fontSize: '0.85rem' }}>{progress}%</span>
@@ -279,8 +279,8 @@ export default function Settings() {
                 }}
                 style={{ textAlign: 'left', display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gridTemplateRows: 'auto auto', gap: '0.7rem 0.85rem', alignItems: 'start', minHeight: '116px', padding: '0.9rem', border: '2px solid #000', borderRadius: '10px', backgroundColor: item.done ? '#dcfce7' : '#fff7ed', boxShadow: '2px 2px 0 #000', cursor: 'pointer' }}
               >
-                <span style={{ width: '38px', height: '38px', borderRadius: '8px', border: '2px solid #000', backgroundColor: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {item.done ? <CheckCircle2 size={20} fill="#22c55e" color="#000" strokeWidth={2.5} /> : item.icon}
+                <span style={{ width: '38px', height: '38px', borderRadius: '8px', border: '2px solid #000', backgroundColor: 'var(--surface-color)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {item.done ? <CheckCircle2 size={20} fill="#22c55e" color="var(--border-color)" strokeWidth={2.5} /> : item.icon}
                 </span>
                 <span style={{ minWidth: 0 }}>
                   <strong style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.2rem' }}>{item.title}</strong>
@@ -288,7 +288,7 @@ export default function Settings() {
                     {item.detail}
                   </span>
                 </span>
-                <span style={{ gridColumn: '2', justifySelf: 'start', alignSelf: 'end', display: 'inline-flex', alignItems: 'center', gap: '0.2rem', padding: '0.25rem 0.55rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: '#fff', boxShadow: '1px 1px 0 #000', fontSize: '0.72rem', fontWeight: 900 }}>
+                <span style={{ gridColumn: '2', justifySelf: 'start', alignSelf: 'end', display: 'inline-flex', alignItems: 'center', gap: '0.2rem', padding: '0.25rem 0.55rem', border: '2px solid #000', borderRadius: '999px', backgroundColor: 'var(--surface-color)', boxShadow: '1px 1px 0 #000', fontSize: '0.72rem', fontWeight: 900 }}>
                   {item.action}
                   <ChevronRight size={14} strokeWidth={3} />
                 </span>
@@ -711,7 +711,7 @@ export default function Settings() {
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                     {cat.secundarias.map((sec, secIdx) => (
-                      <div key={secIdx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#fff', border: '1.5px solid #cbd5e1', padding: '0.35rem 0.75rem', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 600 }}>
+                      <div key={secIdx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'var(--surface-color)', border: '1.5px solid #cbd5e1', padding: '0.35rem 0.75rem', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 600 }}>
                         {sec}
                         <button 
                           type="button"

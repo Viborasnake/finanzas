@@ -64,9 +64,9 @@ export function ConfirmDialog({
       closeOnBackdrop={!isConfirming}
       panelStyle={{ width: 'min(92vw, 480px)', padding: 0 }}
     >
-      <div style={{ padding: '1.25rem', borderBottom: '2px solid black', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
+      <div style={{ padding: '1.25rem', borderBottom: '2px solid var(--border-color)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <span style={{ width: 42, height: 42, border: '2px solid black', borderRadius: 6, backgroundColor: '#fee2e2', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <span style={{ width: 42, height: 42, border: '2px solid var(--border-color)', borderRadius: 6, backgroundColor: '#fee2e2', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <AlertTriangle size={22} aria-hidden="true" />
           </span>
           <h2 id={titleId} style={{ margin: 0, fontSize: '1.2rem', lineHeight: 1.2 }}>{title}</h2>
