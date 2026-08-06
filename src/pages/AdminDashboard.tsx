@@ -49,6 +49,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [feedbackLoading, setFeedbackLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'feedback'>('overview');
   const [feedbackFilter, setFeedbackFilter] = useState<'all' | 'new' | 'reviewed' | 'done'>('new');
   
   // Modals / Edit states
@@ -65,17 +66,12 @@ export default function AdminDashboard() {
     if (!isAdmin) return;
     setFeedbackLoading(true);
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from('product_feedback')
         .select('id, user_id, screen_key, screen_label, path, category, rating, message, feature, status, created_at, viewport')
         .order('created_at', { ascending: false })
-        .limit(100);
+        .limit(150);
 
-      if (feedbackFilter !== 'all') {
-        query = query.eq('status', feedbackFilter);
-      }
-
-      const { data, error } = await query;
       if (error) throw error;
       setFeedback((data || []) as ProductFeedbackRow[]);
     } catch (err: any) {
@@ -85,7 +81,7 @@ export default function AdminDashboard() {
     } finally {
       setFeedbackLoading(false);
     }
-  }, [feedbackFilter, isAdmin]);
+  }, [isAdmin]);
 
   const loadData = useCallback(async () => {
     if (!isAdmin) return;
@@ -127,6 +123,11 @@ export default function AdminDashboard() {
   if (!isAdmin) {
     return <Navigate to="/" replace />;
   }
+
+  const filteredFeedback = feedback.filter((item) =>
+    feedbackFilter === 'all' ? true : item.status === feedbackFilter
+  );
+  const newFeedbackCount = feedback.filter((item) => item.status === 'new').length;
 
   const handleToggleStatus = async (targetUser: AdminUser) => {
     if (targetUser.id === user?.id) {
@@ -246,301 +247,335 @@ export default function AdminDashboard() {
   ).length;
 
   return (
-    <div>
-      <div className="header-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: '2.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <Shield size={36} /> Panel de Administración
+    <div className="admin-page">
+      <header className="admin-page-header">
+        <div className="admin-page-heading">
+          <h1 className="app-page-title">
+            <Shield size={32} aria-hidden="true" />
+            Administración
           </h1>
-          <p style={{ color: 'var(--text-secondary)', fontWeight: 600, marginTop: '0.25rem' }}>
-            Acceso protegido según el rol asignado a tu cuenta.
-          </p>
+          <p>Usuarios, métricas y feedback del producto.</p>
         </div>
         <button
           type="button"
           className="btn btn-outline"
-          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '2px solid var(--border-color)' }}
           onClick={() => { loadData(); loadFeedback(); }}
           disabled={loading || feedbackLoading}
         >
           <RefreshCw size={18} className={loading || feedbackLoading ? 'animate-spin' : ''} />
-          Actualizar datos
+          Actualizar
+        </button>
+      </header>
+
+      <section className="admin-kpi-grid" aria-label="Resumen del sistema">
+        <button type="button" className="admin-kpi-card" onClick={() => setActiveTab('users')}>
+          <span className="admin-kpi-icon is-blue"><Users size={22} /></span>
+          <span className="admin-kpi-label">Cuentas</span>
+          <strong className="admin-kpi-value">{totalUsers}</strong>
+          <span className="admin-kpi-meta">{pausedUsers} pausadas</span>
+        </button>
+        <div className="admin-kpi-card is-static">
+          <span className="admin-kpi-icon is-green"><Receipt size={22} /></span>
+          <span className="admin-kpi-label">Transacciones</span>
+          <strong className="admin-kpi-value">{totalTransactions.toLocaleString('es-CL')}</strong>
+          <span className="admin-kpi-meta">en toda la plataforma</span>
+        </div>
+        <div className="admin-kpi-card is-static">
+          <span className="admin-kpi-icon is-yellow"><Landmark size={22} /></span>
+          <span className="admin-kpi-label">Bancos</span>
+          <strong className="admin-kpi-value">{activeBanksCount}</strong>
+          <span className="admin-kpi-meta">tipos integrados</span>
+        </div>
+        <button type="button" className="admin-kpi-card" onClick={() => setActiveTab('feedback')}>
+          <span className="admin-kpi-icon is-purple"><MessageSquareHeart size={22} /></span>
+          <span className="admin-kpi-label">Feedback nuevo</span>
+          <strong className="admin-kpi-value">{newFeedbackCount}</strong>
+          <span className="admin-kpi-meta">por revisar</span>
+        </button>
+      </section>
+
+      <div className="admin-tabs" role="tablist" aria-label="Secciones de administración">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'overview'}
+          className={`admin-tab${activeTab === 'overview' ? ' is-active' : ''}`}
+          onClick={() => setActiveTab('overview')}
+        >
+          Resumen
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'users'}
+          className={`admin-tab${activeTab === 'users' ? ' is-active' : ''}`}
+          onClick={() => setActiveTab('users')}
+        >
+          Usuarios
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'feedback'}
+          className={`admin-tab${activeTab === 'feedback' ? ' is-active' : ''}`}
+          onClick={() => setActiveTab('feedback')}
+        >
+          Feedback
+          {newFeedbackCount > 0 && <span className="admin-tab-badge">{newFeedbackCount}</span>}
         </button>
       </div>
 
-      {/* Summary Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
-        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-          <div style={{ padding: '0.75rem', backgroundColor: 'var(--pastel-blue)', border: '2px solid var(--border-color)', borderRadius: '8px', display: 'flex' }}>
-            <Users size={28} />
-          </div>
-          <div>
-            <div style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Cuentas Creadas</div>
-            <div style={{ fontSize: '1.85rem', fontWeight: 900 }}>{totalUsers} <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--danger-text)' }}>({pausedUsers} pausadas)</span></div>
-          </div>
-        </div>
-
-        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-          <div style={{ padding: '0.75rem', backgroundColor: 'var(--pastel-green)', border: '2px solid var(--border-color)', borderRadius: '8px', display: 'flex' }}>
-            <Receipt size={28} />
-          </div>
-          <div>
-            <div style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Total Transacciones</div>
-            <div style={{ fontSize: '1.85rem', fontWeight: 900 }}>{totalTransactions.toLocaleString('es-CL')}</div>
-          </div>
-        </div>
-
-        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-          <div style={{ padding: '0.75rem', backgroundColor: 'var(--pastel-yellow)', border: '2px solid var(--border-color)', borderRadius: '8px', display: 'flex' }}>
-            <Landmark size={28} />
-          </div>
-          <div>
-            <div style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Bancos Integrados</div>
-            <div style={{ fontSize: '1.85rem', fontWeight: 900 }}>{activeBanksCount}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Feedback inbox by screen/function */}
-      <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '1.25rem' }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: '1.35rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <MessageSquareHeart size={24} /> Feedback por pantalla
-            </h2>
-            <p style={{ margin: '0.35rem 0 0', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.9rem' }}>
-              Comentarios de usuarios etiquetados por ruta y función.
-            </p>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }} role="group" aria-label="Filtrar feedback por estado">
-            {([
-              ['new', 'Nuevos'],
-              ['reviewed', 'Revisados'],
-              ['done', 'Hechos'],
-              ['all', 'Todos'],
-            ] as const).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                className={`feedback-category${feedbackFilter === value ? ' is-active' : ''}`}
-                onClick={() => setFeedbackFilter(value)}
-              >
-                {label}
+      {activeTab === 'overview' && (
+        <section className="admin-panel" aria-label="Resumen operativo">
+          <div className="admin-overview-grid">
+            <article className="card admin-overview-card">
+              <h2>Usuarios</h2>
+              <p>{totalUsers} cuentas · {pausedUsers} pausadas · {totalTransactions.toLocaleString('es-CL')} movimientos totales.</p>
+              <button type="button" className="btn btn-outline" onClick={() => setActiveTab('users')}>
+                Gestionar usuarios
               </button>
-            ))}
+            </article>
+            <article className="card admin-overview-card">
+              <h2>Feedback</h2>
+              <p>
+                {newFeedbackCount > 0
+                  ? `Hay ${newFeedbackCount} comentario${newFeedbackCount === 1 ? '' : 's'} nuevo${newFeedbackCount === 1 ? '' : 's'} por revisar.`
+                  : 'No hay feedback nuevo pendiente.'}
+              </p>
+              <button type="button" className="btn btn-outline" onClick={() => setActiveTab('feedback')}>
+                Ver inbox
+              </button>
+            </article>
           </div>
-        </div>
+        </section>
+      )}
 
-        {feedbackLoading ? (
-          <div className="skeleton" style={{ height: '120px' }} />
-        ) : feedback.length === 0 ? (
-          <p style={{ margin: 0, color: 'var(--text-muted)', fontWeight: 650 }}>
-            No hay feedback en este filtro. Si acabas de agregar el sistema, aplica la migración `product_feedback` en Supabase.
-          </p>
-        ) : (
-          <div className="admin-feedback-list">
-            {feedback.map((item) => (
-              <article key={item.id} className="admin-feedback-item">
-                <header>
-                  <h3>
-                    {item.screen_label}
-                    {item.feature ? ` · ${item.feature}` : ''}
-                  </h3>
-                  <span className="feedback-chip">{CATEGORY_LABELS[item.category] || item.category}</span>
-                </header>
-                <p>{item.message}</p>
-                <div className="admin-feedback-meta">
-                  <span>{new Date(item.created_at).toLocaleString('es-CL')}</span>
-                  <span>·</span>
-                  <span>{item.path}</span>
-                  {item.rating != null && (
-                    <>
-                      <span>·</span>
-                      <span>{item.rating}/5 ⭐</span>
-                    </>
-                  )}
-                  {item.viewport && (
-                    <>
-                      <span>·</span>
-                      <span>{item.viewport}</span>
-                    </>
-                  )}
-                  <span>·</span>
-                  <span>estado: {item.status}</span>
-                </div>
-                <div className="admin-feedback-actions">
-                  {item.status !== 'reviewed' && (
-                    <button type="button" className="btn btn-outline" style={{ minHeight: 40, padding: '0.4rem 0.75rem' }} onClick={() => handleFeedbackStatus(item, 'reviewed')}>
-                      Marcar revisado
-                    </button>
-                  )}
-                  {item.status !== 'done' && (
-                    <button type="button" className="btn btn-outline" style={{ minHeight: 40, padding: '0.4rem 0.75rem' }} onClick={() => handleFeedbackStatus(item, 'done')}>
-                      Marcar hecho
-                    </button>
-                  )}
-                  {item.status !== 'new' && (
-                    <button type="button" className="btn btn-outline" style={{ minHeight: 40, padding: '0.4rem 0.75rem' }} onClick={() => handleFeedbackStatus(item, 'new')}>
-                      Reabrir
-                    </button>
-                  )}
-                </div>
-              </article>
-            ))}
+      {activeTab === 'users' && (
+        <section className="admin-panel card admin-users-card" aria-label="Usuarios">
+          <div className="admin-panel-toolbar">
+            <div>
+              <h2>Usuarios</h2>
+              <p>Busca, pausa, edita o elimina cuentas.</p>
+            </div>
+            <div className="admin-search">
+              <Search size={18} aria-hidden="true" />
+              <input
+                type="search"
+                className="input"
+                aria-label="Buscar usuarios por email, nombre o RUT"
+                placeholder="Buscar por email, nombre o RUT…"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
           </div>
-        )}
-      </div>
 
-      {/* Main Table Card */}
-      <div className="card admin-users-card" style={{ padding: '2rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-          <div style={{ position: 'relative', flex: 1 }}>
-            <Search size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-            <input 
-              type="text" 
-              className="input" 
-              aria-label="Buscar usuarios por email, nombre o RUT"
-              placeholder="Buscar por email, nombre o RUT..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ width: '100%', paddingLeft: '3rem', backgroundColor: 'var(--surface-color)' }}
-            />
-          </div>
-        </div>
+          {loading ? (
+            <div className="admin-loading">
+              <div className="skeleton" style={{ height: 48 }} />
+              <div className="skeleton" style={{ height: 280 }} />
+            </div>
+          ) : (
+            <div className="admin-users-scroll">
+              <table className="responsive-table admin-users-table">
+                <thead>
+                  <tr>
+                    <th>Usuario</th>
+                    <th>Detalle</th>
+                    <th>Tx</th>
+                    <th>Bancos</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((u) => {
+                    const createdDate = new Date(u.created_at).toLocaleDateString('es-CL', {
+                      day: 'numeric', month: 'short', year: 'numeric'
+                    });
+                    const isCurrentUser = u.id === user?.id;
 
-        {loading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div className="skeleton" style={{ height: '50px' }}></div>
-            <div className="skeleton" style={{ height: '300px' }}></div>
-          </div>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="responsive-table admin-users-table" style={{ width: '100%', minWidth: '950px', tableLayout: 'fixed' }}>
-              <thead>
-                <tr>
-                  <th style={{ width: '220px' }}>Email / Usuario</th>
-                  <th style={{ width: '130px' }}>Detalles Cuenta</th>
-                  <th style={{ width: '120px' }}>Transacciones</th>
-                  <th>Bancos Integrados</th>
-                  <th style={{ width: '100px' }}>Estado</th>
-                  <th style={{ width: '190px' }}>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.map((u) => {
-                  const createdDate = new Date(u.created_at).toLocaleDateString('es-CL', {
-                    day: 'numeric', month: 'short', year: 'numeric'
-                  });
-                  const isCurrentUser = u.id === user?.id;
-
-                  return (
-                    <tr key={u.id} style={{ backgroundColor: u.status === 'paused' ? 'var(--danger-surface)' : 'var(--surface-color)' }}>
-                      <td data-label="Usuario" style={{ fontWeight: 700 }}>
-                        <div style={{ fontSize: '0.95rem' }}>{u.email}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>Registrado: {createdDate}</div>
-                      </td>
-                      <td data-label="Detalles">
-                        <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>{u.full_name || 'Sin nombre'}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>RUT: {u.rut || 'No registra'}</div>
-                      </td>
-                      <td data-label="Transacciones" style={{ fontWeight: 800, fontSize: '1.1rem' }}>
-                        {u.tx_count}
-                      </td>
-                      <td data-label="Bancos">
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-                          {u.banks && u.banks.length > 0 ? (
-                            u.banks.map(bankId => {
-                              const bank = AVAILABLE_BANKS.find(b => b.id === bankId);
-                              return (
-                                <span 
-                                  key={bankId} 
-                                  style={{
-                                    display: 'inline-flex', alignItems: 'center', gap: '0.2rem',
-                                    fontSize: '0.7rem', fontWeight: 800,
-                                    padding: '0.15rem 0.5rem', borderRadius: '4px',
-                                    border: '1.5px solid var(--border-color)',
-                                    backgroundColor: bank?.color ? `${bank.color}22` : 'var(--surface-subtle)',
-                                    boxShadow: '1px 1px 0px var(--shadow-color)'
-                                  }}
-                                >
-                                  {bank?.emoji || '🏦'} {bank?.label || bankId}
-                                </span>
-                              );
-                            })
-                          ) : (
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Sin integraciones</span>
-                          )}
-                        </div>
-                      </td>
-                      <td data-label="Estado">
-                        <span 
-                          className={u.status === 'active' ? 'badge badge-success' : 'badge badge-danger'}
-                          style={{ textTransform: 'uppercase', fontSize: '0.65rem' }}
-                        >
-                          {u.status === 'active' ? 'Activa' : 'Pausada'}
-                        </span>
-                      </td>
-                      <td data-label="Acciones" style={{ whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <button 
-                            type="button"
-                            className="btn-icon" 
-                            title={isCurrentUser ? 'No puedes pausar tu propia cuenta' : (u.status === 'active' ? 'Pausar accesos' : 'Reactivar accesos')}
-                            aria-label={isCurrentUser ? 'No puedes pausar tu propia cuenta administradora' : `${u.status === 'active' ? 'Pausar accesos' : 'Reactivar accesos'} de ${u.email}`}
-                            disabled={isCurrentUser}
-                            onClick={() => handleToggleStatus(u)}
-                            style={{ backgroundColor: u.status === 'active' ? 'var(--account-card-pending)' : 'var(--pastel-green)' }}
-                          >
-                            <Power size={14} style={{ color: u.status === 'active' ? 'var(--warning)' : 'var(--success)' }} />
-                          </button>
-                          <button 
-                            type="button"
-                            className="btn-icon" 
-                            title="Editar info de usuario"
-                            aria-label={`Editar información de ${u.email}`}
-                            onClick={() => handleEditDetails(u)}
-                            style={{ backgroundColor: 'var(--surface-color)' }}
-                          >
-                            <Edit size={14} style={{ color: 'var(--info-accent)' }} />
-                          </button>
-                          <button 
-                            type="button"
-                            className="btn-icon" 
-                            title="Reenviar correo cambiar password"
-                            aria-label={`Reenviar cambio de contraseña a ${u.email}`}
-                            onClick={() => handleResendPasswordReset(u.email)}
-                            style={{ backgroundColor: 'var(--pastel-purple)' }}
-                          >
-                            <Key size={14} style={{ color: 'var(--purple-accent)' }} />
-                          </button>
-                          <button 
-                            type="button"
-                            className="btn-icon" 
-                            title={isCurrentUser ? 'No puedes eliminar tu propia cuenta' : 'Eliminar cuenta para siempre'}
-                            aria-label={isCurrentUser ? 'No puedes eliminar tu propia cuenta administradora' : `Eliminar cuenta de ${u.email}`}
-                            disabled={isCurrentUser}
-                            onClick={() => setDeletingUser(u)}
-                            style={{ backgroundColor: 'var(--danger-surface)' }}
-                          >
-                            <Trash2 size={14} style={{ color: 'var(--danger)' }} />
-                          </button>
-                        </div>
+                    return (
+                      <tr key={u.id} className={u.status === 'paused' ? 'is-paused' : undefined}>
+                        <td data-label="Usuario">
+                          <div className="admin-user-email">{u.email}</div>
+                          <div className="admin-user-sub">Registrado: {createdDate}</div>
+                        </td>
+                        <td data-label="Detalle">
+                          <div className="admin-user-name">{u.full_name || 'Sin nombre'}</div>
+                          <div className="admin-user-sub">RUT: {u.rut || 'No registra'}</div>
+                        </td>
+                        <td data-label="Tx" className="admin-user-tx">{u.tx_count}</td>
+                        <td data-label="Bancos">
+                          <div className="admin-bank-chips">
+                            {u.banks && u.banks.length > 0 ? (
+                              u.banks.map((bankId) => {
+                                const bank = AVAILABLE_BANKS.find((b) => b.id === bankId);
+                                return (
+                                  <span key={bankId} className="admin-bank-chip" style={{ backgroundColor: bank?.color ? `${bank.color}22` : 'var(--surface-subtle)' }}>
+                                    {bank?.emoji || '🏦'} {bank?.label || bankId}
+                                  </span>
+                                );
+                              })
+                            ) : (
+                              <span className="admin-user-sub">Sin bancos</span>
+                            )}
+                          </div>
+                        </td>
+                        <td data-label="Estado">
+                          <span className={u.status === 'active' ? 'badge badge-success' : 'badge badge-danger'}>
+                            {u.status === 'active' ? 'Activa' : 'Pausada'}
+                          </span>
+                        </td>
+                        <td data-label="Acciones">
+                          <div className="admin-row-actions">
+                            <button
+                              type="button"
+                              className="btn-icon"
+                              title={isCurrentUser ? 'No puedes pausar tu propia cuenta' : (u.status === 'active' ? 'Pausar accesos' : 'Reactivar accesos')}
+                              aria-label={isCurrentUser ? 'No puedes pausar tu propia cuenta administradora' : `${u.status === 'active' ? 'Pausar accesos' : 'Reactivar accesos'} de ${u.email}`}
+                              disabled={isCurrentUser}
+                              onClick={() => handleToggleStatus(u)}
+                              style={{ backgroundColor: u.status === 'active' ? 'var(--account-card-pending)' : 'var(--pastel-green)' }}
+                            >
+                              <Power size={14} style={{ color: u.status === 'active' ? 'var(--warning)' : 'var(--success)' }} />
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-icon"
+                              title="Editar info de usuario"
+                              aria-label={`Editar información de ${u.email}`}
+                              onClick={() => handleEditDetails(u)}
+                              style={{ backgroundColor: 'var(--surface-color)' }}
+                            >
+                              <Edit size={14} style={{ color: 'var(--info-accent)' }} />
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-icon"
+                              title="Reenviar correo cambiar password"
+                              aria-label={`Reenviar cambio de contraseña a ${u.email}`}
+                              onClick={() => handleResendPasswordReset(u.email)}
+                              style={{ backgroundColor: 'var(--pastel-purple)' }}
+                            >
+                              <Key size={14} style={{ color: 'var(--purple-accent)' }} />
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-icon"
+                              title={isCurrentUser ? 'No puedes eliminar tu propia cuenta' : 'Eliminar cuenta para siempre'}
+                              aria-label={isCurrentUser ? 'No puedes eliminar tu propia cuenta administradora' : `Eliminar cuenta de ${u.email}`}
+                              disabled={isCurrentUser}
+                              onClick={() => setDeletingUser(u)}
+                              style={{ backgroundColor: 'var(--danger-surface)' }}
+                            >
+                              <Trash2 size={14} style={{ color: 'var(--danger)' }} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {filteredUsers.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="admin-empty-cell">
+                        No se encontraron usuarios registrados.
                       </td>
                     </tr>
-                  );
-                })}
-                {filteredUsers.length === 0 && (
-                  <tr>
-                    <td colSpan={6} style={{ padding: '3rem', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                      No se encontraron usuarios registrados.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+
+      {activeTab === 'feedback' && (
+        <section className="admin-panel card" aria-label="Feedback por pantalla">
+          <div className="admin-panel-toolbar">
+            <div>
+              <h2>Feedback por pantalla</h2>
+              <p>Comentarios etiquetados por ruta y función.</p>
+            </div>
+            <div className="admin-filter-pills" role="group" aria-label="Filtrar feedback por estado">
+              {([
+                ['new', 'Nuevos'],
+                ['reviewed', 'Revisados'],
+                ['done', 'Hechos'],
+                ['all', 'Todos'],
+              ] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={`admin-filter-pill${feedbackFilter === value ? ' is-active' : ''}`}
+                  onClick={() => setFeedbackFilter(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
-        )}
-      </div>
+
+          {feedbackLoading ? (
+            <div className="skeleton" style={{ height: 120 }} />
+          ) : filteredFeedback.length === 0 ? (
+            <p className="admin-empty-copy">
+              No hay feedback en este filtro.
+            </p>
+          ) : (
+            <div className="admin-feedback-list">
+              {filteredFeedback.map((item) => (
+                <article key={item.id} className="admin-feedback-item">
+                  <header>
+                    <h3>
+                      {item.screen_label}
+                      {item.feature ? ` · ${item.feature}` : ''}
+                    </h3>
+                    <span className="feedback-chip">{CATEGORY_LABELS[item.category] || item.category}</span>
+                  </header>
+                  <p>{item.message}</p>
+                  <div className="admin-feedback-meta">
+                    <span>{new Date(item.created_at).toLocaleString('es-CL')}</span>
+                    <span>·</span>
+                    <span>{item.path}</span>
+                    {item.rating != null && (
+                      <>
+                        <span>·</span>
+                        <span>{item.rating}/5 ⭐</span>
+                      </>
+                    )}
+                    {item.viewport && (
+                      <>
+                        <span>·</span>
+                        <span>{item.viewport}</span>
+                      </>
+                    )}
+                    <span>·</span>
+                    <span>{item.status}</span>
+                  </div>
+                  <div className="admin-feedback-actions">
+                    {item.status !== 'reviewed' && (
+                      <button type="button" className="btn btn-outline admin-mini-btn" onClick={() => handleFeedbackStatus(item, 'reviewed')}>
+                        Revisado
+                      </button>
+                    )}
+                    {item.status !== 'done' && (
+                      <button type="button" className="btn btn-outline admin-mini-btn" onClick={() => handleFeedbackStatus(item, 'done')}>
+                        Hecho
+                      </button>
+                    )}
+                    {item.status !== 'new' && (
+                      <button type="button" className="btn btn-outline admin-mini-btn" onClick={() => handleFeedbackStatus(item, 'new')}>
+                        Reabrir
+                      </button>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Edit User Modal */}
       {editingUser && (
