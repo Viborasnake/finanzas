@@ -708,25 +708,32 @@ select.input {
 
 .light-month-pill {
   padding: 0.65rem 0.85rem;
-  border: 2px solid var(--border-color);
+  border: var(--border-width) solid var(--border-color);
   border-radius: 999px;
   background: var(--surface-color);
   box-shadow: var(--shadow-sm);
+  color: var(--text-primary);
 }
 
 .light-month-pill select {
   max-width: 190px;
   border: 0;
   background: transparent;
-  color: var(--border-color);
+  color: var(--text-primary);
+  -webkit-text-fill-color: var(--text-primary);
   font: inherit;
   font-weight: 900;
   text-transform: capitalize;
   cursor: pointer;
 }
 
+.light-month-pill select option {
+  color: var(--text-primary);
+  background: var(--surface-color);
+}
+
 .light-month-pill select:focus-visible {
-  outline: 2px solid var(--purple-text);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 3px;
   border-radius: 3px;
 }
@@ -741,23 +748,30 @@ select.input {
   font-size: 0.72rem;
   letter-spacing: 0.045em;
   text-transform: uppercase;
+  color: var(--text-primary);
 }
 
 .light-period-trigger select {
   min-width: 0;
-  max-width: 150px;
+  max-width: 180px;
   border: 0;
   background: transparent;
-  color: var(--border-color);
+  color: var(--text-primary);
+  -webkit-text-fill-color: var(--text-primary);
   cursor: pointer;
   font: inherit;
   font-weight: 900;
   text-transform: capitalize;
 }
 
+.light-period-trigger select option {
+  color: var(--text-primary);
+  background: var(--surface-color);
+}
+
 .light-period-trigger select:focus-visible {
   border-radius: 3px;
-  outline: 2px solid var(--purple-text);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -1452,10 +1466,11 @@ select.input {
   min-width: 0;
   padding: 0.65rem 0.75rem;
   overflow: hidden;
-  border: 2px solid var(--border-color);
+  border: var(--border-width) solid var(--border-color);
   border-radius: 999px;
   background: var(--surface-color);
   box-shadow: var(--shadow-sm);
+  color: var(--text-primary);
   font-size: 0.83rem;
   font-weight: 900;
   text-align: center;
@@ -1909,10 +1924,17 @@ html.dark .responsive-tabs button.active {
   width: 100%;
   min-height: 44px;
   overflow: hidden;
-  border: 2px solid var(--border-color);
+  border: var(--border-width) solid var(--border-color);
   border-radius: 2rem;
   background: var(--surface-color);
   box-shadow: var(--shadow-md);
+  color: var(--text-primary);
+}
+
+html.dark .dashboard-month-navigation {
+  background: color-mix(in srgb, var(--surface-color) 88%, #0f1219);
+  border-color: var(--border-subtle);
+  box-shadow: var(--shadow-sm);
 }
 
 .dashboard-date-control button {
@@ -1924,7 +1946,8 @@ html.dark .responsive-tabs button.active {
 .dashboard-period-trigger {
   min-width: 0;
   border: 0;
-  background: var(--surface-color);
+  background: transparent;
+  color: var(--text-primary);
   cursor: pointer;
 }
 
@@ -1932,6 +1955,7 @@ html.dark .responsive-tabs button.active {
   display: grid;
   place-items: center;
   padding: 0;
+  color: var(--text-primary);
 }
 
 .dashboard-month-arrow:first-child {
@@ -1943,7 +1967,7 @@ html.dark .responsive-tabs button.active {
 }
 
 .dashboard-month-arrow:disabled {
-  color: var(--border-muted);
+  color: var(--text-muted);
   cursor: not-allowed;
   opacity: 0.45;
 }
@@ -1962,6 +1986,19 @@ html.dark .responsive-tabs button.active {
   font-size: 0.95rem;
   font-weight: 850;
   text-transform: capitalize;
+  color: var(--text-primary);
+}
+
+.dashboard-period-trigger svg {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+html.dark .dashboard-period-trigger select,
+html.dark .light-period-trigger select,
+html.dark .light-month-pill select {
+  color: var(--text-primary);
+  -webkit-text-fill-color: var(--text-primary);
 }
 
 .dashboard-custom-date-fields {
