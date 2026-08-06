@@ -6,6 +6,7 @@ import { useBanks, AVAILABLE_BANKS, type DashboardBankScope } from '../contexts/
 import { useSettings } from '../contexts/settingsContextValue';
 import { useTheme } from '../contexts/themeContextValue';
 import { RutOnboardingModal } from './RutOnboardingModal';
+import { FeedbackWidget } from './FeedbackWidget';
 import './Layout.css'; 
 
 const overviewNavItems = [
@@ -413,6 +414,7 @@ export default function Layout() {
         <div className="page-container animate-fade-in">
           <Outlet />
         </div>
+        <FeedbackWidget />
       </main>
       
       {!loadingSettings && userRut === null && <RutOnboardingModal />}

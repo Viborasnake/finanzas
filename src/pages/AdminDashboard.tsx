@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../contexts/authContextValue';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
-import { Shield, Search, Power, Trash2, Edit, Key, Users, Receipt, Landmark, RefreshCw, X } from 'lucide-react';
+import { Shield, Search, Power, Trash2, Edit, Key, Users, Receipt, Landmark, RefreshCw, X, MessageSquareHeart } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cleanRut } from '../utils/rutParser';
 import { AVAILABLE_BANKS } from '../contexts/bankContextValue';
@@ -19,11 +19,37 @@ interface AdminUser {
   banks: string[] | null;
 }
 
+interface ProductFeedbackRow {
+  id: string;
+  user_id: string;
+  screen_key: string;
+  screen_label: string;
+  path: string;
+  category: string;
+  rating: number | null;
+  message: string;
+  feature: string | null;
+  status: 'new' | 'reviewed' | 'done';
+  created_at: string;
+  viewport: string | null;
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  bug: 'Error',
+  idea: 'Idea',
+  confusion: 'Confuso',
+  praise: 'Me gustó',
+  other: 'Otro',
+};
+
 export default function AdminDashboard() {
   const { user, isAdmin } = useAuth();
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [feedback, setFeedback] = useState<ProductFeedbackRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [feedbackLoading, setFeedbackLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [feedbackFilter, setFeedbackFilter] = useState<'all' | 'new' | 'reviewed' | 'done'>('new');
   
   // Modals / Edit states
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
@@ -34,6 +60,32 @@ export default function AdminDashboard() {
   // Double confirmation delete state
   const [deletingUser, setDeletingUser] = useState<AdminUser | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+
+  const loadFeedback = useCallback(async () => {
+    if (!isAdmin) return;
+    setFeedbackLoading(true);
+    try {
+      let query = supabase
+        .from('product_feedback')
+        .select('id, user_id, screen_key, screen_label, path, category, rating, message, feature, status, created_at, viewport')
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (feedbackFilter !== 'all') {
+        query = query.eq('status', feedbackFilter);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      setFeedback((data || []) as ProductFeedbackRow[]);
+    } catch (err: any) {
+      console.error(err);
+      // Table may not exist until migration is applied remotely.
+      setFeedback([]);
+    } finally {
+      setFeedbackLoading(false);
+    }
+  }, [feedbackFilter, isAdmin]);
 
   const loadData = useCallback(async () => {
     if (!isAdmin) return;
@@ -53,6 +105,24 @@ export default function AdminDashboard() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    loadFeedback();
+  }, [loadFeedback]);
+
+  const handleFeedbackStatus = async (item: ProductFeedbackRow, status: ProductFeedbackRow['status']) => {
+    try {
+      const { error } = await supabase
+        .from('product_feedback')
+        .update({ status })
+        .eq('id', item.id);
+      if (error) throw error;
+      setFeedback((current) => current.map((row) => (row.id === item.id ? { ...row, status } : row)));
+      toast.success('Estado de feedback actualizado');
+    } catch (err: any) {
+      toast.error(err.message || 'No se pudo actualizar el feedback');
+    }
+  };
 
   if (!isAdmin) {
     return <Navigate to="/" replace />;
@@ -186,8 +256,14 @@ export default function AdminDashboard() {
             Acceso protegido según el rol asignado a tu cuenta.
           </p>
         </div>
-        <button type="button" className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '2px solid var(--border-color)' }} onClick={loadData} disabled={loading}>
-          <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+        <button
+          type="button"
+          className="btn btn-outline"
+          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '2px solid var(--border-color)' }}
+          onClick={() => { loadData(); loadFeedback(); }}
+          disabled={loading || feedbackLoading}
+        >
+          <RefreshCw size={18} className={loading || feedbackLoading ? 'animate-spin' : ''} />
           Actualizar datos
         </button>
       </div>
@@ -223,6 +299,96 @@ export default function AdminDashboard() {
             <div style={{ fontSize: '1.85rem', fontWeight: 900 }}>{activeBanksCount}</div>
           </div>
         </div>
+      </div>
+
+      {/* Feedback inbox by screen/function */}
+      <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '1.25rem' }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.35rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <MessageSquareHeart size={24} /> Feedback por pantalla
+            </h2>
+            <p style={{ margin: '0.35rem 0 0', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.9rem' }}>
+              Comentarios de usuarios etiquetados por ruta y función.
+            </p>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }} role="group" aria-label="Filtrar feedback por estado">
+            {([
+              ['new', 'Nuevos'],
+              ['reviewed', 'Revisados'],
+              ['done', 'Hechos'],
+              ['all', 'Todos'],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className={`feedback-category${feedbackFilter === value ? ' is-active' : ''}`}
+                onClick={() => setFeedbackFilter(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {feedbackLoading ? (
+          <div className="skeleton" style={{ height: '120px' }} />
+        ) : feedback.length === 0 ? (
+          <p style={{ margin: 0, color: 'var(--text-muted)', fontWeight: 650 }}>
+            No hay feedback en este filtro. Si acabas de agregar el sistema, aplica la migración `product_feedback` en Supabase.
+          </p>
+        ) : (
+          <div className="admin-feedback-list">
+            {feedback.map((item) => (
+              <article key={item.id} className="admin-feedback-item">
+                <header>
+                  <h3>
+                    {item.screen_label}
+                    {item.feature ? ` · ${item.feature}` : ''}
+                  </h3>
+                  <span className="feedback-chip">{CATEGORY_LABELS[item.category] || item.category}</span>
+                </header>
+                <p>{item.message}</p>
+                <div className="admin-feedback-meta">
+                  <span>{new Date(item.created_at).toLocaleString('es-CL')}</span>
+                  <span>·</span>
+                  <span>{item.path}</span>
+                  {item.rating != null && (
+                    <>
+                      <span>·</span>
+                      <span>{item.rating}/5 ⭐</span>
+                    </>
+                  )}
+                  {item.viewport && (
+                    <>
+                      <span>·</span>
+                      <span>{item.viewport}</span>
+                    </>
+                  )}
+                  <span>·</span>
+                  <span>estado: {item.status}</span>
+                </div>
+                <div className="admin-feedback-actions">
+                  {item.status !== 'reviewed' && (
+                    <button type="button" className="btn btn-outline" style={{ minHeight: 40, padding: '0.4rem 0.75rem' }} onClick={() => handleFeedbackStatus(item, 'reviewed')}>
+                      Marcar revisado
+                    </button>
+                  )}
+                  {item.status !== 'done' && (
+                    <button type="button" className="btn btn-outline" style={{ minHeight: 40, padding: '0.4rem 0.75rem' }} onClick={() => handleFeedbackStatus(item, 'done')}>
+                      Marcar hecho
+                    </button>
+                  )}
+                  {item.status !== 'new' && (
+                    <button type="button" className="btn btn-outline" style={{ minHeight: 40, padding: '0.4rem 0.75rem' }} onClick={() => handleFeedbackStatus(item, 'new')}>
+                      Reabrir
+                    </button>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Main Table Card */}
