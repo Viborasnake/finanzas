@@ -1,10 +1,12 @@
 import { createContext, useContext } from 'react';
 
+/** 'system' is only the silent default (OS preference). UI exposes light/dark. */
 export type Theme = 'light' | 'dark' | 'system';
 
 export interface ThemeContextValue {
   theme: Theme;
   setTheme: (theme: Theme) => void;
+  /** Resolved appearance after applying system preference when needed. */
   isDark: boolean;
 }
 

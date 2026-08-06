@@ -1,20 +1,29 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { ThemeContext, type Theme } from './themeContextValue';
 
-export const ThemeProvider = ({ children }: { children: ReactNode }) => {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    return (localStorage.getItem('theme') as Theme) || 'system';
-  });
+function readStoredTheme(): Theme {
+  const stored = localStorage.getItem('theme');
+  if (stored === 'light' || stored === 'dark' || stored === 'system') return stored;
+  // No choice yet: follow OS quietly (not exposed in the UI).
+  return 'system';
+}
 
-  const [isDark, setIsDark] = useState<boolean>(false);
+export const ThemeProvider = ({ children }: { children: ReactNode }) => {
+  const [theme, setThemeState] = useState<Theme>(() => readStoredTheme());
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const stored = readStoredTheme();
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    return stored === 'dark' || (stored === 'system' && prefersDark);
+  });
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    
+
     const applyTheme = (currentTheme: Theme) => {
       const isDarkMode = currentTheme === 'dark' || (currentTheme === 'system' && mediaQuery.matches);
       setIsDark(isDarkMode);
-      
+
       const root = window.document.documentElement;
       if (isDarkMode) {
         root.classList.add('dark');
@@ -25,10 +34,9 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
 
     applyTheme(theme);
 
+    // Keep following the OS only while the user has not picked light/dark.
     const handler = () => {
-      if (theme === 'system') {
-        applyTheme('system');
-      }
+      if (theme === 'system') applyTheme('system');
     };
 
     mediaQuery.addEventListener('change', handler);
@@ -36,7 +44,12 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   }, [theme]);
 
   const setTheme = (newTheme: Theme) => {
-    localStorage.setItem('theme', newTheme);
+    // Explicit light/dark is persisted. 'system' is the silent default only.
+    if (newTheme === 'system') {
+      localStorage.removeItem('theme');
+    } else {
+      localStorage.setItem('theme', newTheme);
+    }
     setThemeState(newTheme);
   };
 

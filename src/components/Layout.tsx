@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useId } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Receipt, Settings, LogOut, Menu, X, ChevronDown, Check, ChevronLeft, ChevronRight, User as UserIcon, Shield, CalendarCheck, FileSpreadsheet, Sparkles, Moon, Sun, Monitor } from 'lucide-react';
+import { LayoutDashboard, Receipt, Settings, LogOut, Menu, X, ChevronDown, Check, ChevronLeft, ChevronRight, User as UserIcon, Shield, CalendarCheck, FileSpreadsheet, Sparkles, Moon, Sun } from 'lucide-react';
 import { useAuth } from '../contexts/authContextValue';
 import { useBanks, AVAILABLE_BANKS, type DashboardBankScope } from '../contexts/bankContextValue';
 import { useSettings } from '../contexts/settingsContextValue';
@@ -24,19 +24,26 @@ const systemNavItems = [
 ];
 
 function ThemeToggle({ isCollapsed }: { isCollapsed?: boolean }) {
-  const { theme, setTheme } = useTheme();
+  const { isDark, setTheme } = useTheme();
 
-  const cycleTheme = () => {
-    if (theme === 'system') setTheme('light');
-    else if (theme === 'light') setTheme('dark');
-    else setTheme('system');
+  // Only light/dark in UI. System preference is the silent default until the user chooses.
+  const toggleTheme = () => {
+    setTheme(isDark ? 'light' : 'dark');
   };
 
-  const Icon = theme === 'light' ? Sun : theme === 'dark' ? Moon : Monitor;
-  const label = theme === 'light' ? 'Tema Claro' : theme === 'dark' ? 'Tema Oscuro' : 'Tema Sistema';
+  const Icon = isDark ? Moon : Sun;
+  const label = isDark ? 'Tema Oscuro' : 'Tema Claro';
 
   return (
-    <button type="button" className="nav-item theme-toggle-btn" onClick={cycleTheme} title={isCollapsed ? label : undefined} aria-label="Cambiar tema" style={{ background: 'transparent', border: 'none', cursor: 'pointer', width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', color: 'inherit', fontWeight: 'inherit', fontSize: '1rem', borderRadius: 'var(--radius-md)' }}>
+    <button
+      type="button"
+      className="nav-item theme-toggle-btn"
+      onClick={toggleTheme}
+      title={isCollapsed ? label : undefined}
+      aria-label={isDark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
+      aria-pressed={isDark}
+      style={{ background: 'transparent', border: 'none', cursor: 'pointer', width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', color: 'inherit', fontWeight: 'inherit', fontSize: '1rem', borderRadius: 'var(--radius-md)' }}
+    >
       <Icon size={20} />
       {!isCollapsed && <span>{label}</span>}
     </button>
