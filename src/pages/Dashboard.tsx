@@ -1137,7 +1137,7 @@ export default function Dashboard() {
             <small className="dashboard-cash-summary-note">Estimación parcial: incluye {c.openingBalance.detectedBankCount} de {c.openingBalance.bankCount} bancos. Falta {c.openingBalance.missingBanks.join(', ')}.</small>
           )}
         </section>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 350px), 1fr))', gap: '2rem', marginBottom: '3rem', alignItems: 'start' }}>
+        <div className="dashboard-kpi-pair">
         {/* Ingresos Card — neutral surface; color only on amount, icon, badge, sparkline */}
         <div style={{ ...neoCard, backgroundColor: 'var(--surface-color)', position: 'relative', overflow: 'hidden', paddingBottom: '7rem', marginBottom: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', position: 'relative', zIndex: 10 }}>
@@ -1410,9 +1410,9 @@ export default function Dashboard() {
           </div>
         </div>
         
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 400px), 1fr))', gap: '3rem' }}>
+        <div className="dashboard-analysis-grid">
           {/* Timeline Chart */}
-          <div style={{ height: '350px', width: '100%', display: 'flex', flexDirection: 'column' }}>
+          <div className="dashboard-analysis-panel" style={{ height: '350px', width: '100%', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
             <h4 style={{ margin: '0 0 0.5rem 0', fontWeight: 800, fontSize: '0.85rem' }}>{chartTitle}</h4>
             {selectedCategories.length === 0 && (
               <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Haz clic en una barra del ranking para ver su evolución en el tiempo →</p>
