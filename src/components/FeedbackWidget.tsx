@@ -16,6 +16,7 @@ export function FeedbackWidget() {
   const location = useLocation();
   const screen = resolveFeedbackScreen(location.pathname);
   const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [category, setCategory] = useState<FeedbackCategoryId>('confusion');
   const [rating, setRating] = useState<number | null>(null);
   const [message, setMessage] = useState('');
@@ -29,6 +30,13 @@ export function FeedbackWidget() {
     // Reset soft fields when the screen changes so feedback stays contextual.
     setFeature('');
   }, [screen.key]);
+
+  useEffect(() => {
+    if (!expanded) return;
+    const collapse = () => setExpanded(false);
+    const timer = window.setTimeout(collapse, 2500);
+    return () => window.clearTimeout(timer);
+  }, [expanded]);
 
   if (!user) return null;
 
@@ -92,14 +100,20 @@ export function FeedbackWidget() {
       <button
         ref={triggerRef}
         type="button"
-        className="feedback-fab"
+        className={`feedback-fab${expanded ? ' is-expanded' : ''}`}
         onClick={() => setOpen(true)}
+        onPointerEnter={() => setExpanded(true)}
+        onPointerLeave={() => setExpanded(false)}
+        onFocus={() => setExpanded(true)}
+        onBlur={() => setExpanded(false)}
+        onTouchStart={() => setExpanded(true)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        title="Enviar feedback de esta pantalla"
+        aria-label="Enviar feedback de esta pantalla"
+        title="Feedback"
       >
         <MessageSquarePlus size={20} strokeWidth={2.4} aria-hidden="true" />
-        <span className="feedback-fab-label">Feedback</span>
+        <span className="feedback-fab-label" aria-hidden="true">Feedback</span>
       </button>
 
       <Dialog
