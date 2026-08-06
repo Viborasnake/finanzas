@@ -1,7 +1,11 @@
-import { FileSpreadsheet, ScanLine } from 'lucide-react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect, useState } from 'react';
+import { FileSpreadsheet, ScanLine, Smartphone } from 'lucide-react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import ImportModal from '../components/ImportModal';
 import TransactionCaptureImport from '../components/TransactionCaptureImport';
+import { supabase } from '../services/supabase';
+import type { IntakeJobRow } from '../utils/intakeTokens';
+
 type ImportSource = 'statement' | 'capture';
 
 export default function ImportRoute() {
@@ -9,6 +13,26 @@ export default function ImportRoute() {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawSource = searchParams.get('source');
   const source: ImportSource = rawSource === 'capture' ? 'capture' : 'statement';
+  const [pendingIntake, setPendingIntake] = useState<IntakeJobRow[]>([]);
+
+  const loadPendingIntake = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('intake_jobs')
+        .select('id, filename, content_type, byte_size, storage_path, source, status, error_message, created_at')
+        .in('status', ['received', 'ready'])
+        .order('created_at', { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      setPendingIntake((data || []) as IntakeJobRow[]);
+    } catch {
+      setPendingIntake([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadPendingIntake();
+  }, [loadPendingIntake]);
 
   const pageTitle = source === 'capture'
     ? 'Importar desde una captura'
@@ -26,6 +50,28 @@ export default function ImportRoute() {
 
   return (
     <div className="import-route-shell">
+      {pendingIntake.length > 0 && (
+        <aside className="import-intake-banner" role="status">
+          <Smartphone size={20} aria-hidden="true" />
+          <div>
+            <strong>
+              {pendingIntake.length} cartola{pendingIntake.length === 1 ? '' : 's'} recibida
+              {pendingIntake.length === 1 ? '' : 's'} por atajo
+            </strong>
+            <p>
+              {pendingIntake
+                .slice(0, 3)
+                .map((j) => j.filename)
+                .join(' · ')}
+              {pendingIntake.length > 3 ? ` · +${pendingIntake.length - 3} más` : ''}
+              . Descárgalas desde el almacenamiento o vuelve a subirlas aquí para procesarlas.
+              Configura el atajo en{' '}
+              <Link to="/settings#atajo-iphone">Ajustes → Atajo iPhone</Link>.
+            </p>
+          </div>
+        </aside>
+      )}
+
       <header className="import-route-header">
         <div>
           <h1 id="import-route-title">{pageTitle}</h1>

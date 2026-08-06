@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/authContextValue';
-import { Plus, Trash2, Save, X, Landmark, Tags, Wand2, Activity, CheckCircle2, ChevronRight, Settings as SettingsIcon, FileSpreadsheet, Sparkles, ChevronDown, Wallet, Edit2, Search } from 'lucide-react';
+import { Plus, Trash2, Save, X, Landmark, Tags, Wand2, Activity, CheckCircle2, ChevronRight, Settings as SettingsIcon, FileSpreadsheet, Sparkles, ChevronDown, Wallet, Edit2, Search, Smartphone } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { extractAndNormalizeRUT } from '../utils/rutParser';
 import type { ClassificationRule } from '../utils/classificationRules';
@@ -13,6 +13,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { InitialAdjustmentManager } from '../components/InitialAdjustmentManager';
 import { useActionQueue } from '../hooks/useActionQueue';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { IosShortcutIntake } from '../components/IosShortcutIntake';
 
 const RULES_PER_PAGE = 12;
 
@@ -551,6 +552,17 @@ export default function Settings() {
       {renderSetupMiniDashboard()}
 
       <div className="settings-bento">
+        <CollapsibleSection
+          id="atajo-iphone"
+          icon={Smartphone}
+          title="Atajo iPhone"
+          subtitle="Reenvía cartolas desde Compartir"
+          description="Genera un token y arma el atajo una vez. Después: PDF/CSV → Compartir → Enviar a MisFinanzas. Los archivos quedan pendientes para importar."
+          defaultCollapsed={true}
+        >
+          <IosShortcutIntake />
+        </CollapsibleSection>
+
         {/* Bank Management */}
         <CollapsibleSection id="bancos" icon={Landmark} title="Mis Bancos" subtitle="Primero elige con qué banco vas a trabajar" description="Administra los bancos que tienes conectados y define cuál es el banco principal para tus reportes globales." defaultCollapsed={true}>
           

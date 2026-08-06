@@ -7141,3 +7141,170 @@ html, body, #root {
     overflow-x: visible;
   }
 }
+
+/* —— iOS shortcut intake (Settings) —— */
+.ios-intake-panel {
+  display: grid;
+  gap: 1.1rem;
+}
+
+.ios-intake-intro p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.ios-intake-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.ios-intake-secret {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem;
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--warning-surface);
+}
+
+.ios-intake-secret strong {
+  font-size: 0.9rem;
+}
+
+.ios-intake-code {
+  display: block;
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  font-size: 0.78rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
+.ios-intake-secret-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.ios-intake-steps {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: var(--text-primary);
+  font-weight: 650;
+  line-height: 1.5;
+  font-size: 0.9rem;
+}
+
+.ios-intake-steps code,
+.ios-intake-inline-url {
+  font-size: 0.78rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.ios-intake-token-list h3,
+.ios-intake-jobs h3 {
+  margin: 0 0 0.55rem;
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+
+.ios-intake-token-list ul,
+.ios-intake-job-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.ios-intake-token-list li,
+.ios-intake-job-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle);
+}
+
+.ios-intake-token-list li div,
+.ios-intake-job-list li div {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.ios-intake-token-list span,
+.ios-intake-job-list span,
+.ios-intake-job-list em {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.ios-intake-jobs-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.55rem;
+}
+
+.ios-intake-import-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+
+.ios-intake-empty,
+.ios-intake-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.import-intake-banner {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.9rem 1rem;
+  margin-bottom: 1.25rem;
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--pastel-blue);
+  box-shadow: var(--shadow-sm);
+}
+
+.import-intake-banner strong {
+  display: block;
+  font-size: 0.95rem;
+}
+
+.import-intake-banner p {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  font-weight: 650;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+@media (max-width: 600px) {
+  .ios-intake-secret-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
