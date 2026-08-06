@@ -87,9 +87,11 @@ html.dark {
   /* Soft elevated dark: cool slate, low glare, gentle depth */
   --bg-color: #0f1219;
   --surface-color: #171b24;
-  --text-primary: #e8ecf4;
-  --text-secondary: #9aa3b5;
-  --text-muted: #6b7385;
+  /* Soft ink — not near-white (avoids glare on large 900-weight amounts) */
+  --text-primary: #c5cbd6;
+  --text-secondary: #8b93a7;
+  --text-muted: #6a7285;
+  --text-emphasis: #d2d7e2;
   --border-color: #2c3344;
   --border-strong: #4a5568;
   --surface-subtle: #1e2430;
@@ -97,8 +99,8 @@ html.dark {
   --shadow-color: rgba(0, 0, 0, 0.42);
   --border-width: 1.5px;
 
-  --primary: #e8ecf4;
-  --primary-hover: #cfd6e4;
+  --primary: #c5cbd6;
+  --primary-hover: #d5dae4;
   --primary-light: #1e2430;
 
   /* Muted tinted surfaces (soft pastels for dark) */
@@ -222,6 +224,15 @@ body {
 html.dark body {
   background-color: var(--bg-color);
   color: var(--text-primary);
+}
+
+/* Soft emphasis for titles and big KPI figures (still below pure white) */
+html.dark h1,
+html.dark h2,
+html.dark .app-page-title,
+html.dark .dashboard-kpi-amount,
+html.dark .light-balance-card strong {
+  color: var(--text-emphasis);
 }
 
 /* Softer selection + scrollbars in dark */
