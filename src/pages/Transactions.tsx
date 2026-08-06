@@ -305,7 +305,7 @@ export function CascadingCategorySelector({ initialTipo, initialPrincipal, initi
         aria-label={inputValue ? `Cambiar clasificación: ${inputValue}` : 'Clasificar transacción'}
         style={{ 
           backgroundColor: isComplete && selectedOption ? getBgColor(selectedOption.tipo) : 'var(--surface-color)',
-          borderColor: 'black'
+          borderColor: 'var(--border-color)'
         }}
       >
         {isSaving ? 'Guardando...' : (inputValue || 'Clasificar...')}
@@ -1379,12 +1379,12 @@ export default function Transactions() {
                     {group.entries.map(entry => {
                       const keep = entry.key === group.keepEntryKey;
                       return (
-                        <div key={entry.key} className="duplicate-review-entry" style={{ padding: '1rem', borderBottom: '1px solid #cbd5e1', display: 'grid', gridTemplateColumns: 'minmax(180px, 1.7fr) repeat(3, minmax(110px, auto)) auto', gap: '1rem', alignItems: 'center' }}>
+                        <div key={entry.key} className="duplicate-review-entry" style={{ padding: '1rem', borderBottom: '1px solid var(--border-subtle)', display: 'grid', gridTemplateColumns: 'minmax(180px, 1.7fr) repeat(3, minmax(110px, auto)) auto', gap: '1rem', alignItems: 'center' }}>
                           <div>
                             <strong>{entry.description}</strong>
                             <div style={{ marginTop: '0.35rem', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                               {keep && group.containsSplit && <span style={{ padding: '0.15rem 0.45rem', border: '1px solid var(--success-text)', borderRadius: 999, background: 'var(--pastel-green)', color: 'var(--success-text)', fontSize: '0.72rem', fontWeight: 850 }}>Conservar división</span>}
-                              {entry.isSplit && <span style={{ padding: '0.15rem 0.45rem', border: '1px solid #a16207', borderRadius: 999, background: 'var(--warning-surface)', color: 'var(--warning-text)', fontSize: '0.72rem', fontWeight: 850 }}>Dividida · {entry.transactionIds.length} partes</span>}
+                              {entry.isSplit && <span style={{ padding: '0.15rem 0.45rem', border: '1px solid var(--warning-text)', borderRadius: 999, background: 'var(--warning-surface)', color: 'var(--warning-text)', fontSize: '0.72rem', fontWeight: 850 }}>Dividida · {entry.transactionIds.length} partes</span>}
                             </div>
                           </div>
                           <span style={{ fontWeight: 700 }}>{entry.bank}</span>
@@ -1591,7 +1591,7 @@ export default function Transactions() {
                             </div>
                           )}
                           {tx.raw_data?.split_group_id && (
-                            <div style={{ fontSize: '0.65rem', fontWeight: 800, backgroundColor: 'var(--pastel-yellow)', color: 'var(--warning-text)', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid #ca8a04', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                            <div style={{ fontSize: '0.65rem', fontWeight: 800, backgroundColor: 'var(--pastel-yellow)', color: 'var(--warning-text)', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid var(--warning)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                               <Scissors size={10} /> Dividida
                             </div>
                           )}

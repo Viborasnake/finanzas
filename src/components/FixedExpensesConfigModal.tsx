@@ -244,7 +244,7 @@ export function FixedExpensesConfigModal({ onClose }: Props) {
                         <button type="button" className="btn btn-outline" style={{ backgroundColor: 'var(--surface-color)', border: '2px solid var(--border-color)', padding: '0.35rem 0.75rem', fontSize: '0.85rem' }} onClick={() => startEditFixedExpense(item)} aria-label={`Editar ${item.name}`} title="Editar">
                           <Edit size={14} /> Editar
                         </button>
-                        <button type="button" className="btn-icon" style={{ backgroundColor: '#fca5a5', border: '2px solid var(--border-color)' }} onClick={() => handleDeleteFixedExpense(item.id)} aria-label={`Eliminar ${item.name}`} title="Eliminar"><Trash2 size={16} /></button>
+                        <button type="button" className="btn-icon" style={{ backgroundColor: 'var(--danger-text)', border: '2px solid var(--border-color)' }} onClick={() => handleDeleteFixedExpense(item.id)} aria-label={`Eliminar ${item.name}`} title="Eliminar"><Trash2 size={16} /></button>
                       </div>
                     </div>
                   )}

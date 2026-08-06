@@ -12,10 +12,10 @@ export function TransactionTypeBadge({ type }: TransactionTypeBadgeProps) {
     return (
       <div style={{
         display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
-        backgroundColor: 'var(--pastel-green)', color: '#16a34a',
+        backgroundColor: 'var(--pastel-green)', color: 'var(--success)',
         padding: '0.25rem 0.5rem', borderRadius: '9999px',
-        fontWeight: 800, fontSize: '0.75rem', border: '2px solid #16a34a',
-        boxShadow: '2px 2px 0px #16a34a'
+        fontWeight: 800, fontSize: '0.75rem', border: '2px solid var(--success)',
+        boxShadow: '2px 2px 0px var(--success)'
       }}>
         <ArrowDownCircle size={16} strokeWidth={3} />
       </div>
@@ -26,10 +26,10 @@ export function TransactionTypeBadge({ type }: TransactionTypeBadgeProps) {
     return (
       <div style={{
         display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
-        backgroundColor: 'var(--danger-surface)', color: '#dc2626',
+        backgroundColor: 'var(--danger-surface)', color: 'var(--danger)',
         padding: '0.25rem 0.5rem', borderRadius: '9999px',
-        fontWeight: 800, fontSize: '0.75rem', border: '2px solid #dc2626',
-        boxShadow: '2px 2px 0px #dc2626'
+        fontWeight: 800, fontSize: '0.75rem', border: '2px solid var(--danger)',
+        boxShadow: '2px 2px 0px var(--danger)'
       }}>
         <ArrowUpCircle size={16} strokeWidth={3} />
       </div>
@@ -42,8 +42,8 @@ export function TransactionTypeBadge({ type }: TransactionTypeBadgeProps) {
         display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
         backgroundColor: 'var(--surface-subtle)', color: 'var(--text-muted)',
         padding: '0.25rem 0.5rem', borderRadius: '9999px',
-        fontWeight: 800, fontSize: '0.75rem', border: '2px solid #94a3b8',
-        boxShadow: '2px 2px 0px #94a3b8'
+        fontWeight: 800, fontSize: '0.75rem', border: '2px solid var(--border-muted)',
+        boxShadow: '2px 2px 0px var(--border-muted)'
       }}>
         <RefreshCw size={16} strokeWidth={3} />
       </div>
@@ -54,10 +54,10 @@ export function TransactionTypeBadge({ type }: TransactionTypeBadgeProps) {
     return (
       <div style={{
         display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
-        backgroundColor: 'var(--pastel-purple)', color: '#9333ea',
+        backgroundColor: 'var(--pastel-purple)', color: 'var(--purple-accent)',
         padding: '0.25rem 0.5rem', borderRadius: '9999px',
-        fontWeight: 800, fontSize: '0.75rem', border: '2px solid #9333ea',
-        boxShadow: '2px 2px 0px #9333ea'
+        fontWeight: 800, fontSize: '0.75rem', border: '2px solid var(--purple-accent)',
+        boxShadow: '2px 2px 0px var(--purple-accent)'
       }}>
         <ArrowUpCircle size={16} strokeWidth={3} />
       </div>
@@ -67,10 +67,10 @@ export function TransactionTypeBadge({ type }: TransactionTypeBadgeProps) {
   return (
     <div style={{
       display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
-      backgroundColor: 'var(--surface-subtle)', color: '#6b7280',
+      backgroundColor: 'var(--surface-subtle)', color: 'var(--text-muted)',
       padding: '0.25rem 0.5rem', borderRadius: '9999px',
-      fontWeight: 800, fontSize: '0.75rem', border: '2px solid #9ca3af',
-      boxShadow: '2px 2px 0px #9ca3af'
+      fontWeight: 800, fontSize: '0.75rem', border: '2px solid var(--border-muted)',
+      boxShadow: '2px 2px 0px var(--border-muted)'
     }}>
       <span>{normalizedType ? normalizedType.toUpperCase() : 'DESCONOCIDO'}</span>
     </div>

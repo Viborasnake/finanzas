@@ -430,7 +430,7 @@ export default function Accounts() {
           <span style={{ padding: '0.45rem 0.8rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: 'var(--pastel-green)', fontWeight: 900 }}>{paidCount} pagados</span>
           <span style={{ padding: '0.45rem 0.8rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: 'var(--danger-surface)', fontWeight: 900 }}>{unpaidCount} sin pago</span>
           {unconfiguredCount > 0 && (
-            <span style={{ padding: '0.45rem 0.8rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: '#fef9c3', fontWeight: 900 }}>{unconfiguredCount} por vincular</span>
+            <span style={{ padding: '0.45rem 0.8rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: 'var(--warning-surface)', fontWeight: 900 }}>{unconfiguredCount} por vincular</span>
           )}
         </div>
 
@@ -465,7 +465,7 @@ export default function Accounts() {
                   style={{ backgroundColor: 'var(--surface-color)' }}
                 >
                   <span className="account-status-icon">
-                    {status.paid ? <CheckCircle2 size={22} fill="#22c55e" color="var(--border-color)" /> : <Loader2 size={20} className="animate-spin" style={{ animationDuration: '3s' }} />}
+                    {status.paid ? <CheckCircle2 size={22} fill="var(--success)" color="var(--border-color)" /> : <Loader2 size={20} className="animate-spin" style={{ animationDuration: '3s' }} />}
                   </span>
 
                   <div className="account-status-copy">
@@ -509,13 +509,13 @@ export default function Accounts() {
               onClick={() => setShowConfigModal(true)}
               className="interactive-card"
               aria-label="Crear nueva cuenta"
-              style={{ width: '100%', color: 'inherit', textAlign: 'left', display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gap: '0.8rem', alignItems: 'center', padding: '0.9rem', border: '2px dashed #94a3b8', borderRadius: '10px', backgroundColor: 'var(--surface-subtle)', minHeight: '76px' }}
+              style={{ width: '100%', color: 'inherit', textAlign: 'left', display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gap: '0.8rem', alignItems: 'center', padding: '0.9rem', border: '2px dashed var(--border-muted)', borderRadius: '10px', backgroundColor: 'var(--surface-subtle)', minHeight: '76px' }}
             >
-              <span style={{ width: '38px', height: '38px', border: '2px solid #94a3b8', borderRadius: '8px', backgroundColor: 'var(--surface-color)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Plus size={22} color="#64748b" />
+              <span style={{ width: '38px', height: '38px', border: '2px solid var(--border-muted)', borderRadius: '8px', backgroundColor: 'var(--surface-color)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Plus size={22} color="var(--text-muted)" />
               </span>
               <div>
-                <strong style={{ display: 'block', fontSize: '0.95rem', color: '#334155' }}>Crear nueva cuenta</strong>
+                <strong style={{ display: 'block', fontSize: '0.95rem', color: 'var(--text-secondary)' }}>Crear nueva cuenta</strong>
                 <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem', fontWeight: 600, marginTop: '0.15rem' }}>
                   Añadir nuevo gasto mensual
                 </div>
@@ -638,7 +638,7 @@ export default function Accounts() {
                 ) : (
                   <>
                     {!showManualForm ? (
-                      <div style={{ textAlign: 'center', padding: '2.5rem 1.5rem', backgroundColor: 'var(--surface-subtle)', border: '2px dashed #94a3b8', borderRadius: 'var(--radius-lg)' }}>
+                      <div style={{ textAlign: 'center', padding: '2.5rem 1.5rem', backgroundColor: 'var(--surface-subtle)', border: '2px dashed var(--border-muted)', borderRadius: 'var(--radius-lg)' }}>
                         <CalendarCheck size={40} style={{ margin: '0 auto 1rem', opacity: 0.8, color: 'var(--text-secondary)' }} />
                         <strong style={{ display: 'block', fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No hay pagos registrados</strong>
                         <span style={{ display: 'block', fontSize: '0.95rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>Aún no se ha detectado el pago para {range.label}.</span>

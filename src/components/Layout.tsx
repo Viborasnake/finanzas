@@ -89,7 +89,7 @@ function BankIndicator() {
         aria-haspopup="menu"
         aria-disabled={!canOpen}
       >
-        <div className="bank-dot" style={{ backgroundColor: isConsolidated ? '#0f172a' : (activeBankInfo ? '#22c55e' : 'var(--text-muted)') }} />
+        <div className="bank-dot" style={{ backgroundColor: isConsolidated ? 'var(--text-primary)' : (activeBankInfo ? 'var(--success)' : 'var(--text-muted)') }} />
         <span className="bank-indicator-text">
           {displayLabel}
         </span>
@@ -126,7 +126,7 @@ function BankIndicator() {
                       border: '1px solid var(--border-color)'
                     }} />
                     <span>Todos los bancos</span>
-                    <span style={{ fontSize: '0.58rem', padding: '0.1rem 0.35rem', backgroundColor: 'var(--pastel-blue)', color: '#0f172a', borderRadius: '999px', fontWeight: 900, border: '1px solid var(--border-color)' }}>Vista</span>
+                    <span style={{ fontSize: '0.58rem', padding: '0.1rem 0.35rem', backgroundColor: 'var(--pastel-blue)', color: 'var(--text-primary)', borderRadius: '999px', fontWeight: 900, border: '1px solid var(--border-color)' }}>Vista</span>
                     {isConsolidated && <Check size={14} style={{ marginLeft: 'auto' }} />}
                   </button>
                 </div>
@@ -148,7 +148,7 @@ function BankIndicator() {
                     >
                       <span style={{ 
                         width: '12px', height: '12px', borderRadius: '50%', display: 'inline-block',
-                        background: `radial-gradient(circle at 30% 30%, ${bank.color || '#ccc'}, var(--border-color))`,
+                        background: `radial-gradient(circle at 30% 30%, ${bank.color || 'var(--border-muted)'}, var(--border-color))`,
                         boxShadow: '1px 1px 0px var(--border-color)'
                       }} />
                       <span>{bank.label}</span>

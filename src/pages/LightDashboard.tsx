@@ -137,7 +137,7 @@ export default function LightDashboard() {
             <div className="dashboard-context-line" aria-label={`Vista de ${scopeLabel}`}>
               <span
                 className="dashboard-context-dot"
-                style={{ backgroundColor: isConsolidated ? '#111827' : (activeBankInfo?.color || 'var(--text-muted)') }}
+                style={{ backgroundColor: isConsolidated ? 'var(--text-primary)' : (activeBankInfo?.color || 'var(--text-muted)') }}
                 aria-hidden="true"
               />
               <strong>{scopeLabel}</strong>

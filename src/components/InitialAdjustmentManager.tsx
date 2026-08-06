@@ -331,7 +331,7 @@ export function InitialAdjustmentManager() {
                         <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
                           Guardar Ajuste
                         </button>
-                        <button type="button" className="btn" onClick={() => setEditingBank(null)} style={{ backgroundColor: '#e2e8f0', color: 'var(--text-primary)' }}>
+                        <button type="button" className="btn" onClick={() => setEditingBank(null)} style={{ backgroundColor: 'var(--surface-disabled)', color: 'var(--text-primary)' }}>
                           Cancelar
                         </button>
                       </div>

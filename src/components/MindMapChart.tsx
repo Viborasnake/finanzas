@@ -15,18 +15,18 @@ const renderCustomNodeElement = ({ nodeDatum, toggleNode }: any) => {
   const isEgreso = nodeDatum.name === 'Egreso' || rootTipo === 'Egreso';
   const amount = nodeDatum.attributes?.amount as number || 0;
   
-  let fill = '#ffffff';
-  let stroke = 'var(--border-color)000';
+  let fill = 'var(--surface-color)';
+  let stroke = 'var(--border-color)';
   
   if (isRoot) {
-    fill = '#3b82f6';
-    stroke = '#2563eb';
+    fill = 'var(--info-accent)';
+    stroke = 'var(--focus-ring)';
   } else if (isIngreso) {
-    fill = '#22c55e';
-    stroke = '#16a34a';
+    fill = 'var(--success)';
+    stroke = 'var(--success)';
   } else if (isEgreso) {
-    fill = '#ef4444';
-    stroke = '#dc2626';
+    fill = 'var(--danger)';
+    stroke = 'var(--danger)';
   }
 
   const formattedAmount = amount > 0 ? `$${amount.toLocaleString('es-CL')}` : '';
@@ -35,7 +35,7 @@ const renderCustomNodeElement = ({ nodeDatum, toggleNode }: any) => {
     <g>
       <circle r="12" fill={fill} stroke={stroke} strokeWidth="3" onClick={toggleNode} style={{ cursor: 'pointer' }} />
       <text 
-        fill="black" 
+        fill="var(--border-color)" 
         stroke="var(--surface-color)"
         strokeWidth="6" 
         paintOrder="stroke fill"
@@ -51,7 +51,7 @@ const renderCustomNodeElement = ({ nodeDatum, toggleNode }: any) => {
       </text>
       {formattedAmount && (
         <text 
-          fill={isIngreso ? '#15803d' : (isEgreso ? 'var(--danger-text)' : '#1d4ed8')} 
+          fill={isIngreso ? 'var(--success-text)' : (isEgreso ? 'var(--danger-text)' : 'var(--info-accent)')} 
           stroke="var(--surface-color)"
           strokeWidth="6" 
           paintOrder="stroke fill"

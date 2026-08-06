@@ -323,9 +323,9 @@ export default function AdminDashboard() {
                             aria-label={isCurrentUser ? 'No puedes pausar tu propia cuenta administradora' : `${u.status === 'active' ? 'Pausar accesos' : 'Reactivar accesos'} de ${u.email}`}
                             disabled={isCurrentUser}
                             onClick={() => handleToggleStatus(u)}
-                            style={{ backgroundColor: u.status === 'active' ? '#ffedd5' : 'var(--pastel-green)' }}
+                            style={{ backgroundColor: u.status === 'active' ? 'var(--account-card-pending)' : 'var(--pastel-green)' }}
                           >
-                            <Power size={14} style={{ color: u.status === 'active' ? '#d97706' : '#16a34a' }} />
+                            <Power size={14} style={{ color: u.status === 'active' ? 'var(--warning)' : 'var(--success)' }} />
                           </button>
                           <button 
                             type="button"
@@ -335,7 +335,7 @@ export default function AdminDashboard() {
                             onClick={() => handleEditDetails(u)}
                             style={{ backgroundColor: 'var(--surface-color)' }}
                           >
-                            <Edit size={14} style={{ color: '#0284c7' }} />
+                            <Edit size={14} style={{ color: 'var(--info-accent)' }} />
                           </button>
                           <button 
                             type="button"
@@ -345,7 +345,7 @@ export default function AdminDashboard() {
                             onClick={() => handleResendPasswordReset(u.email)}
                             style={{ backgroundColor: 'var(--pastel-purple)' }}
                           >
-                            <Key size={14} style={{ color: '#7c3aed' }} />
+                            <Key size={14} style={{ color: 'var(--purple-accent)' }} />
                           </button>
                           <button 
                             type="button"
@@ -356,7 +356,7 @@ export default function AdminDashboard() {
                             onClick={() => setDeletingUser(u)}
                             style={{ backgroundColor: 'var(--danger-surface)' }}
                           >
-                            <Trash2 size={14} style={{ color: '#dc2626' }} />
+                            <Trash2 size={14} style={{ color: 'var(--danger)' }} />
                           </button>
                         </div>
                       </td>
@@ -469,7 +469,7 @@ export default function AdminDashboard() {
           panelStyle={{ maxWidth: '440px' }}
         >
           <div className="dialog-header">
-            <h3 id="admin-delete-title" style={{ fontSize: '1.35rem', fontWeight: 900, color: '#dc2626' }}>Eliminar cuenta</h3>
+            <h3 id="admin-delete-title" style={{ fontSize: '1.35rem', fontWeight: 900, color: 'var(--danger)' }}>Eliminar cuenta</h3>
             <button
               type="button"
               className="dialog-close"
@@ -493,7 +493,7 @@ export default function AdminDashboard() {
               <li>Sus contactos conocidos registrados</li>
             </ul>
             <p style={{ fontSize: '0.9rem', marginBottom: '1rem', fontWeight: 700 }}>
-              Para confirmar, escribe la palabra <span style={{ color: '#dc2626' }}>ELIMINAR</span> abajo:
+              Para confirmar, escribe la palabra <span style={{ color: 'var(--danger)' }}>ELIMINAR</span> abajo:
             </p>
             <input 
               id="admin-delete-confirm"
@@ -502,7 +502,7 @@ export default function AdminDashboard() {
               placeholder="Escribe ELIMINAR" 
               value={deleteConfirmText}
               onChange={(e) => setDeleteConfirmText(e.target.value)}
-              style={{ width: '100%', marginBottom: '1.5rem', border: '2px solid #dc2626', fontWeight: 800, textTransform: 'uppercase' }}
+              style={{ width: '100%', marginBottom: '1.5rem', border: '2px solid var(--danger)', fontWeight: 800, textTransform: 'uppercase' }}
             />
             <div className="admin-dialog-actions">
               <button 
@@ -518,7 +518,7 @@ export default function AdminDashboard() {
                 className="btn btn-primary" 
                 onClick={handleDeleteUser}
                 disabled={actionLoading || deleteConfirmText.toLowerCase() !== 'eliminar'}
-                style={{ backgroundColor: '#dc2626', color: 'var(--surface-color)', border: '2px solid var(--border-color)' }}
+                style={{ backgroundColor: 'var(--danger)', color: 'var(--surface-color)', border: '2px solid var(--border-color)' }}
               >
                 {actionLoading ? 'Eliminando...' : 'Eliminar cuenta'}
               </button>

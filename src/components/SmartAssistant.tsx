@@ -436,8 +436,8 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
                 <span key={b} style={{ background: 'var(--pastel-blue)' }}>🏦 {b}</span>
               ))}
             </div>
-            <p style={{ margin: 0, fontSize: '0.9rem', color: '#334155', display: 'flex', alignItems: 'flex-start', gap: '0.4rem' }}>
-              <Lightbulb size={16} style={{ flexShrink: 0, marginTop: 2, color: '#d97706' }} />
+            <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'flex-start', gap: '0.4rem' }}>
+              <Lightbulb size={16} style={{ flexShrink: 0, marginTop: 2, color: 'var(--warning)' }} />
               {current.reason}
             </p>
 
@@ -518,10 +518,10 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
                       <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', padding: '0.4rem 0.6rem', background: 'var(--surface-color)', border: '1.5px solid var(--border-color)', borderRadius: 6 }}>
                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                           <span style={{ color: 'var(--text-muted)', fontWeight: 700, fontSize: '0.75rem' }}>{t.date}</span>
-                          {t.bank && <span style={{ color: '#3b82f6', fontWeight: 800, fontSize: '0.7rem' }}>{t.bank.substring(0,3).toUpperCase()}</span>}
+                          {t.bank && <span style={{ color: 'var(--info-accent)', fontWeight: 800, fontSize: '0.7rem' }}>{t.bank.substring(0,3).toUpperCase()}</span>}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <span style={{ fontWeight: 800, color: t.type === 'ingreso' ? '#15803d' : 'var(--danger-text)' }}>
+                          <span style={{ fontWeight: 800, color: t.type === 'ingreso' ? 'var(--success-text)' : 'var(--danger-text)' }}>
                             {t.type === 'ingreso' ? '+' : '-'}${Math.abs(t.amount).toLocaleString('es-CL')}
                           </span>
                           <button 
@@ -547,7 +547,7 @@ export default function SmartAssistant({ transactions, onRefresh }: SmartAssista
           <div className="assistant-proposal">
             <p className="assistant-section-label">
               Clasificar como
-              {overrideProposal && <em style={{ marginLeft: '0.4rem', fontStyle: 'normal', color: '#d97706' }}>✏️ Modificado</em>}
+              {overrideProposal && <em style={{ marginLeft: '0.4rem', fontStyle: 'normal', color: 'var(--warning)' }}>✏️ Modificado</em>}
             </p>
             <CascadingCategorySelector
               key={`${current.id}-${currentIndex}`}

@@ -70,7 +70,7 @@ export function useActionQueue() {
             borderRadius: '50%',
             transition: 'all 0.1s'
           }}
-          onMouseOver={(e) => { e.currentTarget.style.backgroundColor = 'var(--surface-subtle)'; e.currentTarget.style.color = '#0f172a'; }}
+          onMouseOver={(e) => { e.currentTarget.style.backgroundColor = 'var(--surface-subtle)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
           onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; }}
           title="Cerrar"
         >

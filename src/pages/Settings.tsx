@@ -250,10 +250,10 @@ export default function Settings() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div role="progressbar" aria-label="Progreso de configuración" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress} style={{ flex: 1, maxWidth: '360px', height: '12px', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: 'var(--surface-color)', overflow: 'hidden' }}>
-                <div style={{ width: `${progress}%`, height: '100%', backgroundColor: progress === 100 ? '#86efac' : '#fde047' }} />
+                <div style={{ width: `${progress}%`, height: '100%', backgroundColor: progress === 100 ? 'var(--success-text)' : 'var(--warning-soft)' }} />
               </div>
               <span style={{ fontWeight: 900, fontSize: '0.85rem' }}>{progress}%</span>
-              <span style={{ color: '#334155', fontWeight: 700, fontSize: '0.85rem' }}>
+              <span style={{ color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.85rem' }}>
                 {progress === 100 ? 'Operación lista' : `Sigue: ${nextItem.title}`}
               </span>
             </div>
@@ -277,10 +277,10 @@ export default function Settings() {
                     navigate(item.path);
                   }
                 }}
-                style={{ textAlign: 'left', display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gridTemplateRows: 'auto auto', gap: '0.7rem 0.85rem', alignItems: 'start', minHeight: '116px', padding: '0.9rem', border: '2px solid var(--border-color)', borderRadius: '10px', backgroundColor: item.done ? 'var(--pastel-green)' : '#fff7ed', boxShadow: '2px 2px 0 var(--border-color)', cursor: 'pointer' }}
+                style={{ textAlign: 'left', display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gridTemplateRows: 'auto auto', gap: '0.7rem 0.85rem', alignItems: 'start', minHeight: '116px', padding: '0.9rem', border: '2px solid var(--border-color)', borderRadius: '10px', backgroundColor: item.done ? 'var(--pastel-green)' : 'var(--account-card-pending)', boxShadow: '2px 2px 0 var(--border-color)', cursor: 'pointer' }}
               >
                 <span style={{ width: '38px', height: '38px', borderRadius: '8px', border: '2px solid var(--border-color)', backgroundColor: 'var(--surface-color)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {item.done ? <CheckCircle2 size={20} fill="#22c55e" color="var(--border-color)" strokeWidth={2.5} /> : item.icon}
+                  {item.done ? <CheckCircle2 size={20} fill="var(--success)" color="var(--border-color)" strokeWidth={2.5} /> : item.icon}
                 </span>
                 <span style={{ minWidth: 0 }}>
                   <strong style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.2rem' }}>{item.title}</strong>
@@ -711,7 +711,7 @@ export default function Settings() {
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                     {cat.secundarias.map((sec, secIdx) => (
-                      <div key={secIdx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'var(--surface-color)', border: '1.5px solid #cbd5e1', padding: '0.35rem 0.75rem', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 600 }}>
+                      <div key={secIdx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'var(--surface-color)', border: '1.5px solid var(--border-subtle)', padding: '0.35rem 0.75rem', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 600 }}>
                         {sec}
                         <button 
                           type="button"

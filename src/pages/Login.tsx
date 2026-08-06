@@ -179,7 +179,7 @@ export default function Login() {
                   style={{
                     display: 'flex', alignItems: 'center', gap: '1rem',
                     padding: '1rem 1.25rem',
-                    border: `2px solid ${isSelected ? 'var(--border-color)' : '#e2e8f0'}`,
+                    border: `2px solid ${isSelected ? 'var(--border-color)' : 'var(--surface-disabled)'}`,
                     borderRadius: '12px',
                     backgroundColor: isSelected ? 'var(--surface-subtle)' : 'var(--surface-color)',
                     cursor: 'pointer',
@@ -208,7 +208,7 @@ export default function Login() {
                         padding: '0.3rem 0.6rem',
                         border: '2px solid var(--border-color)',
                         borderRadius: '2rem',
-                        backgroundColor: isMain ? '#fde047' : 'var(--surface-subtle)',
+                        backgroundColor: isMain ? 'var(--warning-soft)' : 'var(--surface-subtle)',
                         cursor: 'pointer',
                         flexShrink: 0,
                       }}
@@ -217,7 +217,7 @@ export default function Login() {
                     </button>
                   )}
                   {isSelected && isMain && selectedBanks.length === 1 && (
-                    <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '0.3rem 0.6rem', backgroundColor: '#fde047', border: '2px solid var(--border-color)', borderRadius: '2rem' }}>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '0.3rem 0.6rem', backgroundColor: 'var(--warning-soft)', border: '2px solid var(--border-color)', borderRadius: '2rem' }}>
                       ⭐ Principal
                     </span>
                   )}
@@ -502,7 +502,7 @@ export default function Login() {
                     <button
                       type="button"
                       onClick={() => { setIsPasswordRecovery(true); setRecoverySent(false); setError(null); }}
-                      style={{ minHeight: '44px', padding: '0.4rem 0', background: 'none', border: 0, color: '#334155', fontWeight: 800, cursor: 'pointer' }}
+                      style={{ minHeight: '44px', padding: '0.4rem 0', background: 'none', border: 0, color: 'var(--text-secondary)', fontWeight: 800, cursor: 'pointer' }}
                     >
                       ¿Olvidaste tu contraseña?
                     </button>

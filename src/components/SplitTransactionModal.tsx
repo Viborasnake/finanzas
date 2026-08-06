@@ -137,10 +137,10 @@ export default function SplitTransactionModal({ transaction, onClose, onSave }: 
               <div style={{ fontSize: '0.85rem', fontWeight: 600, marginTop: '0.25rem' }}>{transaction.description || transaction.original_description}</div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: remainder === 0 ? '#16a34a' : '#dc2626' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: remainder === 0 ? 'var(--success)' : 'var(--danger)' }}>
                 Restante por asignar
               </div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 900, color: remainder === 0 ? '#16a34a' : '#dc2626' }}>
+              <div style={{ fontSize: '1.5rem', fontWeight: 900, color: remainder === 0 ? 'var(--success)' : 'var(--danger)' }}>
                 ${Math.abs(remainder).toLocaleString('es-CL')}
               </div>
             </div>
