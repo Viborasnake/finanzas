@@ -38,5 +38,6 @@ Sin esta migración el envío fallará y se mostrará un toast indicando que fal
 
 ## RLS
 
-- Usuario autenticado: inserta y lee **solo su** feedback.
-- Admin (`is_current_user_admin()`): lee todo y actualiza `status`.
+- Usuario autenticado: **solo inserta** feedback.
+- Admin (`is_current_user_admin()`, cuenta principal en `admin_users` / viborasnake): **lee todo** y actualiza `status`.
+- Ningún usuario no-admin puede listar el inbox.
