@@ -15,7 +15,7 @@
   border: 2px solid var(--border-color);
   border-radius: 8px;
   background: var(--surface-color);
-  box-shadow: 3px 3px 0 var(--shadow-color);
+  box-shadow: var(--shadow-sm);
   font-weight: 900;
 }
 
@@ -26,7 +26,7 @@
 .sidebar {
   width: 248px;
   background: var(--surface-color);
-  border-right: 2px solid var(--border-color);
+  border-right: var(--border-width, 2px) solid var(--border-color);
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -35,7 +35,7 @@
   left: 0;
   top: 0;
   z-index: 10;
-  transition: width 0.3s ease;
+  transition: width 0.3s ease, background-color 0.2s ease, border-color 0.2s ease;
   box-shadow: inset -1px 0 0 color-mix(in srgb, var(--shadow-color) 12%, transparent);
 }
 
@@ -45,7 +45,7 @@
 
 .sidebar-header {
   padding: 1.5rem;
-  border-bottom: 2px solid var(--border-color);
+  border-bottom: var(--border-width, 2px) solid var(--border-subtle, var(--border-color));
 }
 
 .sidebar-header h2 {
@@ -63,19 +63,19 @@
   width: 44px;
   height: 44px;
   background-color: var(--surface-color);
-  border: 2px solid var(--border-color);
+  border: var(--border-width, 2px) solid var(--border-color);
   border-radius: 999px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   z-index: 50;
-  box-shadow: 2px 2px 0px var(--shadow-color);
+  box-shadow: var(--shadow-sm);
 }
 
 .sidebar-brand {
   padding: 1.75rem 1rem 1rem;
-  border-bottom: 2px solid var(--border-color);
+  border-bottom: var(--border-width, 2px) solid var(--border-subtle, var(--border-color));
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -100,7 +100,7 @@
   align-items: center;
   justify-content: center;
   line-height: 1;
-  box-shadow: 2px 2px 0 rgba(0,0,0,0.18);
+  box-shadow: var(--shadow-sm);
 }
 
 .sidebar.collapsed .sidebar-brand {
@@ -111,7 +111,7 @@
 .bank-switcher {
   position: relative;
   padding: 0.65rem 0.9rem;
-  border-bottom: 2px solid var(--border-color);
+  border-bottom: var(--border-width, 2px) solid var(--border-subtle, var(--border-color));
 }
 
 .bank-switcher-trigger {
@@ -138,7 +138,7 @@
 .bank-indicator-text {
   font-size: 0.72rem;
   font-weight: 900;
-  color: var(--border-color);
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   flex: 1;
@@ -162,9 +162,9 @@
   min-width: 210px;
   top: calc(100% + 4px);
   background-color: var(--surface-color);
-  border: 2px solid var(--border-color);
+  border: var(--border-width, 2px) solid var(--border-color);
   border-radius: 12px;
-  box-shadow: 4px 4px 0px var(--shadow-color);
+  box-shadow: var(--shadow-lg);
   z-index: 100;
   overflow: hidden;
 }
@@ -232,17 +232,23 @@
 }
 
 .nav-item:hover {
-  background-color: color-mix(in srgb, var(--surface-color) 55%, transparent);
-  border-color: rgba(0,0,0,0.18);
+  background-color: var(--surface-subtle);
+  border-color: transparent;
 }
 
 .nav-item.active {
-  background-color: var(--surface-color);
+  background-color: var(--surface-subtle);
   color: var(--text-primary);
-  border: 2px solid var(--border-color);
-  box-shadow: 4px 4px 0px var(--shadow-color);
+  border: var(--border-width, 2px) solid var(--border-color);
+  box-shadow: var(--shadow-sm);
   font-weight: 900;
   transform: translateZ(0);
+}
+
+html.dark .nav-item.active {
+  background: color-mix(in srgb, var(--info-accent) 12%, var(--surface-subtle));
+  border-color: color-mix(in srgb, var(--info-accent) 35%, var(--border-color));
+  box-shadow: none;
 }
 
 .nav-item svg {
@@ -344,10 +350,11 @@
   margin: 0;
   color: var(--danger-text);
   background-color: var(--danger-surface);
-  border: 2px solid var(--border-color);
+  border: var(--border-width, 2px) solid color-mix(in srgb, var(--danger) 35%, var(--border-color));
   border-radius: var(--radius-md);
   font-weight: 900;
   box-sizing: border-box; /* prevent shadow overflow issues by ensuring padding is managed */
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .sidebar.collapsed .logout-btn {
@@ -363,8 +370,8 @@
 .logout-btn:hover {
   background-color: var(--danger);
   color: var(--bg-color);
-  border: 2px solid var(--border-color);
-  box-shadow: 4px 4px 0px var(--shadow-color);
+  border: var(--border-width, 2px) solid var(--border-color);
+  box-shadow: var(--shadow-sm);
 }
 
 .main-content {
@@ -374,7 +381,14 @@
   display: flex;
   flex-direction: column;
   background-color: var(--bg-color);
-  transition: margin-left 0.3s ease;
+  transition: margin-left 0.3s ease, background-color 0.2s ease;
+}
+
+html.dark .main-content {
+  background:
+    radial-gradient(1200px 500px at 10% -10%, rgba(126, 176, 232, 0.06), transparent 55%),
+    radial-gradient(900px 400px at 90% 0%, rgba(125, 206, 160, 0.04), transparent 50%),
+    var(--bg-color);
 }
 
 .main-content.collapsed {
@@ -474,7 +488,14 @@
   .mobile-nav-item.active {
     background-color: var(--primary);
     color: var(--text-on-inverted);
-    box-shadow: 4px 4px 0px var(--shadow-color);
+    box-shadow: var(--shadow-sm);
+  }
+
+  html.dark .mobile-nav-item.active {
+    background: color-mix(in srgb, var(--info-accent) 18%, var(--surface-subtle));
+    color: var(--text-primary);
+    border-color: color-mix(in srgb, var(--info-accent) 40%, var(--border-color));
+    box-shadow: none;
   }
 
   .mobile-nav-section + .mobile-nav-section {

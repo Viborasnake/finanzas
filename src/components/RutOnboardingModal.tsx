@@ -40,7 +40,7 @@ export function RutOnboardingModal() {
     >
       <div className="settings-card" style={{ margin: 0 }}>
         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'var(--pastel-yellow)', border: '3px solid var(--border-color)', marginBottom: '1rem', boxShadow: '4px 4px 0 var(--shadow-color)' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'var(--pastel-yellow)', border: '3px solid var(--border-color)', marginBottom: '1rem', boxShadow: 'var(--shadow-md)' }}>
             <BadgeCheck size={32} />
           </div>
           <h2 id="rut-onboarding-title" style={{ fontSize: '1.75rem', marginBottom: '0.5rem', fontWeight: 900 }}>Configuración inicial</h2>

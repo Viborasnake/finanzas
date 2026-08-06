@@ -1148,7 +1148,7 @@ export default function Transactions() {
               </div>
             )}
             {searchParams.get('review') === 'recent' && (
-              <div role="status" style={{ marginTop: '0.75rem', maxWidth: 620, padding: '0.75rem 1rem', border: '2px solid var(--border-color)', borderRadius: 8, background: 'var(--pastel-green)', boxShadow: '2px 2px 0 var(--shadow-color)', fontWeight: 750 }}>
+              <div role="status" style={{ marginTop: '0.75rem', maxWidth: 620, padding: '0.75rem 1rem', border: '2px solid var(--border-color)', borderRadius: 8, background: 'var(--pastel-green)', boxShadow: 'var(--shadow-sm)', fontWeight: 750 }}>
                 Importación completada. Tus movimientos ya están disponibles aquí; revisa las coincidencias si el sistema detectó posibles duplicados.
               </div>
             )}
