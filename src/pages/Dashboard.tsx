@@ -1139,7 +1139,7 @@ export default function Dashboard() {
         </section>
         <div className="dashboard-kpi-pair">
         {/* Ingresos Card — neutral surface; color only on amount, icon, badge, sparkline */}
-        <div style={{ ...neoCard, backgroundColor: 'var(--surface-color)', position: 'relative', overflow: 'hidden', paddingBottom: '7rem', marginBottom: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <div className="dashboard-kpi-card" style={{ ...neoCard, backgroundColor: 'var(--surface-color)', position: 'relative', overflow: 'hidden', marginBottom: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', position: 'relative', zIndex: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div style={{ backgroundColor: 'var(--success-soft)', color: 'var(--success-text)', borderRadius: '50%', border: '2px solid color-mix(in srgb, var(--success) 35%, var(--border-color))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, width: '44px', height: '44px' }}>
@@ -1214,7 +1214,7 @@ export default function Dashboard() {
         </div>
 
         {/* Egresos Card — neutral surface; color only on amount, icon, badge, sparkline */}
-        <div style={{ ...neoCard, backgroundColor: 'var(--surface-color)', position: 'relative', overflow: 'hidden', paddingBottom: '7rem', marginBottom: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <div className="dashboard-kpi-card" style={{ ...neoCard, backgroundColor: 'var(--surface-color)', position: 'relative', overflow: 'hidden', marginBottom: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', position: 'relative', zIndex: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div style={{ backgroundColor: 'var(--danger-surface)', color: 'var(--danger-text)', borderRadius: '50%', border: '2px solid color-mix(in srgb, var(--danger) 35%, var(--border-color))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, width: '44px', height: '44px' }}>

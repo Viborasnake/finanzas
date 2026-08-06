@@ -693,9 +693,22 @@ html.dark .main-content {
   }
   
   .page-container {
-    padding: 1.35rem max(1.15rem, env(safe-area-inset-right)) 2rem max(1.15rem, env(safe-area-inset-left));
+    padding: 1.35rem max(1.15rem, env(safe-area-inset-right)) calc(5.5rem + env(safe-area-inset-bottom)) max(1.15rem, env(safe-area-inset-left));
     max-width: 100%;
     overflow-x: clip;
+  }
+
+  .mobile-header {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .mobile-nav-item {
+    min-height: 48px;
+  }
+
+  .mobile-logout-btn {
+    min-height: 48px;
   }
 }
 
