@@ -77,18 +77,32 @@ export function FeedbackWidget() {
             : null,
       });
 
-      if (error) throw error;
+      if (error) {
+        throw Object.assign(new Error(error.message || 'Error al guardar feedback'), {
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+        });
+      }
 
       toast.success('¡Gracias! Tu feedback quedó registrado.');
       resetForm();
       setOpen(false);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'No se pudo enviar el feedback';
+      const msg =
+        err instanceof Error
+          ? err.message
+          : typeof err === 'object' && err && 'message' in err
+            ? String((err as { message: unknown }).message)
+            : 'No se pudo enviar el feedback';
       console.error(err);
+      const lower = msg.toLowerCase();
       toast.error(
-        msg.includes('product_feedback') || msg.includes('relation')
-          ? 'Falta aplicar la migración de feedback en Supabase.'
-          : `No se pudo enviar: ${msg}`
+        lower.includes('product_feedback') || lower.includes('relation') || lower.includes('schema cache')
+          ? 'Falta aplicar la migración de feedback en Supabase (tabla product_feedback).'
+          : lower.includes('row-level security') || lower.includes('rls')
+            ? 'No tienes permiso para enviar feedback. Vuelve a iniciar sesión e intenta de nuevo.'
+            : `No se pudo enviar: ${msg}`
       );
     } finally {
       setSubmitting(false);
