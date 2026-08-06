@@ -704,7 +704,7 @@ export default function Settings() {
               {customCategories.map((cat, i) => (
                 <div key={i} className="settings-list-item">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                    <span style={{ backgroundColor: 'var(--border-color)', color: 'var(--surface-color)', fontSize: '0.7rem', fontWeight: 800, padding: '0.25rem 0.5rem', borderRadius: '4px', textTransform: 'uppercase' }}>
+                    <span style={{ backgroundColor: 'var(--primary)', color: 'var(--text-on-inverted)', fontSize: '0.7rem', fontWeight: 800, padding: '0.25rem 0.5rem', borderRadius: '4px', textTransform: 'uppercase' }}>
                       {cat.tipo}
                     </span>
                     <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>{cat.principal}</h3>

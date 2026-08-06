@@ -435,7 +435,7 @@ export function CascadingCategorySelector({ initialTipo, initialPrincipal, initi
                         setExpandedPrincipal(null);
                       }}
                       className={selectedTipo === tipo ? 'active' : ''}
-                      style={{ backgroundColor: selectedTipo === tipo ? 'var(--border-color)' : getBgColor(tipo) }}
+                      style={selectedTipo === tipo ? undefined : { backgroundColor: getBgColor(tipo) }}
                     >
                       {tipo}
                     </button>
