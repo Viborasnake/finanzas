@@ -82,7 +82,7 @@ export default function InfoTooltip({ content }: InfoTooltipProps) {
           border: '2px solid var(--border-color)',
           borderRadius: '8px',
           padding: '0.75rem',
-          boxShadow: '4px 4px 0px var(--border-color)',
+          boxShadow: '4px 4px 0px var(--shadow-color)',
           width: 'max-content',
           maxWidth: 'min(250px, calc(100vw - 2rem))',
           zIndex: 99999,

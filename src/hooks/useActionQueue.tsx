@@ -23,7 +23,7 @@ export function useActionQueue() {
         style={{ 
           padding: '1rem', 
           border: '2px solid var(--border-color)', 
-          boxShadow: '4px 4px 0px var(--border-color)', 
+          boxShadow: '4px 4px 0px var(--shadow-color)', 
           background: 'var(--surface-color)', 
           display: 'flex', 
           alignItems: 'center', 

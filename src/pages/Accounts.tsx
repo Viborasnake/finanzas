@@ -490,7 +490,7 @@ export default function Accounts() {
                       </strong>
                     ) : null}
                     
-                    <span style={{ backgroundColor: 'var(--surface-subtle)', color: 'var(--text-primary)', padding: '0.1rem 0.4rem', border: '2px solid var(--border-color)', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 900, boxShadow: '2px 2px 0px var(--border-color)' }}>
+                    <span style={{ backgroundColor: 'var(--surface-subtle)', color: 'var(--text-primary)', padding: '0.1rem 0.4rem', border: '2px solid var(--border-color)', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 900, boxShadow: '2px 2px 0px var(--shadow-color)' }}>
                       {status.statusLabel}
                     </span>
 
@@ -551,7 +551,7 @@ export default function Accounts() {
           </div>
 
           <div className="account-detail-body">
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', marginBottom: '2.5rem', padding: '1.25rem', backgroundColor: 'var(--surface-color)', borderRadius: 'var(--radius-lg)', border: '2px solid var(--border-color)', boxShadow: '4px 4px 0px var(--border-color)' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', marginBottom: '2.5rem', padding: '1.25rem', backgroundColor: 'var(--surface-color)', borderRadius: 'var(--radius-lg)', border: '2px solid var(--border-color)', boxShadow: '4px 4px 0px var(--shadow-color)' }}>
               <div style={{ flex: 1, minWidth: '120px' }}>
                 <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Estado</span>
                 <strong style={{ fontSize: '1.25rem', padding: '0.15rem 0.6rem', backgroundColor: selectedStatus.paid ? 'var(--pastel-green)' : 'var(--pastel-yellow)', border: '2px solid var(--border-color)', borderRadius: '4px' }}>
@@ -572,7 +572,7 @@ export default function Accounts() {
               <section className="account-detail-section" aria-labelledby="current-account-payments-title" style={{ marginBottom: '2.5rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingBottom: '0.75rem', borderBottom: '2px solid var(--border-color)', marginBottom: '1.25rem' }}>
                   <h3 id="current-account-payments-title" style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900 }}>Pagos del periodo</h3>
-                  <span style={{ background: 'var(--surface-color)', border: '2px solid var(--border-color)', padding: '0.1rem 0.6rem', borderRadius: '999px', fontSize: '0.85rem', fontWeight: 900, boxShadow: '2px 2px 0px var(--border-color)' }}>{selectedStatus.currentPayments.length}</span>
+                  <span style={{ background: 'var(--surface-color)', border: '2px solid var(--border-color)', padding: '0.1rem 0.6rem', borderRadius: '999px', fontSize: '0.85rem', fontWeight: 900, boxShadow: '2px 2px 0px var(--shadow-color)' }}>{selectedStatus.currentPayments.length}</span>
                 </div>
 
                 {selectedStatus.currentPayments.length > 0 ? (
@@ -665,7 +665,7 @@ export default function Accounts() {
                 )}
 
                 {showManualForm && (
-                  <form onSubmit={handleManualPayment} className="account-manual-form" style={{ marginTop: '1.5rem', marginBottom: '1.5rem', padding: '1.5rem', backgroundColor: 'var(--pastel-yellow)', border: '3px solid var(--border-color)', borderRadius: 'var(--radius-lg)', boxShadow: '6px 6px 0px var(--border-color)' }}>
+                  <form onSubmit={handleManualPayment} className="account-manual-form" style={{ marginTop: '1.5rem', marginBottom: '1.5rem', padding: '1.5rem', backgroundColor: 'var(--pastel-yellow)', border: '3px solid var(--border-color)', borderRadius: 'var(--radius-lg)', boxShadow: '6px 6px 0px var(--shadow-color)' }}>
                     <div className="account-section-heading" style={{ marginBottom: '1.25rem' }}>
                       <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900 }}>Registrar pago manual</h3>
                     </div>

@@ -294,7 +294,7 @@ export default function AdminDashboard() {
                                     padding: '0.15rem 0.5rem', borderRadius: '4px',
                                     border: '1.5px solid var(--border-color)',
                                     backgroundColor: bank?.color ? `${bank.color}22` : 'var(--surface-subtle)',
-                                    boxShadow: '1px 1px 0px var(--border-color)'
+                                    boxShadow: '1px 1px 0px var(--shadow-color)'
                                   }}
                                 >
                                   {bank?.emoji || '🏦'} {bank?.label || bankId}

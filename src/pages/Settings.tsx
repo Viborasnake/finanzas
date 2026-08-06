@@ -231,7 +231,7 @@ export default function Settings() {
     const nextItem = items.find(item => !item.done) || items[items.length - 1];
 
     return (
-      <section style={{ border: '2px solid var(--border-color)', borderRadius: '12px', boxShadow: '4px 4px 0px var(--border-color)', backgroundColor: 'var(--surface-color)', marginBottom: '2rem', overflow: 'hidden' }}>
+      <section style={{ border: '2px solid var(--border-color)', borderRadius: '12px', boxShadow: '4px 4px 0px var(--shadow-color)', backgroundColor: 'var(--surface-color)', marginBottom: '2rem', overflow: 'hidden' }}>
         <button
           type="button"
           onClick={toggleSetupCollapsed}
@@ -241,7 +241,7 @@ export default function Settings() {
         >
           <div style={{ minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.45rem' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: 'var(--pastel-blue)', boxShadow: '2px 2px 0 var(--border-color)', fontSize: '0.72rem', fontWeight: 900 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: 'var(--pastel-blue)', boxShadow: '2px 2px 0 var(--shadow-color)', fontSize: '0.72rem', fontWeight: 900 }}>
                 <Activity size={14} strokeWidth={3} />
                 Estado del banco
               </span>
@@ -277,7 +277,7 @@ export default function Settings() {
                     navigate(item.path);
                   }
                 }}
-                style={{ textAlign: 'left', display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gridTemplateRows: 'auto auto', gap: '0.7rem 0.85rem', alignItems: 'start', minHeight: '116px', padding: '0.9rem', border: '2px solid var(--border-color)', borderRadius: '10px', backgroundColor: item.done ? 'var(--pastel-green)' : 'var(--account-card-pending)', boxShadow: '2px 2px 0 var(--border-color)', cursor: 'pointer' }}
+                style={{ textAlign: 'left', display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gridTemplateRows: 'auto auto', gap: '0.7rem 0.85rem', alignItems: 'start', minHeight: '116px', padding: '0.9rem', border: '2px solid var(--border-color)', borderRadius: '10px', backgroundColor: item.done ? 'var(--pastel-green)' : 'var(--account-card-pending)', boxShadow: '2px 2px 0 var(--shadow-color)', cursor: 'pointer' }}
               >
                 <span style={{ width: '38px', height: '38px', borderRadius: '8px', border: '2px solid var(--border-color)', backgroundColor: 'var(--surface-color)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                   {item.done ? <CheckCircle2 size={20} fill="var(--success)" color="var(--border-color)" strokeWidth={2.5} /> : item.icon}
@@ -288,7 +288,7 @@ export default function Settings() {
                     {item.detail}
                   </span>
                 </span>
-                <span style={{ gridColumn: '2', justifySelf: 'start', alignSelf: 'end', display: 'inline-flex', alignItems: 'center', gap: '0.2rem', padding: '0.25rem 0.55rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: 'var(--surface-color)', boxShadow: '1px 1px 0 var(--border-color)', fontSize: '0.72rem', fontWeight: 900 }}>
+                <span style={{ gridColumn: '2', justifySelf: 'start', alignSelf: 'end', display: 'inline-flex', alignItems: 'center', gap: '0.2rem', padding: '0.25rem 0.55rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: 'var(--surface-color)', boxShadow: '1px 1px 0 var(--shadow-color)', fontSize: '0.72rem', fontWeight: 900 }}>
                   {item.action}
                   <ChevronRight size={14} strokeWidth={3} />
                 </span>

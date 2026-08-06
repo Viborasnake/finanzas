@@ -15,7 +15,7 @@
   border: 2px solid var(--border-color);
   border-radius: 8px;
   background: var(--surface-color);
-  box-shadow: 3px 3px 0 var(--border-color);
+  box-shadow: 3px 3px 0 var(--shadow-color);
   font-weight: 900;
 }
 
@@ -36,7 +36,7 @@
   top: 0;
   z-index: 10;
   transition: width 0.3s ease;
-  box-shadow: inset -1px 0 0 color-mix(in srgb, var(--border-color) 12%, transparent);
+  box-shadow: inset -1px 0 0 color-mix(in srgb, var(--shadow-color) 12%, transparent);
 }
 
 .sidebar.collapsed {
@@ -70,7 +70,7 @@
   justify-content: center;
   cursor: pointer;
   z-index: 50;
-  box-shadow: 2px 2px 0px var(--border-color);
+  box-shadow: 2px 2px 0px var(--shadow-color);
 }
 
 .sidebar-brand {
@@ -93,8 +93,8 @@
 .brand-mark {
   width: 34px;
   height: 34px;
-  background: var(--border-color);
-  color: var(--bg-color);
+  background: var(--primary);
+  color: var(--text-on-inverted);
   border-radius: 8px;
   display: inline-flex;
   align-items: center;
@@ -164,7 +164,7 @@
   background-color: var(--surface-color);
   border: 2px solid var(--border-color);
   border-radius: 12px;
-  box-shadow: 4px 4px 0px var(--border-color);
+  box-shadow: 4px 4px 0px var(--shadow-color);
   z-index: 100;
   overflow: hidden;
 }
@@ -240,7 +240,7 @@
   background-color: var(--surface-color);
   color: var(--text-primary);
   border: 2px solid var(--border-color);
-  box-shadow: 4px 4px 0px var(--border-color);
+  box-shadow: 4px 4px 0px var(--shadow-color);
   font-weight: 900;
   transform: translateZ(0);
 }
@@ -364,7 +364,7 @@
   background-color: var(--danger);
   color: var(--bg-color);
   border: 2px solid var(--border-color);
-  box-shadow: 4px 4px 0px var(--border-color);
+  box-shadow: 4px 4px 0px var(--shadow-color);
 }
 
 .main-content {
@@ -472,9 +472,9 @@
   }
   
   .mobile-nav-item.active {
-    background-color: var(--border-color);
-    color: var(--bg-color);
-    box-shadow: 4px 4px 0px var(--primary);
+    background-color: var(--primary);
+    color: var(--text-on-inverted);
+    box-shadow: 4px 4px 0px var(--shadow-color);
   }
 
   .mobile-nav-section + .mobile-nav-section {

@@ -353,7 +353,7 @@ export default function Login() {
 
           {/* Tabs */}
           {!isPasswordRecovery && (
-            <div className="auth-tabs" role="tablist" aria-label="Acceso a MisFinanzas" style={{ display: 'flex', backgroundColor: 'var(--surface-color)', borderRadius: '999px', border: '2px solid var(--border-color)', marginBottom: '2.5rem', padding: '0.25rem', boxShadow: '4px 4px 0px var(--border-color)' }}>
+            <div className="auth-tabs" role="tablist" aria-label="Acceso a MisFinanzas" style={{ display: 'flex', backgroundColor: 'var(--surface-color)', borderRadius: '999px', border: '2px solid var(--border-color)', marginBottom: '2.5rem', padding: '0.25rem', boxShadow: '4px 4px 0px var(--shadow-color)' }}>
               <button
                 type="button"
                 role="tab"
@@ -403,7 +403,7 @@ export default function Login() {
             </p>
             
             {error && (
-              <div role="alert" style={{ backgroundColor: 'var(--danger-surface)', color: 'var(--danger-text)', padding: '0.75rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', border: '2px solid var(--border-color)', boxShadow: '2px 2px 0px var(--border-color)', fontWeight: 700, fontSize: '0.875rem' }}>
+              <div role="alert" style={{ backgroundColor: 'var(--danger-surface)', color: 'var(--danger-text)', padding: '0.75rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', border: '2px solid var(--border-color)', boxShadow: '2px 2px 0px var(--shadow-color)', fontWeight: 700, fontSize: '0.875rem' }}>
                 {error}
               </div>
             )}

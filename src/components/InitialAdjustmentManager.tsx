@@ -271,10 +271,10 @@ export function InitialAdjustmentManager() {
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     {adj ? (
                       <>
-                        <button type="button" className="btn" onClick={() => isEditingThis ? setEditingBank(null) : handleEditClick(bank)} style={{ backgroundColor: 'var(--surface-color)', border: '2px solid var(--border-color)', boxShadow: '2px 2px 0px var(--border-color)' }}>
+                        <button type="button" className="btn" onClick={() => isEditingThis ? setEditingBank(null) : handleEditClick(bank)} style={{ backgroundColor: 'var(--surface-color)', border: '2px solid var(--border-color)', boxShadow: '2px 2px 0px var(--shadow-color)' }}>
                           <Edit2 size={16} /> {isEditingThis ? 'Ocultar' : 'Editar'}
                         </button>
-                        <button type="button" className="btn" onClick={() => handleDelete(bank)} style={{ backgroundColor: 'var(--danger-surface)', color: 'var(--danger-text)', border: '2px solid var(--border-color)', boxShadow: '2px 2px 0px var(--border-color)' }}>
+                        <button type="button" className="btn" onClick={() => handleDelete(bank)} style={{ backgroundColor: 'var(--danger-surface)', color: 'var(--danger-text)', border: '2px solid var(--border-color)', boxShadow: '2px 2px 0px var(--shadow-color)' }}>
                           <Trash2 size={16} /> Borrar
                         </button>
                       </>

@@ -1148,7 +1148,7 @@ export default function Transactions() {
               </div>
             )}
             {searchParams.get('review') === 'recent' && (
-              <div role="status" style={{ marginTop: '0.75rem', maxWidth: 620, padding: '0.75rem 1rem', border: '2px solid var(--border-color)', borderRadius: 8, background: 'var(--pastel-green)', boxShadow: '2px 2px 0 var(--border-color)', fontWeight: 750 }}>
+              <div role="status" style={{ marginTop: '0.75rem', maxWidth: 620, padding: '0.75rem 1rem', border: '2px solid var(--border-color)', borderRadius: 8, background: 'var(--pastel-green)', boxShadow: '2px 2px 0 var(--shadow-color)', fontWeight: 750 }}>
                 Importación completada. Tus movimientos ya están disponibles aquí; revisa las coincidencias si el sistema detectó posibles duplicados.
               </div>
             )}
@@ -1565,7 +1565,7 @@ export default function Transactions() {
                       </td>
                       {connectedBanks.length > 1 && (
                         <td data-label="Banco" style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.55rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: 'var(--surface-color)', boxShadow: '1px 1px 0 var(--border-color)', fontSize: '0.72rem', fontWeight: 900 }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.55rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: 'var(--surface-color)', boxShadow: '1px 1px 0 var(--shadow-color)', fontSize: '0.72rem', fontWeight: 900 }}>
                             <span style={{ width: '9px', height: '9px', borderRadius: '50%', backgroundColor: bank.color, border: '1.5px solid var(--border-color)', flexShrink: 0 }} />
                             {bank.label}
                           </span>

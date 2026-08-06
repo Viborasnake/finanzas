@@ -199,7 +199,7 @@ export function FixedExpensesConfigModal({ onClose }: Props) {
               <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Aún no tienes cuentas configuradas.</p>
             ) : (
               fixedExpenses.map(item => (
-                <div key={item.id} className="settings-list-row" style={{ backgroundColor: 'var(--surface-color)', boxShadow: '4px 4px 0px var(--border-color)', marginBottom: '0.75rem', padding: '0.6rem 1rem' }}>
+                <div key={item.id} className="settings-list-row" style={{ backgroundColor: 'var(--surface-color)', boxShadow: '4px 4px 0px var(--shadow-color)', marginBottom: '0.75rem', padding: '0.6rem 1rem' }}>
                   {editingFixedId === item.id ? (
                     <div className="settings-fixed-expense-edit">
                       <input

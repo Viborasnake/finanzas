@@ -105,7 +105,7 @@ export default function NeoDatePicker({ value, onChange }: NeoDatePickerProps) {
             backgroundColor: 'var(--surface-color)',
             border: '2px solid var(--border-color)',
             borderRadius: '12px',
-            boxShadow: '4px 4px 0px var(--border-color)',
+            boxShadow: '4px 4px 0px var(--shadow-color)',
             padding: '1rem',
             width: '280px'
           }}

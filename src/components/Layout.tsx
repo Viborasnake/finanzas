@@ -122,7 +122,7 @@ function BankIndicator() {
                     <span style={{ 
                       width: '12px', height: '12px', borderRadius: '50%', display: 'inline-block',
                       background: 'linear-gradient(135deg, #e63000 0 33%, #f77f00 33% 66%, #a855f7 66% 100%)',
-                      boxShadow: '1px 1px 0px var(--border-color)',
+                      boxShadow: '1px 1px 0px var(--shadow-color)',
                       border: '1px solid var(--border-color)'
                     }} />
                     <span>Todos los bancos</span>
@@ -149,7 +149,7 @@ function BankIndicator() {
                       <span style={{ 
                         width: '12px', height: '12px', borderRadius: '50%', display: 'inline-block',
                         background: `radial-gradient(circle at 30% 30%, ${bank.color || 'var(--border-muted)'}, var(--border-color))`,
-                        boxShadow: '1px 1px 0px var(--border-color)'
+                        boxShadow: '1px 1px 0px var(--shadow-color)'
                       }} />
                       <span>{bank.label}</span>
                       {isMain && (

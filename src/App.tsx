@@ -80,7 +80,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (isPaused) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100dvh', backgroundColor: 'var(--bg-color)', padding: '2rem', textAlign: 'center' }}>
-        <div className="card animate-fade-in" style={{ maxWidth: '400px', border: '3px solid var(--border-color)', boxShadow: '6px 6px 0px var(--border-color)', padding: '2rem', borderRadius: '12px', backgroundColor: 'var(--surface-color)' }}>
+        <div className="card animate-fade-in" style={{ maxWidth: '400px', border: '3px solid var(--border-color)', boxShadow: '6px 6px 0px var(--shadow-color)', padding: '2rem', borderRadius: '12px', backgroundColor: 'var(--surface-color)' }}>
           <LockKeyhole size={46} strokeWidth={2.4} aria-hidden="true" />
           <h2 style={{ fontSize: '1.75rem', margin: '1rem 0', fontWeight: 900 }}>Cuenta pausada</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontWeight: 600, lineHeight: 1.5 }}>
@@ -105,7 +105,7 @@ function App() {
         toastOptions={{
           style: {
             border: '2px solid var(--border-color)',
-            boxShadow: '4px 4px 0px var(--border-color)',
+            boxShadow: '4px 4px 0px var(--shadow-color)',
             borderRadius: 'var(--radius-sm)',
             fontWeight: 600,
             color: 'var(--text-primary)'

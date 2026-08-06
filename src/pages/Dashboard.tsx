@@ -775,9 +775,20 @@ export default function Dashboard() {
     backgroundColor: 'var(--surface-color)',
     border: '2px solid var(--border-color)',
     borderRadius: '12px',
-    boxShadow: '4px 4px 0px var(--border-color)',
+    boxShadow: '4px 4px 0px var(--shadow-color)',
     padding: '2rem',
     marginBottom: '2rem'
+  };
+
+  // Nested tables inside colored KPI cards: stay dark-friendly
+  const kpiNestedTable: React.CSSProperties = {
+    width: '100%',
+    borderCollapse: 'collapse',
+    border: '2px solid color-mix(in srgb, var(--border-color) 70%, transparent)',
+    borderRadius: '8px',
+    overflow: 'hidden',
+    display: 'table',
+    backgroundColor: 'color-mix(in srgb, var(--bg-color) 72%, transparent)',
   };
 
   // --- Components ---
@@ -791,26 +802,26 @@ export default function Dashboard() {
     const bgColor = isGood ? 'var(--success-soft)' : 'var(--danger-surface)'; // pastel green / pastel red
     
     return (
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.75rem', backgroundColor: bgColor, border: '2px solid var(--border-color)', borderRadius: '2rem', fontWeight: 800, fontSize: '0.85rem', color: 'var(--border-color)', boxShadow: '2px 2px 0px var(--border-color)' }}>
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.75rem', backgroundColor: bgColor, border: '2px solid var(--border-color)', borderRadius: '2rem', fontWeight: 800, fontSize: '0.85rem', color: 'var(--text-primary)', boxShadow: '2px 2px 0px var(--shadow-color)' }}>
         {isPositive ? <TrendingUp size={16} strokeWidth={3} /> : <TrendingDown size={16} strokeWidth={3} />}
         {Math.abs(pct).toFixed(1)}%
       </div>
     );
   };
 
-  const renderSparkline = (dataKey: 'Ingresos' | 'Egresos', fill: string) => {
+  const renderSparkline = (dataKey: 'Ingresos' | 'Egresos', fill: string, stroke: string = 'var(--text-primary)') => {
     return (
-      <div style={{ height: '100px', width: '100%', marginTop: '1rem', position: 'absolute', bottom: 0, left: 0, borderBottomLeftRadius: '9px', borderBottomRightRadius: '9px', overflow: 'hidden', zIndex: 0 }}>
+      <div style={{ height: '100px', width: '100%', marginTop: '1rem', position: 'absolute', bottom: 0, left: 0, borderBottomLeftRadius: '9px', borderBottomRightRadius: '9px', overflow: 'hidden', zIndex: 0, opacity: 0.85 }}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={historyData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
             <XAxis dataKey="label" hide />
             <Tooltip 
-              contentStyle={{ backgroundColor: 'var(--surface-color)', border: '2px solid var(--border-color)', borderRadius: '8px', boxShadow: '4px 4px 0px var(--border-color)', padding: '8px' }}
+              contentStyle={{ backgroundColor: 'var(--surface-color)', border: '2px solid var(--border-color)', borderRadius: '8px', boxShadow: '4px 4px 0px var(--shadow-color)', padding: '8px' }}
               itemStyle={{ color: 'var(--text-primary)', fontWeight: 900, fontSize: '1.1rem' }}
               labelStyle={{ color: 'var(--text-muted)', fontWeight: 700, marginBottom: '4px', fontSize: '0.8rem', textTransform: 'capitalize' }}
               formatter={(value: any) => [`$${Number(value).toLocaleString('es-CL')}`, dataKey]}
             />
-            <Area type="monotone" dataKey={dataKey} stroke="var(--border-color)" strokeWidth={3} fill={fill} fillOpacity={1} />
+            <Area type="monotone" dataKey={dataKey} stroke={stroke} strokeWidth={2.5} fill={fill} fillOpacity={0.45} />
           </AreaChart>
         </ResponsiveContainer>
       </div>
@@ -858,10 +869,10 @@ export default function Dashboard() {
     ];
 
     return (
-      <div style={{ backgroundColor: 'var(--surface-color)', border: '2px solid var(--border-color)', borderRadius: '12px', boxShadow: '4px 4px 0px var(--border-color)', overflow: 'hidden' }}>
+      <div style={{ backgroundColor: 'var(--surface-color)', border: '2px solid var(--border-color)', borderRadius: '12px', boxShadow: '4px 4px 0px var(--shadow-color)', overflow: 'hidden' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '0', borderBottom: '2px solid var(--border-color)' }}>
           <div style={{ padding: '2rem', backgroundColor: 'var(--surface-subtle)' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.75rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: 'var(--pastel-yellow)', boxShadow: '2px 2px 0px var(--border-color)', fontSize: '0.75rem', fontWeight: 900, marginBottom: '1.25rem' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.75rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: 'var(--pastel-yellow)', boxShadow: '2px 2px 0px var(--shadow-color)', fontSize: '0.75rem', fontWeight: 900, marginBottom: '1.25rem' }}>
               <Sparkles size={16} strokeWidth={3} />
               Primer inicio
             </div>
@@ -895,14 +906,14 @@ export default function Dashboard() {
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.25rem' }}>
               <LaikaPet pose={dashboardBanks.length > 0 ? 'pointing' : 'welcome'} size={178} title="Laika acompaña el inicio" />
             </div>
-            <div style={{ border: '2px solid var(--border-color)', borderRadius: '10px', boxShadow: '3px 3px 0px var(--border-color)', padding: '1rem', backgroundColor: 'var(--pastel-blue)' }}>
+            <div style={{ border: '2px solid var(--border-color)', borderRadius: '10px', boxShadow: '3px 3px 0px var(--shadow-color)', padding: '1rem', backgroundColor: 'var(--pastel-blue)' }}>
               <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 900, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>Banco activo</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.25rem', fontWeight: 900 }}>
-                <span style={{ width: '14px', height: '14px', borderRadius: '50%', background: isConsolidated ? 'var(--border-color)' : (activeBankInfo ? activeBankInfo.color : 'var(--border-subtle)'), border: '2px solid var(--border-color)', boxShadow: '1px 1px 0px var(--border-color)' }} />
+                <span style={{ width: '14px', height: '14px', borderRadius: '50%', background: isConsolidated ? 'var(--border-color)' : (activeBankInfo ? activeBankInfo.color : 'var(--border-subtle)'), border: '2px solid var(--border-color)', boxShadow: '1px 1px 0px var(--shadow-color)' }} />
                 {dashboardBankLabel}
               </div>
             </div>
-            <div style={{ border: '2px solid var(--border-color)', borderRadius: '10px', boxShadow: '3px 3px 0px var(--border-color)', padding: '1rem', backgroundColor: 'var(--pastel-green)' }}>
+            <div style={{ border: '2px solid var(--border-color)', borderRadius: '10px', boxShadow: '3px 3px 0px var(--shadow-color)', padding: '1rem', backgroundColor: 'var(--pastel-green)' }}>
               <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 900, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>Movimientos</div>
               <div style={{ fontSize: '1.25rem', fontWeight: 900 }}>0 cargados</div>
             </div>
@@ -915,16 +926,16 @@ export default function Dashboard() {
               type="button"
               key={step.title}
               onClick={() => navigate(step.path)}
-              style={{ textAlign: 'left', padding: '1rem', minHeight: '190px', border: '2px solid var(--border-color)', borderRadius: '10px', boxShadow: '3px 3px 0px var(--border-color)', backgroundColor: step.color, display: 'flex', flexDirection: 'column', gap: '0.85rem' }}
+              style={{ textAlign: 'left', padding: '1rem', minHeight: '190px', border: '2px solid var(--border-color)', borderRadius: '10px', boxShadow: '3px 3px 0px var(--shadow-color)', backgroundColor: step.color, display: 'flex', flexDirection: 'column', gap: '0.85rem' }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ width: '42px', height: '42px', borderRadius: '10px', border: '2px solid var(--border-color)', backgroundColor: 'var(--surface-color)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxShadow: '2px 2px 0px var(--border-color)' }}>
+                <span style={{ width: '42px', height: '42px', borderRadius: '10px', border: '2px solid var(--border-color)', backgroundColor: 'var(--surface-color)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxShadow: '2px 2px 0px var(--shadow-color)' }}>
                   {step.icon}
                 </span>
                 {step.done ? (
                   <CheckCircle2 size={26} fill="var(--success)" color="var(--border-color)" strokeWidth={2.5} />
                 ) : (
-                  <span style={{ width: '30px', height: '30px', borderRadius: '999px', border: '2px solid var(--border-color)', backgroundColor: 'var(--surface-color)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, boxShadow: '2px 2px 0px var(--border-color)' }}>
+                  <span style={{ width: '30px', height: '30px', borderRadius: '999px', border: '2px solid var(--border-color)', backgroundColor: 'var(--surface-color)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, boxShadow: '2px 2px 0px var(--shadow-color)' }}>
                     {index + 1}
                   </span>
                 )}
@@ -951,7 +962,7 @@ export default function Dashboard() {
     return (
       <div className="dashboard-empty-period">
         <div>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', padding: '0.35rem 0.75rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: 'var(--pastel-yellow)', boxShadow: '2px 2px 0 var(--border-color)', fontWeight: 900, fontSize: '0.78rem', marginBottom: '1rem' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', padding: '0.35rem 0.75rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: 'var(--pastel-yellow)', boxShadow: '2px 2px 0 var(--shadow-color)', fontWeight: 900, fontSize: '0.78rem', marginBottom: '1rem' }}>
             <Search size={16} strokeWidth={3} />
             Sin movimientos en este periodo
           </div>
@@ -1151,10 +1162,10 @@ export default function Dashboard() {
           )}
           {totalEntradas > 0 && (
             <div style={{ position: 'relative', zIndex: 10, flex: 1, paddingBottom: '1rem' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', border: '2px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden', display: 'table', backgroundColor: 'var(--surface-color)' }}>
+              <table style={kpiNestedTable}>
                 <thead>
-                  <tr style={{ backgroundColor: 'var(--surface-subtle)', borderBottom: '2px solid var(--border-color)' }}>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 900, borderRight: '2px solid var(--border-color)' }}>Concepto</th>
+                  <tr style={{ backgroundColor: 'color-mix(in srgb, var(--bg-color) 55%, transparent)', borderBottom: '2px solid color-mix(in srgb, var(--border-color) 70%, transparent)' }}>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 900, borderRight: '2px solid color-mix(in srgb, var(--border-color) 70%, transparent)' }}>Concepto</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 900 }}>Monto</th>
                   </tr>
                 </thead>
@@ -1163,15 +1174,15 @@ export default function Dashboard() {
                     <tr 
                       key={row.name} 
                       onClick={() => openDetailsModal(row.name, 'ingreso')}
-                      style={{ borderBottom: i === incomeData.length - 1 ? 'none' : '2px solid var(--border-color)', backgroundColor: row.isGray ? 'var(--surface-subtle)' : 'var(--surface-color)', cursor: 'pointer' }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--surface-subtle)')}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = row.isGray ? 'var(--surface-subtle)' : 'var(--surface-color)')}
+                      style={{ borderBottom: i === incomeData.length - 1 ? 'none' : '2px solid color-mix(in srgb, var(--border-color) 55%, transparent)', backgroundColor: 'transparent', cursor: 'pointer' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--bg-color) 40%, transparent)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                     >
-                      <td style={{ padding: '0.75rem', fontWeight: 700, borderRight: '2px solid var(--border-color)', color: row.isGray ? 'var(--text-muted)' : 'var(--border-color)' }}>
+                      <td style={{ padding: '0.75rem', fontWeight: 700, borderRight: '2px solid color-mix(in srgb, var(--border-color) 55%, transparent)', color: row.isGray ? 'var(--text-muted)' : 'var(--text-primary)' }}>
                         <div>{row.name}</div>
                         {row.subtext && <div style={{ fontSize: '0.75rem', fontWeight: 600, marginTop: '0.15rem', opacity: 0.9 }}>{row.subtext}</div>}
                       </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: row.isGray ? 'var(--text-muted)' : 'var(--border-color)' }}>
+                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: row.isGray ? 'var(--text-muted)' : 'var(--text-primary)' }}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
                           ${row.value.toLocaleString('es-CL')}
                           <button
@@ -1191,15 +1202,15 @@ export default function Dashboard() {
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr style={{ backgroundColor: 'var(--success-soft)', borderTop: '2px solid var(--border-color)' }}>
-                    <td style={{ padding: '0.75rem', fontWeight: 900, borderRight: '2px solid var(--border-color)' }}>Total ingresos</td>
+                  <tr style={{ backgroundColor: 'color-mix(in srgb, var(--success-soft) 80%, var(--bg-color))', borderTop: '2px solid color-mix(in srgb, var(--border-color) 70%, transparent)' }}>
+                    <td style={{ padding: '0.75rem', fontWeight: 900, borderRight: '2px solid color-mix(in srgb, var(--border-color) 70%, transparent)' }}>Total ingresos</td>
                     <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 900 }}>${totalEntradas.toLocaleString('es-CL')}</td>
                   </tr>
                 </tfoot>
               </table>
             </div>
           )}
-          {renderSparkline('Ingresos', 'var(--border-color)')}
+          {renderSparkline('Ingresos', 'var(--success)', 'var(--success-text)')}
         </div>
 
         {/* Egresos Card */}
@@ -1222,10 +1233,10 @@ export default function Dashboard() {
           
           {totalSalidas > 0 && (
             <div style={{ position: 'relative', zIndex: 10, flex: 1, paddingBottom: '1rem' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', border: '2px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden', display: 'table', backgroundColor: 'var(--surface-color)' }}>
+              <table style={kpiNestedTable}>
                 <thead>
-                  <tr style={{ backgroundColor: 'var(--surface-subtle)', borderBottom: '2px solid var(--border-color)' }}>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 900, borderRight: '2px solid var(--border-color)' }}>Concepto</th>
+                  <tr style={{ backgroundColor: 'color-mix(in srgb, var(--bg-color) 55%, transparent)', borderBottom: '2px solid color-mix(in srgb, var(--border-color) 70%, transparent)' }}>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 900, borderRight: '2px solid color-mix(in srgb, var(--border-color) 70%, transparent)' }}>Concepto</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 900 }}>Monto</th>
                   </tr>
                 </thead>
@@ -1234,15 +1245,15 @@ export default function Dashboard() {
                     <tr 
                       key={row.name} 
                       onClick={() => openDetailsModal(row.name, 'egreso')}
-                      style={{ borderBottom: i === expenseData.length - 1 ? 'none' : '2px solid var(--border-color)', backgroundColor: row.isGray ? 'var(--surface-subtle)' : 'var(--surface-color)', cursor: 'pointer' }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--surface-subtle)')}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = row.isGray ? 'var(--surface-subtle)' : 'var(--surface-color)')}
+                      style={{ borderBottom: i === expenseData.length - 1 ? 'none' : '2px solid color-mix(in srgb, var(--border-color) 55%, transparent)', backgroundColor: 'transparent', cursor: 'pointer' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--bg-color) 40%, transparent)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                     >
-                      <td style={{ padding: '0.75rem', fontWeight: 700, borderRight: '2px solid var(--border-color)', color: row.isGray ? 'var(--text-muted)' : 'var(--border-color)' }}>
+                      <td style={{ padding: '0.75rem', fontWeight: 700, borderRight: '2px solid color-mix(in srgb, var(--border-color) 55%, transparent)', color: row.isGray ? 'var(--text-muted)' : 'var(--text-primary)' }}>
                         <div>{row.name}</div>
                         {row.subtext && <div style={{ fontSize: '0.75rem', fontWeight: 600, marginTop: '0.15rem', opacity: 0.9 }}>{row.subtext}</div>}
                       </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: row.isGray ? 'var(--text-muted)' : 'var(--border-color)' }}>
+                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: row.isGray ? 'var(--text-muted)' : 'var(--text-primary)' }}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
                           ${row.value.toLocaleString('es-CL')}
                           <button
@@ -1262,15 +1273,15 @@ export default function Dashboard() {
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr style={{ backgroundColor: 'var(--danger-surface)', borderTop: '2px solid var(--border-color)' }}>
-                    <td style={{ padding: '0.75rem', fontWeight: 900, borderRight: '2px solid var(--border-color)' }}>Total gastos</td>
+                  <tr style={{ backgroundColor: 'color-mix(in srgb, var(--danger-surface) 80%, var(--bg-color))', borderTop: '2px solid color-mix(in srgb, var(--border-color) 70%, transparent)' }}>
+                    <td style={{ padding: '0.75rem', fontWeight: 900, borderRight: '2px solid color-mix(in srgb, var(--border-color) 70%, transparent)' }}>Total gastos</td>
                     <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 900 }}>${totalSalidas.toLocaleString('es-CL')}</td>
                   </tr>
                 </tfoot>
               </table>
             </div>
           )}
-          {renderSparkline('Egresos', 'var(--border-color)')}
+          {renderSparkline('Egresos', 'var(--danger)', 'var(--danger-text)')}
         </div>
         </div>
       </>
@@ -1413,7 +1424,7 @@ export default function Dashboard() {
                   <XAxis dataKey="label" tick={{ fill: 'var(--text-secondary)', fontSize: 11, fontWeight: 700 }} axisLine={{ stroke: 'var(--border-color)', strokeWidth: 2 }} tickLine={false} dy={10} />
                   <YAxis hide />
                   <Tooltip
-                    contentStyle={{ borderRadius: '8px', border: '2px solid var(--border-color)', boxShadow: '4px 4px 0px var(--border-color)', fontWeight: 800 }}
+                    contentStyle={{ borderRadius: '8px', border: '2px solid var(--border-color)', boxShadow: '4px 4px 0px var(--shadow-color)', fontWeight: 800 }}
                     formatter={(value: any, name: any) => ['$' + Number(value).toLocaleString('es-CL'), name]}
                   />
                   {selectedCategories.length === 0 ? (
@@ -1480,7 +1491,7 @@ export default function Dashboard() {
     if (count === 0) return null;
 
     return (
-      <div style={{ backgroundColor: 'var(--pastel-yellow)', border: '2px solid var(--border-color)', borderRadius: '12px', padding: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '2.5rem', boxShadow: '4px 4px 0px var(--border-color)' }}>
+      <div style={{ backgroundColor: 'var(--pastel-yellow)', border: '2px solid var(--border-color)', borderRadius: '12px', padding: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '2.5rem', boxShadow: '4px 4px 0px var(--shadow-color)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ backgroundColor: 'var(--surface-color)', padding: '0.75rem', borderRadius: '50%', border: '2px solid var(--border-color)' }}>
             <AlertTriangle color="var(--border-color)" size={24} strokeWidth={2.5} />
@@ -1548,7 +1559,7 @@ export default function Dashboard() {
     const kpiStyle: React.CSSProperties = {
       flex: 1, padding: '1.25rem', border: '2px solid var(--border-color)', borderRadius: '12px',
       display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: '150px',
-      boxShadow: '4px 4px 0px var(--border-color)', position: 'relative', overflow: 'hidden'
+      boxShadow: '4px 4px 0px var(--shadow-color)', position: 'relative', overflow: 'hidden'
     };
 
     const CustomTooltip = ({ active, payload, label }: any) => {
@@ -1556,7 +1567,7 @@ export default function Dashboard() {
       const d = monthlyData.find(m => m.mes === label);
       if (!d) return null;
       return (
-        <div style={{ backgroundColor: 'var(--surface-color)', border: '2px solid var(--border-color)', borderRadius: '10px', boxShadow: '4px 4px 0px var(--border-color)', padding: '1rem', minWidth: '180px' }}>
+        <div style={{ backgroundColor: 'var(--surface-color)', border: '2px solid var(--border-color)', borderRadius: '10px', boxShadow: '4px 4px 0px var(--shadow-color)', padding: '1rem', minWidth: '180px' }}>
           <div style={{ fontWeight: 900, fontSize: '1.1rem', marginBottom: '0.75rem', textTransform: 'capitalize', borderBottom: '2px solid var(--border-color)', paddingBottom: '0.25rem' }}>{label}. {year}</div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', color: 'var(--success)', fontWeight: 800 }}>
             <span>Entradas disponibles</span><span>${d.Ingresos.toLocaleString('es-CL')}</span>
@@ -1589,12 +1600,12 @@ export default function Dashboard() {
           </div>
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
             {bestMonth && (
-              <div style={{ padding: '0.5rem 1rem', backgroundColor: 'var(--pastel-green)', border: '2px solid var(--border-color)', borderRadius: '2rem', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '2px 2px 0px var(--border-color)' }}>
+              <div style={{ padding: '0.5rem 1rem', backgroundColor: 'var(--pastel-green)', border: '2px solid var(--border-color)', borderRadius: '2rem', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '2px 2px 0px var(--shadow-color)' }}>
                 <TrendingUp size={16} /> Mejor mes: {bestMonth.mes}
               </div>
             )}
             {worstMonth && worstMonth.Balance < 0 && (
-              <div style={{ padding: '0.5rem 1rem', backgroundColor: 'var(--danger-surface)', border: '2px solid var(--border-color)', borderRadius: '2rem', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '2px 2px 0px var(--border-color)' }}>
+              <div style={{ padding: '0.5rem 1rem', backgroundColor: 'var(--danger-surface)', border: '2px solid var(--border-color)', borderRadius: '2rem', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '2px 2px 0px var(--shadow-color)' }}>
                 <TrendingDown size={16} /> Peor mes: {worstMonth.mes}
               </div>
             )}
@@ -1855,7 +1866,7 @@ export default function Dashboard() {
                           <td data-label="Fecha" style={{ padding: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap', fontSize: '0.9rem' }}>{parseLocalDate(t.date).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                           {isConsolidated && (
                             <td data-label="Banco" style={{ padding: '0.75rem', whiteSpace: 'nowrap' }}>
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.55rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: 'var(--surface-color)', boxShadow: '1px 1px 0 var(--border-color)', fontSize: '0.72rem', fontWeight: 900 }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.55rem', border: '2px solid var(--border-color)', borderRadius: '999px', backgroundColor: 'var(--surface-color)', boxShadow: '1px 1px 0 var(--shadow-color)', fontSize: '0.72rem', fontWeight: 900 }}>
                                 <span style={{ width: '9px', height: '9px', borderRadius: '50%', backgroundColor: bankColor, border: '1.5px solid var(--border-color)', flexShrink: 0 }} />
                                 {bankLabel}
                               </span>
