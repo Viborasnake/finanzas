@@ -1138,11 +1138,11 @@ export default function Dashboard() {
           )}
         </section>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 350px), 1fr))', gap: '2rem', marginBottom: '3rem', alignItems: 'start' }}>
-        {/* Ingresos Card */}
-        <div style={{ ...neoCard, backgroundColor: 'var(--pastel-green)', position: 'relative', overflow: 'hidden', paddingBottom: '7rem', marginBottom: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
+        {/* Ingresos Card — neutral surface; color only on amount, icon, badge, sparkline */}
+        <div style={{ ...neoCard, backgroundColor: 'var(--surface-color)', position: 'relative', overflow: 'hidden', paddingBottom: '7rem', marginBottom: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', position: 'relative', zIndex: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div style={{ backgroundColor: 'var(--success-soft)', borderRadius: '50%', border: '2px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, width: '44px', height: '44px' }}>
+              <div style={{ backgroundColor: 'var(--success-soft)', color: 'var(--success-text)', borderRadius: '50%', border: '2px solid color-mix(in srgb, var(--success) 35%, var(--border-color))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, width: '44px', height: '44px' }}>
                 <Wallet size={24} strokeWidth={2.5} />
               </div>
               <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: '"Montserrat", sans-serif', display: 'flex', alignItems: 'center' }}>
@@ -1152,7 +1152,7 @@ export default function Dashboard() {
             </div>
             {renderTrendBadge(totalEntradas, p.economicIncome, false)}
           </div>
-          <p className="dashboard-kpi-amount" style={{ margin: c.rescateInversion > 0 ? '0 0 0.25rem 0' : '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '0' }}>
+          <p className="dashboard-kpi-amount" style={{ margin: c.rescateInversion > 0 ? '0 0 0.25rem 0' : '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '0', color: 'var(--success-text)' }}>
             ${totalEntradas.toLocaleString('es-CL')}
           </p>
           {c.rescateInversion > 0 && (
@@ -1164,8 +1164,8 @@ export default function Dashboard() {
             <div style={{ position: 'relative', zIndex: 10, flex: 1, paddingBottom: '1rem' }}>
               <table style={kpiNestedTable}>
                 <thead>
-                  <tr style={{ backgroundColor: 'color-mix(in srgb, var(--bg-color) 55%, transparent)', borderBottom: '2px solid color-mix(in srgb, var(--border-color) 70%, transparent)' }}>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 900, borderRight: '2px solid color-mix(in srgb, var(--border-color) 70%, transparent)' }}>Concepto</th>
+                  <tr style={{ backgroundColor: 'var(--surface-subtle)', borderBottom: '2px solid var(--border-subtle)' }}>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 900, borderRight: '2px solid var(--border-subtle)' }}>Concepto</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 900 }}>Monto</th>
                   </tr>
                 </thead>
@@ -1174,15 +1174,15 @@ export default function Dashboard() {
                     <tr 
                       key={row.name} 
                       onClick={() => openDetailsModal(row.name, 'ingreso')}
-                      style={{ borderBottom: i === incomeData.length - 1 ? 'none' : '2px solid color-mix(in srgb, var(--border-color) 55%, transparent)', backgroundColor: 'transparent', cursor: 'pointer' }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--bg-color) 40%, transparent)')}
+                      style={{ borderBottom: i === incomeData.length - 1 ? 'none' : '1px solid var(--border-subtle)', backgroundColor: 'transparent', cursor: 'pointer' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--surface-subtle)')}
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                     >
-                      <td style={{ padding: '0.75rem', fontWeight: 700, borderRight: '2px solid color-mix(in srgb, var(--border-color) 55%, transparent)', color: row.isGray ? 'var(--text-muted)' : 'var(--text-primary)' }}>
+                      <td style={{ padding: '0.75rem', fontWeight: 700, borderRight: '1px solid var(--border-subtle)', color: row.isGray ? 'var(--text-muted)' : 'var(--text-primary)' }}>
                         <div>{row.name}</div>
                         {row.subtext && <div style={{ fontSize: '0.75rem', fontWeight: 600, marginTop: '0.15rem', opacity: 0.9 }}>{row.subtext}</div>}
                       </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: row.isGray ? 'var(--text-muted)' : 'var(--text-primary)' }}>
+                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: row.isGray ? 'var(--text-muted)' : 'var(--success-text)' }}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
                           ${row.value.toLocaleString('es-CL')}
                           <button
@@ -1202,9 +1202,9 @@ export default function Dashboard() {
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr style={{ backgroundColor: 'color-mix(in srgb, var(--success-soft) 80%, var(--bg-color))', borderTop: '2px solid color-mix(in srgb, var(--border-color) 70%, transparent)' }}>
-                    <td style={{ padding: '0.75rem', fontWeight: 900, borderRight: '2px solid color-mix(in srgb, var(--border-color) 70%, transparent)' }}>Total ingresos</td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 900 }}>${totalEntradas.toLocaleString('es-CL')}</td>
+                  <tr style={{ backgroundColor: 'var(--surface-subtle)', borderTop: '2px solid var(--border-subtle)' }}>
+                    <td style={{ padding: '0.75rem', fontWeight: 900, borderRight: '1px solid var(--border-subtle)' }}>Total ingresos</td>
+                    <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 900, color: 'var(--success-text)' }}>${totalEntradas.toLocaleString('es-CL')}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -1213,11 +1213,11 @@ export default function Dashboard() {
           {renderSparkline('Ingresos', 'var(--success)', 'var(--success-text)')}
         </div>
 
-        {/* Egresos Card */}
-        <div style={{ ...neoCard, backgroundColor: 'var(--danger-surface)', position: 'relative', overflow: 'hidden', paddingBottom: '7rem', marginBottom: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
+        {/* Egresos Card — neutral surface; color only on amount, icon, badge, sparkline */}
+        <div style={{ ...neoCard, backgroundColor: 'var(--surface-color)', position: 'relative', overflow: 'hidden', paddingBottom: '7rem', marginBottom: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', position: 'relative', zIndex: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div style={{ backgroundColor: 'var(--danger-surface)', borderRadius: '50%', border: '2px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, width: '44px', height: '44px' }}>
+              <div style={{ backgroundColor: 'var(--danger-surface)', color: 'var(--danger-text)', borderRadius: '50%', border: '2px solid color-mix(in srgb, var(--danger) 35%, var(--border-color))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, width: '44px', height: '44px' }}>
                 <CreditCard size={24} strokeWidth={2.5} />
               </div>
               <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, fontFamily: '"Montserrat", sans-serif', display: 'flex', alignItems: 'center' }}>
@@ -1227,7 +1227,7 @@ export default function Dashboard() {
             </div>
             {renderTrendBadge(totalSalidas, p.economicExpense, true)}
           </div>
-          <p className="dashboard-kpi-amount" style={{ margin: '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '0' }}>
+          <p className="dashboard-kpi-amount" style={{ margin: '0 0 2rem 0', fontSize: '3.5rem', fontWeight: 900, position: 'relative', zIndex: 10, letterSpacing: '0', color: 'var(--danger-text)' }}>
             ${totalSalidas.toLocaleString('es-CL')}
           </p>
           
@@ -1235,8 +1235,8 @@ export default function Dashboard() {
             <div style={{ position: 'relative', zIndex: 10, flex: 1, paddingBottom: '1rem' }}>
               <table style={kpiNestedTable}>
                 <thead>
-                  <tr style={{ backgroundColor: 'color-mix(in srgb, var(--bg-color) 55%, transparent)', borderBottom: '2px solid color-mix(in srgb, var(--border-color) 70%, transparent)' }}>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 900, borderRight: '2px solid color-mix(in srgb, var(--border-color) 70%, transparent)' }}>Concepto</th>
+                  <tr style={{ backgroundColor: 'var(--surface-subtle)', borderBottom: '2px solid var(--border-subtle)' }}>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 900, borderRight: '2px solid var(--border-subtle)' }}>Concepto</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 900 }}>Monto</th>
                   </tr>
                 </thead>
@@ -1245,15 +1245,15 @@ export default function Dashboard() {
                     <tr 
                       key={row.name} 
                       onClick={() => openDetailsModal(row.name, 'egreso')}
-                      style={{ borderBottom: i === expenseData.length - 1 ? 'none' : '2px solid color-mix(in srgb, var(--border-color) 55%, transparent)', backgroundColor: 'transparent', cursor: 'pointer' }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--bg-color) 40%, transparent)')}
+                      style={{ borderBottom: i === expenseData.length - 1 ? 'none' : '1px solid var(--border-subtle)', backgroundColor: 'transparent', cursor: 'pointer' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--surface-subtle)')}
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                     >
-                      <td style={{ padding: '0.75rem', fontWeight: 700, borderRight: '2px solid color-mix(in srgb, var(--border-color) 55%, transparent)', color: row.isGray ? 'var(--text-muted)' : 'var(--text-primary)' }}>
+                      <td style={{ padding: '0.75rem', fontWeight: 700, borderRight: '1px solid var(--border-subtle)', color: row.isGray ? 'var(--text-muted)' : 'var(--text-primary)' }}>
                         <div>{row.name}</div>
                         {row.subtext && <div style={{ fontSize: '0.75rem', fontWeight: 600, marginTop: '0.15rem', opacity: 0.9 }}>{row.subtext}</div>}
                       </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: row.isGray ? 'var(--text-muted)' : 'var(--text-primary)' }}>
+                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: row.isGray ? 'var(--text-muted)' : 'var(--danger-text)' }}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
                           ${row.value.toLocaleString('es-CL')}
                           <button
@@ -1273,9 +1273,9 @@ export default function Dashboard() {
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr style={{ backgroundColor: 'color-mix(in srgb, var(--danger-surface) 80%, var(--bg-color))', borderTop: '2px solid color-mix(in srgb, var(--border-color) 70%, transparent)' }}>
-                    <td style={{ padding: '0.75rem', fontWeight: 900, borderRight: '2px solid color-mix(in srgb, var(--border-color) 70%, transparent)' }}>Total gastos</td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 900 }}>${totalSalidas.toLocaleString('es-CL')}</td>
+                  <tr style={{ backgroundColor: 'var(--surface-subtle)', borderTop: '2px solid var(--border-subtle)' }}>
+                    <td style={{ padding: '0.75rem', fontWeight: 900, borderRight: '1px solid var(--border-subtle)' }}>Total gastos</td>
+                    <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 900, color: 'var(--danger-text)' }}>${totalSalidas.toLocaleString('es-CL')}</td>
                   </tr>
                 </tfoot>
               </table>
