@@ -84,44 +84,52 @@
 .brand-lockup {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
-  font-size: 1.35rem;
-  font-weight: 900;
+  gap: 0.7rem;
+  font-size: 1.22rem;
+  font-weight: 800;
   white-space: nowrap;
   color: var(--text-primary);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
 }
 
 .brand-mark {
   width: 34px;
   height: 34px;
-  background: var(--primary);
-  color: var(--text-on-inverted);
-  border-radius: 8px;
+  background: var(--surface-subtle);
+  color: var(--text-primary);
+  border-radius: 10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
   box-shadow: var(--shadow-sm);
-  border: 1px solid color-mix(in srgb, var(--border-color) 40%, transparent);
+  border: 1.5px solid var(--border-color);
   flex-shrink: 0;
-  font-size: 1rem;
+  font-size: 0.95rem;
 }
 
-/* Brand stays crisp in soft dark without re-glaring body text */
+/* Soft dark brand: elevated chip + warm accent, no pure-white sticker */
 html.dark .brand-lockup {
-  color: #eef1f6;
+  color: #d8dee8;
+  font-weight: 800;
+  letter-spacing: -0.035em;
 }
 
 html.dark .brand-mark {
-  background: #eef1f6;
-  color: #0f1219;
-  border-color: color-mix(in srgb, #eef1f6 30%, var(--border-color));
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+  background:
+    linear-gradient(155deg, rgba(224, 184, 106, 0.16) 0%, rgba(30, 36, 48, 0.95) 55%, #1a1f2b 100%);
+  color: #f0d78a;
+  border: 1px solid color-mix(in srgb, #e0b86a 38%, #2c3344);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 4px 14px rgba(0, 0, 0, 0.35);
+  text-shadow: 0 0 12px rgba(224, 184, 106, 0.35);
 }
 
 html.dark .mobile-header h2 {
-  color: #eef1f6;
+  color: #d8dee8;
+  font-weight: 800;
+  letter-spacing: -0.03em;
 }
 
 .sidebar.collapsed .sidebar-brand {
