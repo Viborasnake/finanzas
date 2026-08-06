@@ -84,45 +84,41 @@
 .brand-lockup {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
+  gap: 0.65rem;
   font-size: 1.22rem;
   font-weight: 900;
   white-space: nowrap;
-  color: var(--text-primary);
+  color: #0a0a0a;
   letter-spacing: -0.03em;
 }
 
-/* Brand mark: white tile + yellow sparkles, high contrast border */
+/* Light brand (reference): black tile + yellow sparkles + black wordmark */
 .brand-mark {
   width: 34px;
   height: 34px;
-  background: #ffffff;
-  color: #eab308;
-  border-radius: 10px;
+  background: #0a0a0a;
+  color: #f5c518;
+  border-radius: 8px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
-  box-shadow: var(--shadow-sm);
-  border: 2px solid #0a0a0a;
+  box-shadow: none;
+  border: 0;
   flex-shrink: 0;
   font-size: 1.05rem;
-  filter: none;
 }
 
+/* Dark: same mark, light wordmark for contrast on elevated sidebar */
 html.dark .brand-lockup {
   color: #eef1f6;
-  font-weight: 900;
-  letter-spacing: -0.03em;
 }
 
 html.dark .brand-mark {
-  background: #ffffff;
-  color: #eab308;
-  border: 2px solid #eef1f6;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.5) inset,
-    0 4px 12px rgba(0, 0, 0, 0.4);
+  background: #0a0a0a;
+  color: #f5c518;
+  border: 1px solid color-mix(in srgb, #f5c518 25%, #2c3344);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
 html.dark .mobile-header h2 {
