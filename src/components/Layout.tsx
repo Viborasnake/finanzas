@@ -27,26 +27,42 @@ function ThemeToggle({ isCollapsed }: { isCollapsed?: boolean }) {
   const { isDark, setTheme } = useTheme();
 
   // Only light/dark in UI. System preference is the silent default until the user chooses.
-  const toggleTheme = () => {
-    setTheme(isDark ? 'light' : 'dark');
-  };
-
-  const Icon = isDark ? Moon : Sun;
-  const label = isDark ? 'Tema Oscuro' : 'Tema Claro';
+  if (isCollapsed) {
+    return (
+      <button
+        type="button"
+        className="nav-item theme-switch-collapsed"
+        onClick={() => setTheme(isDark ? 'light' : 'dark')}
+        title={isDark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
+        aria-label={isDark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
+        aria-pressed={isDark}
+      >
+        {isDark ? <Moon size={20} strokeWidth={2.4} /> : <Sun size={20} strokeWidth={2.4} />}
+      </button>
+    );
+  }
 
   return (
-    <button
-      type="button"
-      className="nav-item theme-toggle-btn"
-      onClick={toggleTheme}
-      title={isCollapsed ? label : undefined}
-      aria-label={isDark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
-      aria-pressed={isDark}
-      style={{ background: 'transparent', border: 'none', cursor: 'pointer', width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', color: 'inherit', fontWeight: 'inherit', fontSize: '1rem', borderRadius: 'var(--radius-md)' }}
-    >
-      <Icon size={20} />
-      {!isCollapsed && <span>{label}</span>}
-    </button>
+    <div className="theme-switch" role="group" aria-label="Tema de la interfaz">
+      <button
+        type="button"
+        className={`theme-switch-option${!isDark ? ' is-active' : ''}`}
+        onClick={() => setTheme('light')}
+        aria-pressed={!isDark}
+      >
+        <Sun size={16} strokeWidth={2.5} aria-hidden="true" />
+        <span>Claro</span>
+      </button>
+      <button
+        type="button"
+        className={`theme-switch-option${isDark ? ' is-active' : ''}`}
+        onClick={() => setTheme('dark')}
+        aria-pressed={isDark}
+      >
+        <Moon size={16} strokeWidth={2.5} aria-hidden="true" />
+        <span>Oscuro</span>
+      </button>
+    </div>
   );
 }
 
@@ -381,9 +397,7 @@ export default function Layout() {
                   </div>
                 </div>
               )}
-              <div style={{ padding: '0 0.5rem', marginBottom: '0.5rem' }}>
-                <ThemeToggle />
-              </div>
+              <ThemeToggle />
               <button 
                 type="button"
                 className="mobile-logout-btn" 

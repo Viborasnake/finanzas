@@ -236,6 +236,66 @@ html.dark .mobile-header h2 {
 .sidebar-footer {
   padding: 0.75rem 0.75rem 1rem;
   border-top: 1.5px solid color-mix(in srgb, var(--border-color) 16%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+/* Theme switch: two clear options (system default stays silent) */
+.theme-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem;
+  margin: 0 0.65rem;
+  padding: 0.25rem;
+  border: var(--border-width, 2px) solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle);
+  box-sizing: border-box;
+}
+
+.theme-switch-option {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.5rem;
+  border: 0;
+  border-radius: calc(var(--radius-md) - 2px);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.theme-switch-option:hover:not(.is-active) {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--surface-color) 70%, transparent);
+}
+
+.theme-switch-option.is-active {
+  background: var(--surface-color);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+  font-weight: 900;
+}
+
+html.dark .theme-switch-option.is-active {
+  background: color-mix(in srgb, var(--info-accent) 14%, var(--surface-color));
+  color: var(--text-primary);
+  box-shadow: none;
+  border: 1px solid color-mix(in srgb, var(--info-accent) 30%, var(--border-color));
+}
+
+.theme-switch-option svg {
+  flex-shrink: 0;
+}
+
+.theme-switch-collapsed {
+  /* uses .nav-item base when collapsed */
 }
 
 .nav-item {
