@@ -92,7 +92,7 @@
   letter-spacing: -0.03em;
 }
 
-/* Light brand (reference): black tile + yellow sparkles + black wordmark */
+/* Light brand: solid black tile + yellow sparkles + black wordmark */
 .brand-mark {
   width: 34px;
   height: 34px;
@@ -109,21 +109,24 @@
   font-size: 1.05rem;
 }
 
-/* Dark: same mark, light wordmark for contrast on elevated sidebar */
+/* Dark brand (reference): elevated slate tile + yellow sparkles + soft gray wordmark */
 html.dark .brand-lockup {
-  color: #eef1f6;
+  color: #b8c0cc;
+  font-weight: 800;
+  letter-spacing: -0.03em;
 }
 
 html.dark .brand-mark {
-  background: #0a0a0a;
+  background: #2a3140;
   color: #f5c518;
-  border: 1px solid color-mix(in srgb, #f5c518 25%, #2c3344);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  border: 0;
+  border-radius: 8px;
+  box-shadow: none;
 }
 
 html.dark .mobile-header h2 {
-  color: #eef1f6;
-  font-weight: 900;
+  color: #b8c0cc;
+  font-weight: 800;
   letter-spacing: -0.03em;
 }
 
