@@ -88,6 +88,8 @@
   font-size: 1.35rem;
   font-weight: 900;
   white-space: nowrap;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
 }
 
 .brand-mark {
@@ -101,6 +103,25 @@
   justify-content: center;
   line-height: 1;
   box-shadow: var(--shadow-sm);
+  border: 1px solid color-mix(in srgb, var(--border-color) 40%, transparent);
+  flex-shrink: 0;
+  font-size: 1rem;
+}
+
+/* Brand stays crisp in soft dark without re-glaring body text */
+html.dark .brand-lockup {
+  color: #eef1f6;
+}
+
+html.dark .brand-mark {
+  background: #eef1f6;
+  color: #0f1219;
+  border-color: color-mix(in srgb, #eef1f6 30%, var(--border-color));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+}
+
+html.dark .mobile-header h2 {
+  color: #eef1f6;
 }
 
 .sidebar.collapsed .sidebar-brand {
